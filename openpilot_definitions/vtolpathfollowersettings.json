@@ -1,0 +1,118 @@
+{
+  "name": "VtolPathFollowerSettings",
+  "object_id": 935366914,
+  "size": 74,
+  "unpackstr": "<f(HorizontalVelMax)f(VerticalVelMax)f(CourseFeedForward)f(HorizontalPosP)f(VerticalPosP)f(HorizontalVelPID)f(VerticalVelPID)f(ThrustLimits)f(VelocityFeedforward)f(FlyawayEmergencyFallbackTriggerTime)f(EmergencyFallbackAttitude)f(EmergencyFallbackYawRate)f(MaxRollPitch)f(BrakeRate)f(BrakeMaxPitch)f(BrakeHorizontalVelPID)f(BrakeVelocityFeedforward)H(UpdatePeriod)B(TreatCustomCraftAs)B(ThrustControl)B(YawControl)B(FlyawayEmergencyFallback)",
+  "fields": [
+    {
+      "name": "HorizontalVelMax",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "VerticalVelMax",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "CourseFeedForward",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "HorizontalPosP",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "VerticalPosP",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "HorizontalVelPID",
+      "type": 6,
+      "numElements": 4
+    },
+    {
+      "name": "VerticalVelPID",
+      "type": 6,
+      "numElements": 4
+    },
+    {
+      "name": "ThrustLimits",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "VelocityFeedforward",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "FlyawayEmergencyFallbackTriggerTime",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "EmergencyFallbackAttitude",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "EmergencyFallbackYawRate",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "MaxRollPitch",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "BrakeRate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "BrakeMaxPitch",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "BrakeHorizontalVelPID",
+      "type": 6,
+      "numElements": 4
+    },
+    {
+      "name": "BrakeVelocityFeedforward",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "UpdatePeriod",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "TreatCustomCraftAs",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "ThrustControl",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "YawControl",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "FlyawayEmergencyFallback",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

@@ -1,0 +1,163 @@
+{
+  "name": "StabilizationSettings",
+  "object_id": 1935683968,
+  "size": 73,
+  "unpackstr": "<f(VbarSensitivity)f(VbarRollPI)f(VbarPitchPI)f(VbarYawPI)f(VbarTau)f(GyroTau)f(DerivativeGamma)f(AxisLockKp)f(WeakLevelingKp)f(CruiseControlMaxPowerFactor)f(CruiseControlPowerTrim)f(CruiseControlPowerDelayComp)f(ScaleToAirspeed)f(ScaleToAirspeedLimits)B(FlightModeMap)b(VbarGyroSuppress)B(VbarPiroComp)B(VbarMaxAngle)B(DerivativeCutoff)B(MaxAxisLock)B(MaxAxisLockRate)B(MaxWeakLevelingRate)B(RattitudeModeTransition)b(CruiseControlMinThrust)B(CruiseControlMaxThrust)B(CruiseControlMaxAngle)B(CruiseControlFlightModeSwitchPosEnable)B(CruiseControlInvertedThrustReversing)B(CruiseControlInvertedPowerOutput)B(LowThrottleZeroIntegral)B(FlightModeAssistMap)",
+  "fields": [
+    {
+      "name": "VbarSensitivity",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "VbarRollPI",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "VbarPitchPI",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "VbarYawPI",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "VbarTau",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "GyroTau",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "DerivativeGamma",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AxisLockKp",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "WeakLevelingKp",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlMaxPowerFactor",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlPowerTrim",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlPowerDelayComp",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "ScaleToAirspeed",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "ScaleToAirspeedLimits",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "FlightModeMap",
+      "type": 7,
+      "numElements": 6
+    },
+    {
+      "name": "VbarGyroSuppress",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "VbarPiroComp",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "VbarMaxAngle",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "DerivativeCutoff",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "MaxAxisLock",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "MaxAxisLockRate",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "MaxWeakLevelingRate",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RattitudeModeTransition",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlMinThrust",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlMaxThrust",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlMaxAngle",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlFlightModeSwitchPosEnable",
+      "type": 7,
+      "numElements": 6
+    },
+    {
+      "name": "CruiseControlInvertedThrustReversing",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "CruiseControlInvertedPowerOutput",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "LowThrottleZeroIntegral",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "FlightModeAssistMap",
+      "type": 7,
+      "numElements": 6
+    }
+  ]
+}

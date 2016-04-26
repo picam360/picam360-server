@@ -1,0 +1,133 @@
+{
+  "name": "OPLinkStatus",
+  "object_id": -1314304480,
+  "size": 38,
+  "unpackstr": "<I(DeviceID)I(PairIDs)H(BoardRevision)H(HeapRemaining)H(UAVTalkErrors)H(TXRate)H(RXRate)H(TXSeq)H(RXSeq)B(Description)B(CPUSerial)B(BoardType)B(RxGood)B(RxCorrected)B(RxErrors)B(RxMissed)B(RxFailure)B(TxDropped)B(TxFailure)B(Resets)B(Timeouts)b(RSSI)B(LinkQuality)B(LinkState)b(PairSignalStrengths)",
+  "fields": [
+    {
+      "name": "DeviceID",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "PairIDs",
+      "type": 5,
+      "numElements": 4
+    },
+    {
+      "name": "BoardRevision",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "HeapRemaining",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "UAVTalkErrors",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "TXRate",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "RXRate",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "TXSeq",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "RXSeq",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "Description",
+      "type": 3,
+      "numElements": 40
+    },
+    {
+      "name": "CPUSerial",
+      "type": 3,
+      "numElements": 12
+    },
+    {
+      "name": "BoardType",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RxGood",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RxCorrected",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RxErrors",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RxMissed",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RxFailure",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "TxDropped",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "TxFailure",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "Resets",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "Timeouts",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "RSSI",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "LinkQuality",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "LinkState",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "PairSignalStrengths",
+      "type": 0,
+      "numElements": 4
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "name": "AttitudeState",
+  "object_id": -673130140,
+  "size": 28,
+  "unpackstr": "<f(q1)f(q2)f(q3)f(q4)f(Roll)f(Pitch)f(Yaw)",
+  "fields": [
+    {
+      "name": "q1",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "q2",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "q3",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "q4",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Roll",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Pitch",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Yaw",
+      "type": 6,
+      "numElements": 1
+    }
+  ]
+}

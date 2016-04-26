@@ -1,0 +1,48 @@
+{
+  "name": "PathSummary",
+  "object_id": 489838644,
+  "size": 27,
+  "unpackstr": "<f(brake_distance_offset)f(time_remaining)f(fractional_progress)f(decelrate)f(brakeRateActualDesiredRatio)f(velocityIntoHold)h(UID)B(brake_exit_reason)",
+  "fields": [
+    {
+      "name": "brake_distance_offset",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "time_remaining",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "fractional_progress",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "decelrate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "brakeRateActualDesiredRatio",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "velocityIntoHold",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "UID",
+      "type": 1,
+      "numElements": 1
+    },
+    {
+      "name": "brake_exit_reason",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

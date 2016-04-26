@@ -1,0 +1,38 @@
+{
+  "name": "SystemSettings",
+  "object_id": -640642120,
+  "size": 15,
+  "unpackstr": "<I(GUIConfigData)f(AirSpeedMax)f(AirSpeedMin)B(AirframeType)B(VehicleName)B(ThrustControl)",
+  "fields": [
+    {
+      "name": "GUIConfigData",
+      "type": 5,
+      "numElements": 4
+    },
+    {
+      "name": "AirSpeedMax",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AirSpeedMin",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AirframeType",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "VehicleName",
+      "type": 3,
+      "numElements": 20
+    },
+    {
+      "name": "ThrustControl",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

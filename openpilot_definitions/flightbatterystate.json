@@ -1,0 +1,53 @@
+{
+  "name": "FlightBatteryState",
+  "object_id": 647373650,
+  "size": 30,
+  "unpackstr": "<f(Voltage)f(Current)f(BoardSupplyVoltage)f(PeakCurrent)f(AvgCurrent)f(ConsumedEnergy)f(EstimatedFlightTime)B(NbCells)B(NbCellsAutodetected)",
+  "fields": [
+    {
+      "name": "Voltage",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Current",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "BoardSupplyVoltage",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "PeakCurrent",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AvgCurrent",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "ConsumedEnergy",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "EstimatedFlightTime",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "NbCells",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "NbCellsAutodetected",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "name": "ManualControlSettings",
+  "object_id": 679485200,
+  "size": 24,
+  "unpackstr": "<f(Deadband)f(DeadbandAssistedControl)f(FailsafeChannel)h(ChannelMin)h(ChannelNeutral)h(ChannelMax)H(ResponseTime)B(ChannelGroups)B(ChannelNumber)B(FlightModeNumber)b(FailsafeFlightModeSwitchPosition)",
+  "fields": [
+    {
+      "name": "Deadband",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "DeadbandAssistedControl",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "FailsafeChannel",
+      "type": 6,
+      "numElements": 8
+    },
+    {
+      "name": "ChannelMin",
+      "type": 1,
+      "numElements": 9
+    },
+    {
+      "name": "ChannelNeutral",
+      "type": 1,
+      "numElements": 9
+    },
+    {
+      "name": "ChannelMax",
+      "type": 1,
+      "numElements": 9
+    },
+    {
+      "name": "ResponseTime",
+      "type": 4,
+      "numElements": 7
+    },
+    {
+      "name": "ChannelGroups",
+      "type": 7,
+      "numElements": 9
+    },
+    {
+      "name": "ChannelNumber",
+      "type": 3,
+      "numElements": 9
+    },
+    {
+      "name": "FlightModeNumber",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "FailsafeFlightModeSwitchPosition",
+      "type": 0,
+      "numElements": 1
+    }
+  ]
+}

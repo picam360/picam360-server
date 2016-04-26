@@ -1,0 +1,33 @@
+{
+  "name": "AltitudeHoldSettings",
+  "object_id": -241238996,
+  "size": 14,
+  "unpackstr": "<f(AltitudePI)f(VelocityPI)f(ThrustRate)B(CutThrustWhenZero)B(ThrustExp)",
+  "fields": [
+    {
+      "name": "AltitudePI",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "VelocityPI",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "ThrustRate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "CutThrustWhenZero",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "ThrustExp",
+      "type": 3,
+      "numElements": 1
+    }
+  ]
+}

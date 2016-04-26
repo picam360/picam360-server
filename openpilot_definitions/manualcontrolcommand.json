@@ -1,0 +1,53 @@
+{
+  "name": "ManualControlCommand",
+  "object_id": 370814104,
+  "size": 28,
+  "unpackstr": "<f(Throttle)f(Roll)f(Pitch)f(Yaw)f(Collective)f(Thrust)H(Channel)B(Connected)B(FlightModeSwitchPosition)",
+  "fields": [
+    {
+      "name": "Throttle",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Roll",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Pitch",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Yaw",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Collective",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Thrust",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Channel",
+      "type": 4,
+      "numElements": 9
+    },
+    {
+      "name": "Connected",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "FlightModeSwitchPosition",
+      "type": 3,
+      "numElements": 1
+    }
+  ]
+}

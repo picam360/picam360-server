@@ -1,0 +1,33 @@
+{
+  "name": "StabilizationDesired",
+  "object_id": -1976957908,
+  "size": 17,
+  "unpackstr": "<f(Roll)f(Pitch)f(Yaw)f(Thrust)B(StabilizationMode)",
+  "fields": [
+    {
+      "name": "Roll",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Pitch",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Yaw",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Thrust",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "StabilizationMode",
+      "type": 7,
+      "numElements": 4
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "FirmwareIAPObj",
+  "object_id": -2094468526,
+  "size": 13,
+  "unpackstr": "<I(crc)H(Command)H(BoardRevision)B(Description)B(CPUSerial)B(BoardType)B(BootloaderRevision)B(ArmReset)",
+  "fields": [
+    {
+      "name": "crc",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "Command",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "BoardRevision",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "Description",
+      "type": 3,
+      "numElements": 100
+    },
+    {
+      "name": "CPUSerial",
+      "type": 3,
+      "numElements": 12
+    },
+    {
+      "name": "BoardType",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "BootloaderRevision",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "ArmReset",
+      "type": 3,
+      "numElements": 1
+    }
+  ]
+}

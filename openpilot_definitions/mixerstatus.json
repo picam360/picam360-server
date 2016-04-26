@@ -1,0 +1,68 @@
+{
+  "name": "MixerStatus",
+  "object_id": 894177088,
+  "size": 48,
+  "unpackstr": "<f(Mixer1)f(Mixer2)f(Mixer3)f(Mixer4)f(Mixer5)f(Mixer6)f(Mixer7)f(Mixer8)f(Mixer9)f(Mixer10)f(Mixer11)f(Mixer12)",
+  "fields": [
+    {
+      "name": "Mixer1",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer2",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer3",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer4",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer5",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer6",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer7",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer8",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer9",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer10",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer11",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer12",
+      "type": 6,
+      "numElements": 1
+    }
+  ]
+}

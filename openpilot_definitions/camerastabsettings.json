@@ -1,0 +1,78 @@
+{
+  "name": "CameraStabSettings",
+  "object_id": -363272902,
+  "size": 18,
+  "unpackstr": "<f(MaxAxisLockRate)H(MaxAccel)B(Input)B(InputRange)B(InputRate)B(StabilizationMode)B(OutputRange)B(ResponseTime)B(GimbalType)B(FeedForward)B(AccelTime)B(DecelTime)B(Servo1PitchReverse)B(Servo2PitchReverse)",
+  "fields": [
+    {
+      "name": "MaxAxisLockRate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "MaxAccel",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "Input",
+      "type": 7,
+      "numElements": 3
+    },
+    {
+      "name": "InputRange",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "InputRate",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "StabilizationMode",
+      "type": 7,
+      "numElements": 3
+    },
+    {
+      "name": "OutputRange",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "ResponseTime",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "GimbalType",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "FeedForward",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "AccelTime",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "DecelTime",
+      "type": 3,
+      "numElements": 3
+    },
+    {
+      "name": "Servo1PitchReverse",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Servo2PitchReverse",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

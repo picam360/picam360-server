@@ -1,0 +1,13 @@
+{
+  "name": "GCSReceiver",
+  "object_id": -864152464,
+  "size": 2,
+  "unpackstr": "<H(Channel)",
+  "fields": [
+    {
+      "name": "Channel",
+      "type": 4,
+      "numElements": 8
+    }
+  ]
+}

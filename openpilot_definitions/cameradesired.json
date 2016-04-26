@@ -1,0 +1,23 @@
+{
+  "name": "CameraDesired",
+  "object_id": 1681920078,
+  "size": 12,
+  "unpackstr": "<f(RollOrServo1)f(PitchOrServo2)f(Yaw)",
+  "fields": [
+    {
+      "name": "RollOrServo1",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "PitchOrServo2",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Yaw",
+      "type": 6,
+      "numElements": 1
+    }
+  ]
+}

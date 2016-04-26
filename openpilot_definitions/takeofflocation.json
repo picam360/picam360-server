@@ -1,0 +1,33 @@
+{
+  "name": "TakeOffLocation",
+  "object_id": -762118708,
+  "size": 14,
+  "unpackstr": "<f(North)f(East)f(Down)B(Mode)B(Status)",
+  "fields": [
+    {
+      "name": "North",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "East",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Down",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Mode",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Status",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

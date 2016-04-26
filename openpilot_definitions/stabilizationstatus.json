@@ -1,0 +1,18 @@
+{
+  "name": "StabilizationStatus",
+  "object_id": 954906258,
+  "size": 2,
+  "unpackstr": "<B(OuterLoop)B(InnerLoop)",
+  "fields": [
+    {
+      "name": "OuterLoop",
+      "type": 7,
+      "numElements": 4
+    },
+    {
+      "name": "InnerLoop",
+      "type": 7,
+      "numElements": 4
+    }
+  ]
+}

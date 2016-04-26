@@ -1,0 +1,28 @@
+{
+  "name": "AltitudeFilterSettings",
+  "object_id": -435092436,
+  "size": 16,
+  "unpackstr": "<f(AccelLowPassKp)f(AccelDriftKi)f(InitializationAccelDriftKi)f(BaroKp)",
+  "fields": [
+    {
+      "name": "AccelLowPassKp",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AccelDriftKi",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "InitializationAccelDriftKi",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "BaroKp",
+      "type": 6,
+      "numElements": 1
+    }
+  ]
+}

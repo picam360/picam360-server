@@ -1,0 +1,63 @@
+{
+  "name": "AttitudeSettings",
+  "object_id": 1149850808,
+  "size": 35,
+  "unpackstr": "<f(BoardRotation)f(BoardLevelTrim)f(AccelKp)f(AccelKi)f(MagKi)f(MagKp)f(AccelTau)f(YawBiasRate)B(ZeroDuringArming)B(BiasCorrectGyro)B(TrimFlight)",
+  "fields": [
+    {
+      "name": "BoardRotation",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "BoardLevelTrim",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "AccelKp",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AccelKi",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "MagKi",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "MagKp",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AccelTau",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "YawBiasRate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "ZeroDuringArming",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "BiasCorrectGyro",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "TrimFlight",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

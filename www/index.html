@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <!-- WARNING: for iOS 7, remove the width=device-width and height=device-height attributes. See https://issues.apache.org/jira/browse/CB-4323 -->
+        <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-height, height=device-width, target-densitydpi=device-dpi" />
+        <link rel="stylesheet" type="text/css" href="css/index.css" />
+        <title>Hello World</title>
+        <script type="text/javascript">
+			// スクロールを抑止する関数
+			function preventScroll(event) {
+	
+				// li要素だけは、タップイベントに反応したいので、抑止しない。
+				if (event.touches[0].target.tagName.toLowerCase() == "li") {
+					return;
+				}
+	
+				// preventDefaultでブラウザ標準動作を抑止する。
+				event.preventDefault();
+			}
+	
+			// タッチイベントの初期化
+			document.addEventListener("touchstart", preventScroll, false);
+			document.addEventListener("touchmove", preventScroll, false);
+			document.addEventListener("touchend", preventScroll, false);
+			// ジェスチャーイベントの初期化
+			document.addEventListener("gesturestart", preventScroll, false);
+			document.addEventListener("gesturechange", preventScroll, false);
+			document.addEventListener("gestureend", preventScroll, false);
+        </script>
+    </head>
+    <body ontouchmove="event.preventDefault()">
+        <script type="text/javascript" src="http://192.168.42.1:9001/socket.io/socket.io.js"></script>
+        <script type="text/javascript" src="cordova.js"></script>
+        <script type="text/javascript" src="Gamepad.js"></script>
+		<script type="text/javascript" src="js/three.min.js"></script>
+		<script type="text/javascript" src="js/StereoEffect.js"></script>
+        <script type="text/javascript" src="js/index.js"></script>
+        
+		
+
+		<div class="app" id="container"></div>
+		<canvas id="tempCanvas"></canvas>
+
+		<script>
+
+			var socket = io.connect('http://192.168.42.1:9001');
+			 
+			//サーバから受け取るイベント
+			socket.on('connect', function() {
+				setInterval(function() {
+					var _starttime = new Date();
+					console.log('ping!!');
+					socket.emit('ping', _starttime);
+				}, 500);
+			});
+			socket.on('pong', function() {
+				console.log('pong!!');
+			});
+			socket.on('msg', function(msg) {
+				console.log('msg:' + msg);
+			});
+			socket.on("disconnect", function (client) {});
+
+
+			Gamepad = {
+			    /**
+			    * Represents the button 0 (the A on the XBOX controller, the O on the OUYA controller)
+			    */
+			    BUTTON_0                : 0, 
+			    /**
+			    * Represents the button 1 (the B on the XBOX controller, the A on the OUYA controller)
+			    */
+			    BUTTON_1                : 1,
+			    /**
+			    * Represents the button 2 (the X on the XBOX controller, the U on the OUYA controller)
+			    */
+			    BUTTON_2                : 2,
+			    /**
+			    * Represents the button 3 (the Y on the XBOX controller, the Y on the OUYA controller)
+			    */
+			    BUTTON_3                : 3,
+			    /**
+			    * Represents the left bumper button.
+			    */
+			    BUTTON_LEFT_BUMPER      : 4,
+			    /**
+			    * Represents the right bumper button.
+			    */
+			    BUTTON_RIGHT_BUMPER     : 5,
+			    
+			    /**
+			    * Represents the left trigger button.
+			    */
+			    BUTTON_LEFT_TRIGGER     : 6,
+			    /**
+			    * Represents the right trigger button.
+			    */
+			    BUTTON_RIGHT_TRIGGER    : 7,
+			    
+			    /**
+			    * Represents the left joystick button.
+			    */
+			    BUTTON_LEFT_JOYSTICK    : 10,
+			    /**
+			    * Represents the right joystick button.
+			    */
+			    BUTTON_RIGHT_JOYSTICK   : 11,
+			    /**
+			    * Represents the dpad up button.
+			    */
+			    BUTTON_DPAD_UP          : 12,
+			    /**
+			    * Represents the dpad down button.
+			    */
+			    BUTTON_DPAD_DOWN        : 13,
+			    /**
+			    * Represents the dpad left button.
+			    */
+			    BUTTON_DPAD_LEFT        : 14,
+			    /**
+			    * Represents the dpad right button.
+			    */
+			    BUTTON_DPAD_RIGHT       : 15,
+			    /**
+			    * Represents the menu button.
+			    */
+			    BUTTON_MENU             : 16,
+			    
+			    /**
+			    * Represents the left joystick horizontal axis.
+			    */
+			    AXIS_LEFT_JOYSTICK_X     : 0,
+			    /**
+			    * Represents the left joystick vertical axis.
+			    */
+			    AXIS_LEFT_JOYSTICK_Y     : 1,
+			    /**
+			    * Represents the right joystick horizontal axis.
+			    */
+			    AXIS_RIGHT_JOYSTICK_X    : 2,
+			    /**
+			    * Represents the right joystick vertical axis.
+			    */
+			    AXIS_RIGHT_JOYSTICK_Y    : 3
+			};
+			
+			var camera, scene, renderer;
+			
+			var texture;
+		    var canvas;
+		    var context;
+		    var effect;
+
+			var isUserInteracting = false,
+			onMouseDownMouseX = 0, onMouseDownMouseY = 0,
+			lon = 0, onMouseDownLon = 0,
+			lat = 0, onMouseDownLat = 0,
+			phi = 0, theta = 0;
+			
+			function set_lon(value)
+			{
+				lon = value;
+			}
+
+			init();
+			animate();
+
+			function init() {
+
+				var container, mesh;
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 1100 );
+				camera.target = new THREE.Vector3( 0, 0, 0 );
+
+				scene = new THREE.Scene();
+
+				var geometry = new THREE.SphereGeometry( 500, 60, 40 );
+				geometry.scale( - 1, 1, 1 );
+				
+
+		        canvas = document.getElementById('tempCanvas');
+		        canvas.width = 1024;
+		        canvas.height = 512;
+		        context = canvas.getContext('2d');
+		        context.fillStyle = "black";
+		        context.fillRect(0, 0, canvas.width, canvas.height);
+		        texture = new THREE.Texture(canvas);
+		        texture.context = context;
+				var material = new THREE.MeshBasicMaterial( {
+					map: texture
+				} );
+				material.needsUpdate = true;
+
+				mesh = new THREE.Mesh( geometry, material );
+				
+				scene.add( mesh );
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+
+				effect = new THREE.StereoEffect( renderer );
+				effect.setSize( window.innerWidth, window.innerHeight );
+
+				window.addEventListener( 'resize', onWindowResize, false );
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+		        effect.setSize( window.innerWidth, window.innerHeight );
+			}
+
+
+			var loading = false;
+			function animate() {
+		        if (context && loading == false) {
+		        	loading = true;
+		            var piImage = new Image();
+		            piImage.onload = function() {
+		              //console.log('Drawing image');
+		              context.drawImage(piImage, (canvas.width-piImage.width)/2, 0, piImage.width, canvas.height);
+		              texture.needsUpdate = true;
+		              loading = false;
+		            }
+		            piImage.src = "http://192.168.42.1:9000/?action=snapshot";
+		            setTimeout(function()
+		            	    {
+		            	        if ( !piImage.complete || !piImage.naturalWidth )
+		            	        {
+		      		              	console.log('timeout');
+		      		            	loading = false;
+		            	        }
+		            	    }, 5000);
+		          }
+
+				requestAnimationFrame( animate );
+				update();
+				handleGamepad();
+			}
+
+			function update() {
+
+				lat = Math.max( - 85, Math.min( 85, lat ) );
+				phi = THREE.Math.degToRad( 90 - lat );
+				theta = THREE.Math.degToRad( lon );
+
+				camera.target.x = 500 * Math.sin( phi ) * Math.cos( theta );
+				camera.target.y = 500 * Math.cos( phi );
+				camera.target.z = 500 * Math.sin( phi ) * Math.sin( theta );
+
+				camera.lookAt( camera.target );
+
+				/*
+				// distortion
+				camera.position.copy( camera.target ).negate();
+				*/
+
+				//renderer.render( scene, camera );
+		        effect.render( scene, camera );
+
+			}
+
+			var command_processing = false;
+			function handleGamepad()
+			{
+				if(command_processing)
+				{
+					return;
+				}
+				if (navigator.webkitGetGamepads)
+				{
+					// Get all the available gamepads.
+					var gamepads = navigator.webkitGetGamepads();
+					if (gamepads && gamepads.length > 0)
+					{
+						// Iterate over all the gamepads and show their values.
+						for (var i = 0; i < gamepads.length; i++)
+						{
+							var gamepad = gamepads[i];
+							if (gamepad)
+							{
+								atLeastOneGamepadShown = true;
+								// For now, the Gamepad plugin only supports an old version of the W3C Gamepad API that did not declare the GamepadButton interface.
+								// Check if the interface is being used to decide how to retrieve the information from the buttons.
+								var declaresGamepadButtonInterface = (typeof gamepad.buttons[Gamepad.BUTTON_0]["value"] !== "undefined");
+								// Depending if the GamepadButton interface was declared or not:
+								// 1.- GamepadButton is not declared: get the button value directly from the elements of the buttons array.
+								// 2.- GamepadButton is declared: There is an object in each element of the buttons array and the "value" property holds the button value.
+								var button0 = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_0].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_0].toFixed(2);
+								var button1 = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_1].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_1].toFixed(2);
+								var button2 = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_2].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_2].toFixed(2);
+								var button3 = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_3].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_3].toFixed(2);
+								var leftBumper = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_LEFT_BUMPER].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_LEFT_BUMPER].toFixed(2);
+								var rightBumper = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_RIGHT_BUMPER].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_RIGHT_BUMPER].toFixed(2);
+								var leftTrigger = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_LEFT_TRIGGER].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_LEFT_TRIGGER].toFixed(2);
+								var rightTrigger = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_RIGHT_TRIGGER].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_RIGHT_TRIGGER].toFixed(2);
+								var leftJoystick = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_LEFT_JOYSTICK].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_LEFT_JOYSTICK].toFixed(2);
+								var rightJoystick = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_RIGHT_JOYSTICK].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_RIGHT_JOYSTICK].toFixed(2);
+								var dpadUp = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_DPAD_UP].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_DPAD_UP].toFixed(2);
+								var dpadDown = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_DPAD_DOWN].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_DPAD_DOWN].toFixed(2);
+								var dpadLeft = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_DPAD_LEFT].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_DPAD_LEFT].toFixed(2);
+								var dpadRight = declaresGamepadButtonInterface ? gamepad.buttons[Gamepad.BUTTON_DPAD_RIGHT].value.toFixed(2) : gamepad.buttons[Gamepad.BUTTON_DPAD_RIGHT].toFixed(2);
+								var leftJoystickX = gamepad.axes[Gamepad.AXIS_LEFT_JOYSTICK_X].toFixed(2);
+								var leftJoystickY = gamepad.axes[Gamepad.AXIS_LEFT_JOYSTICK_Y].toFixed(2);
+								var rightJoystickX = gamepad.axes[Gamepad.AXIS_RIGHT_JOYSTICK_X].toFixed(2);
+								var rightJoystickY = gamepad.axes[Gamepad.AXIS_RIGHT_JOYSTICK_Y].toFixed(2);
+								var menuButton = declaresGamepadButtonInterface ? gamepad.buttons[16].value.toFixed(2) : gamepad.buttons[16].toFixed(2);
+								if(button3 != 0)
+								{
+									command_processing = true;
+									socket.emit('arm');
+								}
+ 								else if(button0 != 0) //accelerate
+								{
+									command_processing = true;
+									socket.emit('accelerate_throttle', button0);
+								}
+								else if(button1 != 0) //decelerate
+								{
+									command_processing = true;
+									socket.emit('accelerate_throttle', -button1);
+								}
+								//wait
+								if(command_processing)
+								{
+						            setTimeout(function(){command_processing = false;}, 100);
+								}
+							}
+						}
+					}
+				}
+			}
+
+		</script>
+    </body>
+</html>

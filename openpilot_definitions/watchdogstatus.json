@@ -1,0 +1,18 @@
+{
+  "name": "WatchdogStatus",
+  "object_id": -1576535428,
+  "size": 4,
+  "unpackstr": "<H(BootupFlags)H(ActiveFlags)",
+  "fields": [
+    {
+      "name": "BootupFlags",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "ActiveFlags",
+      "type": 4,
+      "numElements": 1
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "DebugLogStatus",
+  "object_id": -2052793642,
+  "size": 8,
+  "unpackstr": "<H(Flight)H(Entry)H(UsedSlots)H(FreeSlots)",
+  "fields": [
+    {
+      "name": "Flight",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "Entry",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "UsedSlots",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "FreeSlots",
+      "type": 4,
+      "numElements": 1
+    }
+  ]
+}

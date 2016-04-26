@@ -1,0 +1,13 @@
+{
+  "name": "PoiLearnSettings",
+  "object_id": -1641879520,
+  "size": 1,
+  "unpackstr": "<B(Input)",
+  "fields": [
+    {
+      "name": "Input",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "Waypoint",
+  "object_id": -768060708,
+  "size": 9,
+  "unpackstr": "<f(Position)f(Velocity)B(Action)",
+  "fields": [
+    {
+      "name": "Position",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "Velocity",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Action",
+      "type": 3,
+      "numElements": 1
+    }
+  ]
+}

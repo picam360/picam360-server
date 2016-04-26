@@ -1,0 +1,178 @@
+{
+  "name": "MixerSettings",
+  "object_id": 2079510440,
+  "size": 52,
+  "unpackstr": "<f(MaxAccel)f(FeedForward)f(AccelTime)f(DecelTime)f(ThrottleCurve1)f(ThrottleCurve2)b(MixerValueRoll)b(MixerValuePitch)b(MixerValueYaw)B(Curve2Source)B(Mixer1Type)b(Mixer1Vector)B(Mixer2Type)b(Mixer2Vector)B(Mixer3Type)b(Mixer3Vector)B(Mixer4Type)b(Mixer4Vector)B(Mixer5Type)b(Mixer5Vector)B(Mixer6Type)b(Mixer6Vector)B(Mixer7Type)b(Mixer7Vector)B(Mixer8Type)b(Mixer8Vector)B(Mixer9Type)b(Mixer9Vector)B(Mixer10Type)b(Mixer10Vector)B(Mixer11Type)b(Mixer11Vector)B(Mixer12Type)b(Mixer12Vector)",
+  "fields": [
+    {
+      "name": "MaxAccel",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "FeedForward",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "AccelTime",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "DecelTime",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "ThrottleCurve1",
+      "type": 6,
+      "numElements": 5
+    },
+    {
+      "name": "ThrottleCurve2",
+      "type": 6,
+      "numElements": 5
+    },
+    {
+      "name": "MixerValueRoll",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "MixerValuePitch",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "MixerValueYaw",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "Curve2Source",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer1Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer1Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer2Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer2Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer3Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer3Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer4Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer4Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer5Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer5Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer6Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer6Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer7Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer7Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer8Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer8Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer9Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer9Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer10Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer10Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer11Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer11Vector",
+      "type": 0,
+      "numElements": 5
+    },
+    {
+      "name": "Mixer12Type",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Mixer12Vector",
+      "type": 0,
+      "numElements": 5
+    }
+  ]
+}

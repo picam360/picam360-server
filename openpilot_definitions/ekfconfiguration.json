@@ -1,0 +1,28 @@
+{
+  "name": "EKFConfiguration",
+  "object_id": 1586569532,
+  "size": 16,
+  "unpackstr": "<f(P)f(Q)f(R)f(FakeR)",
+  "fields": [
+    {
+      "name": "P",
+      "type": 6,
+      "numElements": 13
+    },
+    {
+      "name": "Q",
+      "type": 6,
+      "numElements": 9
+    },
+    {
+      "name": "R",
+      "type": 6,
+      "numElements": 10
+    },
+    {
+      "name": "FakeR",
+      "type": 6,
+      "numElements": 3
+    }
+  ]
+}

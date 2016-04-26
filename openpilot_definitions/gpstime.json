@@ -1,0 +1,38 @@
+{
+  "name": "GPSTime",
+  "object_id": -733511548,
+  "size": 7,
+  "unpackstr": "<h(Year)b(Month)b(Day)b(Hour)b(Minute)b(Second)",
+  "fields": [
+    {
+      "name": "Year",
+      "type": 1,
+      "numElements": 1
+    },
+    {
+      "name": "Month",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "Day",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "Hour",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "Minute",
+      "type": 0,
+      "numElements": 1
+    },
+    {
+      "name": "Second",
+      "type": 0,
+      "numElements": 1
+    }
+  ]
+}

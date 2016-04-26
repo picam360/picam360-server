@@ -1,0 +1,23 @@
+{
+  "name": "PathPlan",
+  "object_id": -2097818368,
+  "size": 5,
+  "unpackstr": "<H(WaypointCount)H(PathActionCount)B(Crc)",
+  "fields": [
+    {
+      "name": "WaypointCount",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "PathActionCount",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "Crc",
+      "type": 3,
+      "numElements": 1
+    }
+  ]
+}

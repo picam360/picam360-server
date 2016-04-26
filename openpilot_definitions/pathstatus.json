@@ -1,0 +1,63 @@
+{
+  "name": "PathStatus",
+  "object_id": 1707110064,
+  "size": 39,
+  "unpackstr": "<f(fractional_progress)f(error)f(path_direction_north)f(path_direction_east)f(path_direction_down)f(correction_direction_north)f(correction_direction_east)f(correction_direction_down)f(path_time)h(UID)B(Status)",
+  "fields": [
+    {
+      "name": "fractional_progress",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "error",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "path_direction_north",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "path_direction_east",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "path_direction_down",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "correction_direction_north",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "correction_direction_east",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "correction_direction_down",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "path_time",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "UID",
+      "type": 1,
+      "numElements": 1
+    },
+    {
+      "name": "Status",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

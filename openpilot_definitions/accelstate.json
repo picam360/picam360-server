@@ -1,0 +1,23 @@
+{
+  "name": "AccelState",
+  "object_id": -1388573178,
+  "size": 12,
+  "unpackstr": "<f(x)f(y)f(z)",
+  "fields": [
+    {
+      "name": "x",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "y",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "z",
+      "type": 6,
+      "numElements": 1
+    }
+  ]
+}

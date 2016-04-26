@@ -1,0 +1,43 @@
+{
+  "name": "TxPIDSettings",
+  "object_id": -2055515662,
+  "size": 16,
+  "unpackstr": "<f(ThrottleRange)f(MinPID)f(MaxPID)B(UpdateMode)B(BankNumber)B(Inputs)B(PIDs)",
+  "fields": [
+    {
+      "name": "ThrottleRange",
+      "type": 6,
+      "numElements": 2
+    },
+    {
+      "name": "MinPID",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "MaxPID",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "UpdateMode",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "BankNumber",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "Inputs",
+      "type": 7,
+      "numElements": 3
+    },
+    {
+      "name": "PIDs",
+      "type": 7,
+      "numElements": 3
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "name": "AirspeedSensor",
+  "object_id": 1133338522,
+  "size": 21,
+  "unpackstr": "<f(DifferentialPressure)f(Temperature)f(CalibratedAirspeed)f(TrueAirspeed)H(SensorValue)H(SensorValueTemperature)B(SensorConnected)",
+  "fields": [
+    {
+      "name": "DifferentialPressure",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "Temperature",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "CalibratedAirspeed",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "TrueAirspeed",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "SensorValue",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "SensorValueTemperature",
+      "type": 4,
+      "numElements": 1
+    },
+    {
+      "name": "SensorConnected",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

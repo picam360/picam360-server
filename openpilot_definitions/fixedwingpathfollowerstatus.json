@@ -1,0 +1,28 @@
+{
+  "name": "FixedWingPathFollowerStatus",
+  "object_id": 904726664,
+  "size": 13,
+  "unpackstr": "<f(Error)f(ErrorInt)f(Command)B(Errors)",
+  "fields": [
+    {
+      "name": "Error",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "ErrorInt",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "Command",
+      "type": 6,
+      "numElements": 3
+    },
+    {
+      "name": "Errors",
+      "type": 3,
+      "numElements": 8
+    }
+  ]
+}

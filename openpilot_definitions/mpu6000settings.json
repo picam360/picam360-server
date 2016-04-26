@@ -1,0 +1,23 @@
+{
+  "name": "Mpu6000Settings",
+  "object_id": -1458983300,
+  "size": 3,
+  "unpackstr": "<B(GyroScale)B(AccelScale)B(FilterSetting)",
+  "fields": [
+    {
+      "name": "GyroScale",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "AccelScale",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "FilterSetting",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

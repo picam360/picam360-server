@@ -1,0 +1,58 @@
+{
+  "name": "GCSTelemetryStats",
+  "object_id": -892216310,
+  "size": 37,
+  "unpackstr": "<f(TxDataRate)I(TxBytes)I(TxFailures)I(TxRetries)f(RxDataRate)I(RxBytes)I(RxFailures)I(RxSyncErrors)I(RxCrcErrors)B(Status)",
+  "fields": [
+    {
+      "name": "TxDataRate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "TxBytes",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "TxFailures",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "TxRetries",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "RxDataRate",
+      "type": 6,
+      "numElements": 1
+    },
+    {
+      "name": "RxBytes",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "RxFailures",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "RxSyncErrors",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "RxCrcErrors",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "Status",
+      "type": 7,
+      "numElements": 1
+    }
+  ]
+}

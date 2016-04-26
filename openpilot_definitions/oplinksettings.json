@@ -1,0 +1,68 @@
+{
+  "name": "OPLinkSettings",
+  "object_id": -2004486126,
+  "size": 15,
+  "unpackstr": "<I(CoordID)B(Coordinator)B(OneWay)B(PPM)B(PPMOnly)B(MainPort)B(FlexiPort)B(VCPPort)B(ComSpeed)B(MaxRFPower)B(MinChannel)B(MaxChannel)",
+  "fields": [
+    {
+      "name": "CoordID",
+      "type": 5,
+      "numElements": 1
+    },
+    {
+      "name": "Coordinator",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "OneWay",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "PPM",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "PPMOnly",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "MainPort",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "FlexiPort",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "VCPPort",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "ComSpeed",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "MaxRFPower",
+      "type": 7,
+      "numElements": 1
+    },
+    {
+      "name": "MinChannel",
+      "type": 3,
+      "numElements": 1
+    },
+    {
+      "name": "MaxChannel",
+      "type": 3,
+      "numElements": 1
+    }
+  ]
+}
