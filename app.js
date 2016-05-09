@@ -49,25 +49,26 @@ async.waterfall([ function(callback) {// exit sequence
 					}
 				}
 			});
-			cam2 = new v4l2camera.Camera("/dev/video1");
-			cam2.start();
-			cam2.capture(function loop2() {
-				cam2.capture(loop2);
-			});
+			//cam2 = new v4l2camera.Camera("/dev/video1");
+			//cam2.start();
+			//cam2.capture(function loop2() {
+			//	cam2.capture(loop2);
+			//});
 			callback(null);
 		});
 	});
 }, function(callback) {// connect to openpilot
-	op.init(function() {
-		callback(null);
-	});
+	//op.init(function() {
+	//	callback(null);
+	//});
+	callback(null);
 }, function(callback) {// connect to openpilot
-	op.connect(function() {
-		callback(null);
-	});
+	//op.connect(function() {
+	//	callback(null);
+	//});
+	callback(null);
 }, function(callback) {// start up websocket server
 	console.log("websocket server starting up");
-	child_process.exec('sh ./sh/init_servo.sh');
 
 	var veicle_attitude = {
 		// -180 - 180
@@ -77,60 +78,66 @@ async.waterfall([ function(callback) {// exit sequence
 		// -180 - 180
 		Yaw : 0
 	};
+	var app = require('express')();
+	var http = require('http').Server(app);
 
-	var server = require("http").createServer(function(req, res) {
-		var url = req.url.split("?")[0];
-		var query = req.url.split("?")[1];
-		console.log(url);
-		console.log(query);
-		if (url.split(".")[1] == 'jpeg') {
-			fs.readFile('/tmp/vr.jpeg', function(err, data) {
-				if (err) {
-					res.writeHead(404);
-					res.end();
-					console.log("404");
-				} else {
-					res.writeHead(200, {
-						'Content-Type' : 'image/jpeg',
-						'Content-Length' : data.length,
-						'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
-						'Expires' : '-1',
-						'Pragma' : 'no-cache',
-					});
-					res.end(data);
-					console.log("200");
-				}
-				cam1.toJpegAsEquirectangular(cam2, '/tmp/_vr.jpeg');
-				child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
-			});
-		} else if (url.split(".")[1] == 'mp4') {
-			fs.readFile('/tmp/movie.mp4', function(err, data) {
-				if (err) {
-					res.writeHead(404);
-					res.end();
-					console.log("404");
-				} else {
-					res.writeHead(200, {
-						'Content-Type' : 'video/mp4',
-						'Content-Length' : data.length,
-						'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
-						'Expires' : '-1',
-						'Pragma' : 'no-cache',
-					});
-					res.end(data);
-					console.log("200");
-				}
-			});
-		} else {
-			res.writeHead(200, {
-				"Content-Type" : "text/html"
-			});
-			var output = fs.readFileSync("./www/index.html", "utf-8");
-			res.end(output);
-		}
-	}).listen(9001);
+	app.get('/', function(req, res){
+	  res.sendfile('index.html');
+	});
+	
+	app.get('/', function(req, res){
+	  res.sendfile('www/index.html');
+	});
+	
+	app.get('/picam360.jpeg', function(req, res){
+		fs.readFile('/tmp/vr.jpeg', function(err, data) {
+			if (err) {
+				res.writeHead(404);
+				res.end();
+				console.log("404");
+			} else {
+				res.writeHead(200, {
+					'Content-Type' : 'image/jpeg',
+					'Content-Length' : data.length,
+					'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
+					'Expires' : '-1',
+					'Pragma' : 'no-cache',
+				});
+				res.end(data);
+				console.log("200");
+			}
+			//cam1.toJpegAsEquirectangular(cam2, '/tmp/_vr.jpeg');
+			cam1.toJpegAsEquirectangular('/tmp/_vr.jpeg');
+			child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
+		});
+	});
+	
+	app.get('/picam360.mp4', function(req, res){
+		fs.readFile('/tmp/movie.mp4', function(err, data) {
+			if (err) {
+				res.writeHead(404);
+				res.end();
+				console.log("404");
+			} else {
+				res.writeHead(200, {
+					'Content-Type' : 'video/mp4',
+					'Content-Length' : data.length,
+					'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
+					'Expires' : '-1',
+					'Pragma' : 'no-cache',
+				});
+				res.end(data);
+				console.log("200");
+			}
+		});
+	});
 
-	var io = require("socket.io").listen(server);
+	var io = require("socket.io").listen(http);
+	
+	
+	http.listen(80, function(){
+	  console.log('listening on *:80');
+	});
 
 	var yaw_offset = 0;
 	var controlValue = {
