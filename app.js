@@ -33,7 +33,7 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// camera startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall uv4l', function() {
-		child_process.exec('sh /home/pi/start-uv4l.sh', function() {
+		child_process.exec('sh sh/start-uv4l.sh', function() {
 			cam1 = new v4l2camera.Camera("/dev/video0");
 			cam1.start();
 			cam1.capture(function loop() {
