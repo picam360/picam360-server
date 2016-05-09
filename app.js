@@ -5,7 +5,7 @@ var child_process = require('child_process');
 var async = require('async');
 var fs = require("fs");
 var express = require('express');
-var v4l2camera = require("node-vrcam");
+var v4l2camera = require("picam360");
 var cam1;
 var cam2;
 var piblaster = require('pi-blaster.js');
