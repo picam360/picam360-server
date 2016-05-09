@@ -5,7 +5,7 @@ var child_process = require('child_process');
 var async = require('async');
 var fs = require("fs");
 var express = require('express');
-var v4l2camera = require("picam360");
+var picam360 = require("picam360");
 var cam1;
 var cam2;
 var piblaster = require('pi-blaster.js');
@@ -34,7 +34,7 @@ async.waterfall([ function(callback) {// exit sequence
 	console.log("camera starting up");
 	child_process.exec('sudo killall uv4l', function() {
 		child_process.exec('sh sh/start-uv4l.sh', function() {
-			cam1 = new v4l2camera.Camera("/dev/video0");
+			cam1 = new picam360.Camera("/dev/video0");
 			cam1.start();
 			cam1.capture(function loop() {
 				cam1.capture(loop);
