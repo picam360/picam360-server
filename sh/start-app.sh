@@ -1,0 +1,1 @@
+/home/pi/.nodebrew/current/bin/node /home/pi/.nodebrew/current/bin/forever start /home/pi/git/picam360-software/app.js > /dev/null
