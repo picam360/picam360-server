@@ -80,6 +80,7 @@ async.waterfall([ function(callback) {// exit sequence
 	};
 	var app = require('express')();
 	var http = require('http').Server(app);
+	var io = require("socket.io").listen(http);
 
 	app.get('/', function(req, res){
 	  res.sendfile('index.html');
@@ -130,14 +131,7 @@ async.waterfall([ function(callback) {// exit sequence
 				console.log("200");
 			}
 		});
-	});
-
-	var io = require("socket.io").listen(http);
-	
-	
-	http.listen(80, function(){
-	  console.log('listening on *:80');
-	});
+	});	
 
 	var yaw_offset = 0;
 	var controlValue = {
@@ -335,6 +329,11 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 
 	});
+	
+	http.listen(80, function(){
+	  console.log('listening on *:80');
+	});
+	
 	callback(null);
 }, function(callback) {// start up websocket server
 	console.log("poling start!");
