@@ -328,8 +328,8 @@ async.waterfall([ function(callback) {// exit sequence
 
 	});
 	
-	http.listen(9000, function(){
-	  console.log('listening on *:9000');
+	http.listen(9001, function(){
+	  console.log('listening on *:9001');
 	});
 	
 	callback(null);
