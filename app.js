@@ -83,10 +83,6 @@ async.waterfall([ function(callback) {// exit sequence
 	var app = require('express')();
 	var http = require('http').Server(app);
 	var io = require("socket.io").listen(http);
-
-	app.get('/', function(req, res){
-	  res.sendfile('index.html');
-	});
 	
 	app.get('/', function(req, res){
 	  res.sendfile('www/index.html');
@@ -332,8 +328,8 @@ async.waterfall([ function(callback) {// exit sequence
 
 	});
 	
-	http.listen(80, function(){
-	  console.log('listening on *:80');
+	http.listen(9000, function(){
+	  console.log('listening on *:9000');
 	});
 	
 	callback(null);
