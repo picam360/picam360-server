@@ -88,7 +88,7 @@ async.waterfall([ function(callback) {// exit sequence
 	  res.sendfile('www/index.html');
 	});
 	
-	app.get('/picam360.jpeg', function(req, res){
+	app.get('/img/picam360.jpeg', function(req, res){
 		fs.readFile('/tmp/vr.jpeg', function(err, data) {
 			if (err) {
 				res.writeHead(404);
@@ -111,7 +111,7 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 	});
 	
-	app.get('/picam360.mp4', function(req, res){
+	app.get('/img/picam360.mp4', function(req, res){
 		fs.readFile('/tmp/movie.mp4', function(err, data) {
 			if (err) {
 				res.writeHead(404);
