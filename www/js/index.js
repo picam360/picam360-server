@@ -23,6 +23,16 @@ var app = {
 	initialize : function() {
 		app.receivedEvent('initialize');
 		this.bindEvents();
+		window.addEventListener('deviceorientation', function(attitude){
+			if(attitude.alpha != null) {
+				omvc.setMyAttitude({
+					Roll : attitude.alpha,
+					Pitch : attitude.beta,
+					Yaw : attitude.gamma,
+					Timestamp : 0
+				});
+			}
+		});
 	},
 	// Bind Event Listeners
 	//
