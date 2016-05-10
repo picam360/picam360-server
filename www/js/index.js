@@ -26,9 +26,9 @@ var app = {
 		window.addEventListener('deviceorientation', function(attitude){
 			if(attitude.alpha != null) {
 				omvc.setMyAttitude({
-					Roll : attitude.alpha,
+					Roll : attitude.gamma,
 					Pitch : attitude.beta,
-					Yaw : attitude.gamma,
+					Yaw : attitude.alpha,
 					Timestamp : 0
 				});
 			}
