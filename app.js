@@ -84,9 +84,7 @@ async.waterfall([ function(callback) {// exit sequence
 	var http = require('http').Server(app);
 	var io = require("socket.io").listen(http);
 	
-	app.get('/', function(req, res){
-	  res.sendfile('www/index.html');
-	});
+	app.use(express.static('www'));
 	
 	app.get('/img/picam360.jpeg', function(req, res){
 		fs.readFile('/tmp/vr.jpeg', function(err, data) {
