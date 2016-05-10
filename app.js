@@ -84,8 +84,6 @@ async.waterfall([ function(callback) {// exit sequence
 	var http = require('http').Server(app);
 	var io = require("socket.io").listen(http);
 	
-	app.use(express.static('www'));
-	
 	app.get('/img/picam360.jpeg', function(req, res){
 		fs.readFile('/tmp/vr.jpeg', function(err, data) {
 			if (err) {
@@ -128,6 +126,8 @@ async.waterfall([ function(callback) {// exit sequence
 			}
 		});
 	});	
+	
+	app.use(express.static('www'));//this need be set after all dynamic files
 
 	var yaw_offset = 0;
 	var controlValue = {
