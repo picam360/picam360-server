@@ -651,11 +651,11 @@ function OMVC() {
 		setOperationMode : function(mode) {
 			switch (mode) {
 			case "dive":
-				self.omvr.setFov(75);
+				self.omvr.setFov(70);
 				operationMode = OperationModeEnum.Dive;
 				break;
 			case "drive":
-				self.omvr.setFov(75);
+				self.omvr.setFov(70);
 				operationMode = OperationModeEnum.Drive;
 				break;
 			case "hobby":
