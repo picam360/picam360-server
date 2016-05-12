@@ -666,9 +666,9 @@ function OMVC() {
 		
 		record : function(bln) {
 			if(bln) {
-				//socket.emit('startRecord');
+				socket.emit('startRecord');
 			} else {
-				//socket.emit('stopRecord');
+				socket.emit('stopRecord');
 				var downloadAsFile = function(fileName, url) {
 				    var a = document.createElement('a');
 				    a.download = fileName;
