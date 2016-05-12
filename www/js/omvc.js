@@ -44,6 +44,7 @@ function OMVC() {
 	    var a = document.createElement('a');
 	    a.download = fileName;
 	    a.href = url;
+		a.target="_blank";
 	    a.click();
 	};
 
@@ -669,12 +670,6 @@ function OMVC() {
 				socket.emit('startRecord');
 			} else {
 				socket.emit('stopRecord');
-				var downloadAsFile = function(fileName, url) {
-				    var a = document.createElement('a');
-				    a.download = fileName;
-				    a.href = url;
-				    a.click();
-				};
 				downloadAsFile('picam360.mp4', 'img/picam360.mp4');
 			}
 		},
