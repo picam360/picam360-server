@@ -1,0 +1,3 @@
+[submodule "submodules/spatial-media"]
+	path = submodules/spatial-media
+	url = https://github.com/google/spatial-media.git
