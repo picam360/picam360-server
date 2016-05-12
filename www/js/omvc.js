@@ -39,6 +39,13 @@ function OMVC() {
 		Dive : 1,
 		Drive : 2
 	};
+	
+	var downloadAsFile = function(fileName, url) {
+	    var a = document.createElement('a');
+	    a.download = fileName;
+	    a.href = url;
+	    a.click();
+	};
 
 	window.addEventListener("orientationchange", function() {
 		// alert(window.orientation);
@@ -655,6 +662,25 @@ function OMVC() {
 				operationMode = OperationModeEnum.Hobby;
 				break;
 			}
+		},
+		
+		record : function(bln) {
+			if(bln) {
+				//socket.emit('startRecord');
+			} else {
+				//socket.emit('stopRecord');
+				var downloadAsFile = function(fileName, url) {
+				    var a = document.createElement('a');
+				    a.download = fileName;
+				    a.href = url;
+				    a.click();
+				};
+				downloadAsFile('picam360.mp4', 'img/picam360.mp4');
+			}
+		},
+		
+		snap : function() {
+			downloadAsFile('picam360.jpeg', 'img/picam360.jpeg');
 		}
 	};
 	return self;

@@ -85,8 +85,13 @@
 			<button class="button-bar__button">Debug</button>
 		</div>
 	</div>
-	</ons-list-item> <ons-list-item class="menu-item"> <ons-row align="center"> <ons-col>Stereo</ons-col> <ons-col
-		align="right"> <ons-switch var="swStereoView" onchange="omvc.omvr.setStereoEnabled(swStereoView.isChecked());"></ons-switch> </ons-col> </ons-row></ons-list-item> <ons-list-item class="menu-item" id="serviceCallBox">
+	</ons-list-item> 
+	<ons-list-item class="menu-item"> <ons-row align="center"> <ons-col>Stereo</ons-col> <ons-col
+		align="right"> <ons-switch var="swStereoView" onchange="omvc.omvr.setStereoEnabled(swStereoView.isChecked());"></ons-switch> </ons-col> </ons-row></ons-list-item>
+	<ons-list-item class="menu-item"> <ons-row align="center"><ons-col
+		align="center"> <ons-button onclick="omvc.snap();">SNAP</ons-button> </ons-col> <ons-col>Record</ons-col> <ons-col
+		align="right"> <ons-switch var="swRecord" onchange="omvc.record(swRecord.isChecked());"></ons-switch> </ons-col> </ons-row></ons-list-item>
+		 <ons-list-item class="menu-item" id="serviceCallBox">
 	<div class="button-bar" style="width: 240px;">
 		<div class="button-bar__item">
 			<input type="checkbox" name="radioInfoType" id="chkLevel">
