@@ -1,1 +1,1 @@
-/usr/bin/uv4l --driver raspicam --auto-video_nr --width=640 --height=480 --sharpness=100 --constast=70 --server-option '--port=9000' --driver raspicam --framerate 10 --encoding rgb24
+/usr/bin/uv4l --driver raspicam --auto-video_nr --width=1248 --height=1232 --sharpness=100 --contrast=30 --server-option '--port=9000' --framerate 10 --encoding rgb24
