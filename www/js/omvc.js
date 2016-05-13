@@ -58,6 +58,8 @@ function OMVC() {
 	document.getElementById("debugMsgBox").style.display = "none";
 	document.getElementById("actuatorMsgBox").style.display = "none";
 	document.getElementById("attitudeMsgBox").style.display = "none";
+	
+	document.getElementById("movie_download_box").style.display = "none";
 
 	var fpsMsgNode = document.createTextNode("");
 	var controlMsgNode = document.createTextNode("");
@@ -669,28 +671,15 @@ function OMVC() {
 		record : function(bln) {
 			if(bln) {
 				console.log("start record!");
+				document.getElementById("movie_download_box").style.display = "none";
 				socket.emit('startRecord');
 			} else {
 				console.log("stop record!");
 				var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
 				socket.emit('stopRecord', function() {
-					//console.log("save video!: " + filename);
-					//downloadAsFile(filename, 'img/picam360.mp4');
-					window.open('img/picam360.mp4', null);
-				});
-	
-				var downloadAsFile = function(fileName, url) {
-				    var a = document.createElement('a');
-				    //a.download = fileName;
-				    a.href = url;
-					a.target = "_blank";
-				    a.click();
-				    alert(fileName);
-				};
-				setTimeout(function(){
 					console.log("save video!: " + filename);
-					downloadAsFile(filename, 'img/picam360.mp4');
-				}, 5000);
+					document.getElementById("movie_download_box").style.display = "block";
+				});
 			}
 		},
 		
