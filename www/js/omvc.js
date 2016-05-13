@@ -680,7 +680,7 @@ function OMVC() {
 	
 				var downloadAsFile = function(fileName, url) {
 				    var a = document.createElement('a');
-				    a.download = fileName;
+				    //a.download = fileName;
 				    a.href = url;
 					a.target = "_blank";
 				    a.click();
