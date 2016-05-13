@@ -319,6 +319,8 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 
 		socket.on("startRecord", function(duration) {
+			if(recording)
+				return;
 			cam1.startRecord('/tmp/movie.h264', 16000);
 			console.log("camera recording start");
 			recording = true;
