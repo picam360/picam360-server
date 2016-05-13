@@ -14,7 +14,7 @@ var recording = false;
 var framecount = 0;
 var needToCapture = true;
 var frame_duration = 0;
-var last_frame_date = new Date();
+var last_frame_date = null;
 
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
@@ -43,8 +43,8 @@ async.waterfall([ function(callback) {// exit sequence
 				setInterval(function() {
 					if (recording) {
 						nowTime = new Date();
-						var duration = nowTime.getTime() - last_frame_date.getTime();//milisec
-						if(duration > frame_duration) {
+						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
+						if(duration >= frame_duration) {
 							cam1.capture(function(){
 								cam1.addFrame(cam2);
 								framecount++;
@@ -326,6 +326,7 @@ async.waterfall([ function(callback) {// exit sequence
 			console.log("camera recording start duration=" + duration);
 			recording = true;
 			frame_duration = duration;
+			last_frame_date = null;
 		});
 
 		socket.on("stopRecord", function(callback) {
