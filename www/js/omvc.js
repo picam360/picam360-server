@@ -669,8 +669,9 @@ function OMVC() {
 			if(bln) {
 				socket.emit('startRecord');
 			} else {
-				socket.emit('stopRecord');
-				downloadAsFile('picam360.mp4', 'img/picam360.mp4');
+				socket.emit('stopRecord', function(){
+					downloadAsFile('picam360.mp4', 'img/picam360.mp4');
+				});
 			}
 		},
 		

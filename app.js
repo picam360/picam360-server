@@ -319,6 +319,7 @@ async.waterfall([ function(callback) {// exit sequence
 			var cmd = ffmpeg_cmd + ' && ' + delh264_cmd + ' && ' + spatialmedia_cmd;
 			console.log(cmd);
 			child_process.exec(cmd, callback);
+			callback();
 		});
 
 		socket.on("disconnect", function() {
