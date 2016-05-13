@@ -677,7 +677,7 @@ function OMVC() {
 					//console.log("save video!: " + filename);
 					//downloadAsFile(filename, 'img/picam360.mp4');
 				});
-				setTimeout(function{
+				setTimeout(function(){
 					console.log("save video!: " + filename);
 					downloadAsFile(filename, 'img/picam360.mp4');
 				}, 5000);
