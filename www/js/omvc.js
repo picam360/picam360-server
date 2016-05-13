@@ -676,6 +676,7 @@ function OMVC() {
 				socket.emit('stopRecord', function() {
 					//console.log("save video!: " + filename);
 					//downloadAsFile(filename, 'img/picam360.mp4');
+					window.open('img/picam360.mp4', null);
 				});
 	
 				var downloadAsFile = function(fileName, url) {
