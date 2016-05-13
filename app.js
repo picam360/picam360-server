@@ -41,12 +41,12 @@ async.waterfall([ function(callback) {// exit sequence
 				setInterval(function() {
 					if (recording) {
 						cam1.capture(function(){
-							cam1.addFrame();
+							cam1.addFrame(cam2);
 							framecount++;
 							if (framecount == 300) {
 								recording = false;
 								framecount = 0;
-								cam1.stopRecord(cam2);
+								cam1.stopRecord();
 								console.log("camera recording stop");
 							}
 						});
