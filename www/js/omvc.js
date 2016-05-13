@@ -670,7 +670,9 @@ function OMVC() {
 				socket.emit('startRecord');
 			} else {
 				socket.emit('stopRecord', function(){
-					downloadAsFile('picam360.mp4', 'img/picam360.mp4');
+					setTimeout(function(){
+						downloadAsFile('picam360.mp4', 'img/picam360.mp4');
+					}, 1000);
 				});
 			}
 		},
