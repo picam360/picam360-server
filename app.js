@@ -13,6 +13,8 @@ var piblaster = require('pi-blaster.js');
 var recording = false;
 var framecount = 0;
 var needToCapture = true;
+var frame_duration = 0;
+var last_frame_date = new Date();
 
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
@@ -40,17 +42,22 @@ async.waterfall([ function(callback) {// exit sequence
 				cam1.start();
 				setInterval(function() {
 					if (recording) {
-						cam1.capture(function(){
-							cam1.addFrame(cam2);
-							framecount++;
-							if (framecount == 300) {
-								recording = false;
-								framecount = 0;
-								cam1.stopRecord();
-								console.log("camera recording stop");
-							}
-						});
-						return;
+						nowTime = new Date();
+						var duration = nowTime.getTime() - last_frame_date.getTime();//milisec
+						if(duration > frame_duration) {
+							cam1.capture(function(){
+								cam1.addFrame(cam2);
+								framecount++;
+								if (framecount == 300) {
+									recording = false;
+									framecount = 0;
+									cam1.stopRecord();
+									console.log("camera recording stop");
+								}
+							});
+							last_frame_date = nowTime;
+							return;
+						}
 					}
 					if(needToCapture) {
 						cam1.capture();
@@ -311,10 +318,11 @@ async.waterfall([ function(callback) {// exit sequence
 			piblaster.setPwm(41, value / 100.0);
 		});
 
-		socket.on("startRecord", function() {
+		socket.on("startRecord", function(duration) {
 			cam1.startRecord('/tmp/movie.h264', 16000);
 			console.log("camera recording start");
 			recording = true;
+			frame_duration = (duration==null)?0:duration;
 		});
 
 		socket.on("stopRecord", function(callback) {

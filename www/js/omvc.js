@@ -672,7 +672,7 @@ function OMVC() {
 			if(bln) {
 				console.log("start record!");
 				document.getElementById("movie_download_box").style.display = "none";
-				socket.emit('startRecord');
+				socket.emit('startRecord', 5000);
 			} else {
 				console.log("stop record!");
 				var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
