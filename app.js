@@ -12,6 +12,7 @@ var piblaster = require('pi-blaster.js');
 
 var recording = false;
 var framecount = 0;
+var needToCapture = true;
 
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
@@ -37,19 +38,25 @@ async.waterfall([ function(callback) {// exit sequence
 			setTimeout(function() {
 				cam1 = new picam360.Camera("/dev/video0");
 				cam1.start();
-				cam1.capture(function loop() {
-					cam1.capture(loop);
+				setInterval(function() {
 					if (recording) {
-						cam1.addFrame(cam2);
-						framecount++;
-						if (framecount == 300) {
-							recording = false;
-							framecount = 0;
-							cam1.stopRecord();
-							console.log("camera recording stop");
-						}
+						cam1.capture(function(){
+							cam1.addFrame();
+							framecount++;
+							if (framecount == 300) {
+								recording = false;
+								framecount = 0;
+								cam1.stopRecord();
+								console.log("camera recording stop");
+							}
+						});
+						return;
 					}
-				});
+					if(needToCapture) {
+						cam1.capture();
+						needToCapture = false;
+					}
+				}, 100);
 				//cam2 = new v4l2camera.Camera("/dev/video1");
 				//cam2.start();
 				//cam2.capture(function loop2() {
@@ -104,6 +111,7 @@ async.waterfall([ function(callback) {// exit sequence
 			//cam1.toJpegAsEquirectangular(cam2, '/tmp/_vr.jpeg');
 			cam1.toJpegAsEquirectangular('/tmp/_vr.jpeg');
 			child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
+			needToCapture = true;
 		});
 	});
 	
