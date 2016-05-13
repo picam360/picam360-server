@@ -686,11 +686,10 @@ function OMVC() {
 				    a.click();
 				    alert(fileName);
 				};
+				setTimeout(function(){
+					console.log("save video!: " + filename);
 					downloadAsFile(filename, 'img/picam360.mp4');
-				//setTimeout(function(){
-				//	console.log("save video!: " + filename);
-				//	downloadAsFile(filename, 'img/picam360.mp4');
-				//}, 5000);
+				}, 5000);
 			}
 		},
 		
