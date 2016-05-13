@@ -667,12 +667,14 @@ function OMVC() {
 		
 		record : function(bln) {
 			if(bln) {
+				console.log("start record!");
 				socket.emit('startRecord');
 			} else {
-				socket.emit('stopRecord', function(){
-					setTimeout(function(){
-						downloadAsFile('picam360.mp4', 'img/picam360.mp4');
-					}, 1000);
+				console.log("stop record!");
+				var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
+				socket.emit('stopRecord', function() {
+					console.log("save video!: " + filename);
+					downloadAsFile(filename, 'img/picam360.mp4');
 				});
 			}
 		},
