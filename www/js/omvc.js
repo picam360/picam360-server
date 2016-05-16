@@ -74,6 +74,8 @@ function OMVC() {
 	var ledValue = 0;
 
 	var recording = false;
+	
+	var server_url = window.location.href;
 
 	var self = {
 		omvr : new OMVR(),
@@ -102,7 +104,7 @@ function OMVC() {
 			var requestAttitude = false;
 			var canvas = document.getElementById('vrCanvas');
 			self.omvr.init(canvas);
-			self.omvr.setTexture('img/demo_image_' + num + '.jpeg', 'img/picam360.jpeg?cache=no', true, false, null, {
+			self.omvr.setTexture('img/demo_image_' + num + '.jpeg', server_url + 'img/picam360.jpeg?cache=no', true, false, null, {
 				Roll : 90,
 				Pitch : 0,
 				Yaw : 90
@@ -110,8 +112,8 @@ function OMVC() {
 		},
 
 		initSocket : function() {
-			jQuery.getScript("http://192.168.40.2:9001/socket.io/socket.io.js", function() {
-				socket = io.connect('http://192.168.40.2:9001');
+			jQuery.getScript(server_url + 'socket.io/socket.io.js', function() {
+				socket = io.connect(server_url);
 				// サーバから受け取るイベント
 				socket.on('connect', function() {
 					setInterval(function() {
@@ -215,7 +217,7 @@ function OMVC() {
 									var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
 									socket.emit('stopRecord', function() {
 										console.log("save video!: " + filename);
-										window.plugins.saveImage.saveVideoFromURL('http://192.168.40.2:9001/' + filename + '?cache=no', null);
+										window.plugins.saveImage.saveVideoFromURL(server_url + filename + '?cache=no', null);
 									});
 									recording = false;
 								} else {
@@ -225,7 +227,7 @@ function OMVC() {
 								}
 							} else {
 								console.log("snap!");
-								window.plugins.saveImage.saveImageFromURL('http://192.168.40.2:9001/vr.jpeg?cache=no', null);
+								window.plugins.saveImage.saveImageFromURL(server_url + 'img/picam360.jpeg?cache=no', null);
 							}
 						}
 						break;
