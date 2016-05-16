@@ -17,8 +17,13 @@ var needToCapture = true;
 var frame_duration = 0;
 var last_frame_date = null;
 
+var USER = 'pi';
+
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
+    process.setuid(USER);
+	callback(null);
+}, function(callback) {// exit sequence
 	process.on('SIGINT', function() {
 		console.log("led shutting down");
 		piblaster.setPwm(40, 0);
@@ -356,11 +361,13 @@ async.waterfall([ function(callback) {// exit sequence
 
 	});
 	
+    process.setuid('root');
 	http.listen(9001, function(){
-	  console.log('listening on *:9001');
+		console.log('listening on *:9001');
+    	process.setuid(USER);
+		callback(null);
 	});
 	
-	callback(null);
 }, function(callback) {// start up websocket server
 	console.log("poling start!");
 	var step = 0;
