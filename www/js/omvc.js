@@ -678,9 +678,10 @@ function OMVC() {
 				socket.emit('startRecord', duration);
 			} else {
 				console.log("stop record!");
-				var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
-				socket.emit('stopRecord', function() {
+				socket.emit('stopRecord', function(filename) {
 					console.log("save video!: " + filename);
+					document.getElementById("movie_download_link").href = "img/" + filename;
+					document.getElementById("movie_download_link").download = filename;
 					document.getElementById("movie_download_box").style.display = "block";
 				});
 			}

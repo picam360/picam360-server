@@ -9,6 +9,7 @@ var picam360 = require("picam360");
 var cam1;
 var cam2;
 var piblaster = require('pi-blaster.js');
+var moment = require("moment");
 
 var recording = false;
 var framecount = 0;
@@ -115,15 +116,19 @@ async.waterfall([ function(callback) {// exit sequence
 				res.end(data);
 				console.log("200");
 			}
-			//cam1.toJpegAsEquirectangular(cam2, '/tmp/_vr.jpeg');
-			cam1.toJpegAsEquirectangular('/tmp/_vr.jpeg');
+			cam1.toJpeg('/tmp/_vr.jpeg');
 			child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
 			needToCapture = true;
 		});
 	});
 	
-	app.get('/img/picam360.mp4', function(req, res){
-		fs.readFile('/tmp/movie.mp4', function(err, data) {
+	app.get('/img/*.mp4', function(req, res){
+		var url = req.url.split("?")[0];
+		var query = req.url.split("?")[1];
+		var filename = url.split("/")[1];
+		console.log(url);
+		console.log(query);
+		fs.readFile('img/' + filename, function(err, data) {
 			if (err) {
 				res.writeHead(404);
 				res.end();
@@ -333,12 +338,16 @@ async.waterfall([ function(callback) {// exit sequence
 			recording = false;
 			cam1.stopRecord();
 			console.log("camera recording stop");
-			var ffmpeg_cmd = 'ffmpeg -y -r 5 -i /tmp/movie.h264 -c:v copy /tmp/movie.mp4';
+			var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
+			var ffmpeg_cmd = 'ffmpeg -y -r 5 -i /tmp/movie.h264 -c:v copy userdata/' + filename;
 			var delh264_cmd = 'rm /tmp/movie.h264';
-			var spatialmedia_cmd = 'python submodules/spatial-media/spatialmedia -i /tmp/movie.mp4 /tmp/vr.mp4';
-			var cmd = ffmpeg_cmd + ' && ' + delh264_cmd + ' && ' + spatialmedia_cmd;
+			var spatialmedia_cmd = 'python submodules/spatial-media/spatialmedia -i userdata/' + filename + ' /tmp/vr.mp4';
+			//var cmd = ffmpeg_cmd + ' && ' + delh264_cmd + ' && ' + spatialmedia_cmd;
+			var cmd = ffmpeg_cmd + ' && ' + delh264_cmd;
 			console.log(cmd);
-			child_process.exec(cmd, callback);
+			child_process.exec(cmd, function(){
+				callback(filename);
+				});
 		});
 
 		socket.on("disconnect", function() {
