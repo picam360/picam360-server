@@ -356,11 +356,15 @@ async.waterfall([ function(callback) {// exit sequence
 
 	});
 	
-	http.listen(9001, function(){
-	  console.log('listening on *:9001');
+	child_process.exec('sudo setcap cap_net_bind_service=+ep /home/pi/.nodebrew/current/bin/node', function() {
+		http.listen(80, function(){
+			console.log('listening on *:80');
+			child_process.exec('sudo setcap cap_net_bind_service=-ep /home/pi/.nodebrew/current/bin/node', function() {
+				callback(null);
+			});
+		});
 	});
 	
-	callback(null);
 }, function(callback) {// start up websocket server
 	console.log("poling start!");
 	var step = 0;
