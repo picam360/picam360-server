@@ -343,7 +343,7 @@ async.waterfall([ function(callback) {// exit sequence
 			var delh264_cmd = 'rm /tmp/movie.h264';
 			var spatialmedia_cmd = 'python submodules/spatial-media/spatialmedia -i userdata/' + filename + ' /tmp/vr.mp4';
 			//var cmd = ffmpeg_cmd + ' && ' + delh264_cmd + ' && ' + spatialmedia_cmd;
-			var cmd = ffmpeg_cmd + ' && ' + delh264_cmd;
+			var cmd = ffmpeg_cmd;
 			console.log(cmd);
 			child_process.exec(cmd, function(){
 				callback(filename);
