@@ -122,6 +122,8 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 	});
 	
+	app.use(express.static('www'));//this need be set after all dynamic files
+	
 	app.get('/img/*.mp4', function(req, res){
 		var url = req.url.split("?")[0];
 		var query = req.url.split("?")[1];
@@ -147,8 +149,6 @@ async.waterfall([ function(callback) {// exit sequence
 			}
 		});
 	});	
-	
-	app.use(express.static('www'));//this need be set after all dynamic files
 
 	var yaw_offset = 0;
 	var controlValue = {
