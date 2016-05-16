@@ -125,10 +125,11 @@ async.waterfall([ function(callback) {// exit sequence
 	app.get('/img/*.mp4', function(req, res){
 		var url = req.url.split("?")[0];
 		var query = req.url.split("?")[1];
-		var filename = url.split("/")[1];
+		var filepath = 'img/' + url.split("/")[1];
 		console.log(url);
 		console.log(query);
-		fs.readFile('img/' + filename, function(err, data) {
+		console.log(filepath);
+		fs.readFile(filepath, function(err, data) {
 			if (err) {
 				res.writeHead(404);
 				res.end();
