@@ -41,6 +41,7 @@ async.waterfall([ function(callback) {// exit sequence
 			setTimeout(function() {
 				cam1 = new picam360.Camera("/dev/video0");
 				cam1.start();
+				cam1.setRotation(0, 0, 0);
 				setInterval(function() {
 					if (recording) {
 						nowTime = new Date();
