@@ -120,7 +120,7 @@ function OMVC() {
 						console.log('ping!!');
 						socket.emit('ping');
 						socket.emit('isRecording', function(bln){
-							document.getElementById("swRecord").setChecked(bln);
+							swRecord.setChecked(bln);
 						});
 					}, 1000);
 				});
