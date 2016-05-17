@@ -17,6 +17,8 @@ var framecount = 0;
 var needToCapture = true;
 var frame_duration = 0;
 var last_frame_date = null;
+var memoryusage_start = 0;
+var GC_THRESH = 50*1024*1024;//50M
 
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
@@ -77,6 +79,14 @@ async.waterfall([ function(callback) {// exit sequence
 					if(needToCapture) {
 						cam1.capture();
 						needToCapture = false;
+					}
+					if(memoryusage_start == 0)
+					{
+						memoryusage_start = process.memoryUsage();
+					}
+					if(global.gc && process.memoryUsage() - memoryusage_start > GC_THRESH) {
+						console.log("gc : " + process.memoryUsage());
+						global.gc();
 					}
 				}, 100);
 				//cam2 = new v4l2camera.Camera("/dev/video1");
