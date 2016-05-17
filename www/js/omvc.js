@@ -674,7 +674,7 @@ function OMVC() {
 		
 		record : function(bln) {
 			if(bln) {
-				document.getElementById("swRecord").setChecked(false);
+				swRecord.setChecked(false);
 				var duration = document.getElementById("frame_duration").value;
 				console.log("start record! duration=" + duration);
 				document.getElementById("movie_download_box").style.display = "none";
