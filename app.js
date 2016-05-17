@@ -19,7 +19,7 @@ var needToCapture = true;
 var frame_duration = 0;
 var last_frame_date = null;
 var memoryusage_start = 0;
-var GC_THRESH = 32*1024*1024;//32M
+var GC_THRESH = 16*1024*1024;//16MB
 
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
@@ -31,7 +31,7 @@ async.waterfall([ function(callback) {// exit sequence
 		// cam1.stop();
 		console.log("exit process done");
 		process.exit();
-	})
+	});
 	process.on('SIGUSR2', function () {
 		if (agent.server) {
 	 		agent.stop();
@@ -53,9 +53,9 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// camera startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall uv4l', function() {
-		child_process.exec('sh sh/start-uv4l.sh "--width=640 --height=640 --framerate=10 --shutter-speed=500"', function() {	
+		child_process.exec('sh sh/start-uv4l.sh "--width=640 --height=640 --output-buffers=1 --framerate=10 --shutter-speed=500"', function() {	
 			setTimeout(function() {
-				cam1 = new picam360.Camera("/dev/video0");
+				cam1 = new picam360.Camera("/dev/video0", 1024, 512);
 				cam1.start();
 				cam1.setRotation(0, 0, 0);
 				setInterval(function() {
