@@ -83,6 +83,7 @@ async.waterfall([ function(callback) {// exit sequence
 					if(memoryusage_start == 0)
 					{
 						memoryusage_start = process.memoryUsage();
+						console.log("memoryusage_start : " + memoryusage_start);
 					}
 					if(global.gc && process.memoryUsage() - memoryusage_start > GC_THRESH) {
 						console.log("gc : " + process.memoryUsage());
