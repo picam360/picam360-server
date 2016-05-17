@@ -46,7 +46,6 @@ function OMVC() {
 	    a.href = url;
 		a.target = "_blank";
 	    a.click();
-	    alert(fileName);
 	};
 
 	window.addEventListener("orientationchange", function() {
