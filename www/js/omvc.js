@@ -126,11 +126,12 @@ function OMVC() {
 					// console.log(obj);
 					document.getElementById("chkConnect").checked = (obj.FlightTelemetryStats.Status) ? true : false;
 					document.getElementById("chkArm").checked = (obj.FlightStatus.Armed) ? true : false;
+					document.getElementById("swRecord").setChecked(obj.IsRecording);
 
 					actuatorValue.LeftTop = obj.ActuatorCommand.ChannelIdx0;
 					actuatorValue.LeftBottom = obj.ActuatorCommand.ChannelIdx3;
 					actuatorValue.RightTop = obj.ActuatorCommand.ChannelIdx1;
-					actuatorValue.RightBottom = obj.ActuatorCommand.ChannelIdx2;
+					actuatorValue.RightBottom = obj.ActuatorCommand.ChannelIdx2;					
 				});
 				socket.on('msg', function(msg) {
 					console.log('msg:' + msg);
@@ -671,6 +672,7 @@ function OMVC() {
 		
 		record : function(bln) {
 			if(bln) {
+				document.getElementById("swRecord").setChecked(false);
 				var duration = document.getElementById("frame_duration").value;
 				console.log("start record! duration=" + duration);
 				document.getElementById("movie_download_box").style.display = "none";
