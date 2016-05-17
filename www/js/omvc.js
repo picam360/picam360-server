@@ -1,15 +1,3 @@
-
-var fov = 60;
-function gestureStartHandler(e) {
-}
-
-function gestureChangeHandler(e) {
-	alert(e.scale);
-}
-
-function gestureEndHandler(e) {
-}
-			
 var socket = null;
 var omvc = OMVC();
 function OMVC() {
@@ -87,6 +75,8 @@ function OMVC() {
 	var recording = false;
 	
 	var server_url = window.location.href;
+	
+	var fov = 60;
 
 	var self = {
 		omvr : new OMVR(),
@@ -100,6 +90,19 @@ function OMVC() {
 
 			self.setOperationMode("hobby");
 			self.animate();
+			
+			var _fov = 70;
+			function gestureStartHandler(e) {
+				_fov = fov;
+			}
+			
+			function gestureChangeHandler(e) {
+				fov = _fov * e.scale;
+				self.omvr.setFov(fov);
+			}
+			
+			function gestureEndHandler(e) {
+			}
 			
 			if ("ongesturestart" in window) {
 				document.addEventListener("gesturestart", gestureStartHandler, false);
@@ -675,15 +678,18 @@ function OMVC() {
 		setOperationMode : function(mode) {
 			switch (mode) {
 			case "dive":
-				self.omvr.setFov(70);
+				fov = 70;
+				self.omvr.setFov(fov);
 				operationMode = OperationModeEnum.Dive;
 				break;
 			case "drive":
-				self.omvr.setFov(70);
+				fov = 70;
+				self.omvr.setFov(fov);
 				operationMode = OperationModeEnum.Drive;
 				break;
 			case "hobby":
-				self.omvr.setFov(100);
+				fov = 100;
+				self.omvr.setFov(fov);
 				operationMode = OperationModeEnum.Hobby;
 				break;
 			}
