@@ -97,7 +97,7 @@ function OMVC() {
 			}
 			
 			function gestureChangeHandler(e) {
-				fov = _fov * e.scale;
+				fov = _fov / e.scale;
 				if(fov > 150) {
 					fov = 150;
 				} else if(fov < 30) {
