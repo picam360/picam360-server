@@ -1,5 +1,6 @@
 process.chdir(__dirname);
 
+var agent = require('webkit-devtools-agent');
 var OpenPilot = require('./openpilot.js');
 var child_process = require('child_process');
 var async = require('async');
@@ -28,6 +29,18 @@ async.waterfall([ function(callback) {// exit sequence
 		console.log("exit process done");
 		process.exit();
 	})
+	process.on('SIGUSR2', function () {
+		if (agent.server) {
+	 		agent.stop();
+		} else {
+		    agent.start({
+		        port: 9999,
+		        bind_to: '192.168.3.103',
+		        ipc_port: 3333,
+		        verbose: true
+		    });
+		}
+	});
 	callback(null);
 }, function(callback) {// led startup
 	console.log("led starting up");
