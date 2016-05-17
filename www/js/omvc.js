@@ -680,7 +680,7 @@ function OMVC() {
 				myAttitude_init = value;
 			} else {
 				myAttitude.Yaw -= myAttitude_init.Yaw;
-				if (vehicleAttitude_init == null) {
+				if (vehicleAttitude_init != null) {
 					myAttitude.Yaw += vehicleAttitude_init.Yaw;
 				}
 			}
