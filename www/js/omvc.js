@@ -122,10 +122,9 @@ function OMVC() {
 			self.setOperationMode("hobby");
 			self.animate();
 			
-			var canvas = document.getElementById('vrCanvas');
 			if ("ongesturestart" in window) {
-				canvas.addEventListener("gesturestart", gestureStartHandler, false);
-				canvas.addEventListener("gesturechange", gestureChangeHandler, false);
+				document.addEventListener("gesturestart", gestureStartHandler, false);
+				document.addEventListener("gesturechange", gestureChangeHandler, false);
 				document.addEventListener("gestureend", gestureEndHandler, false);
 			}
 		},
