@@ -119,6 +119,9 @@ function OMVC() {
 						var _starttime = new Date();
 						console.log('ping!!');
 						socket.emit('ping');
+						socket.emit('isRecording', function(bln){
+							document.getElementById("swRecord").setChecked(bln);
+						});
 					}, 1000);
 				});
 				socket.on('pong', function(obj) {
@@ -126,7 +129,6 @@ function OMVC() {
 					// console.log(obj);
 					document.getElementById("chkConnect").checked = (obj.FlightTelemetryStats.Status) ? true : false;
 					document.getElementById("chkArm").checked = (obj.FlightStatus.Armed) ? true : false;
-					document.getElementById("swRecord").setChecked(obj.IsRecording);
 
 					actuatorValue.LeftTop = obj.ActuatorCommand.ChannelIdx0;
 					actuatorValue.LeftBottom = obj.ActuatorCommand.ChannelIdx3;

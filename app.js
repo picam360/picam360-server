@@ -261,8 +261,7 @@ async.waterfall([ function(callback) {// exit sequence
 						socket.emit("pong", {
 							ActuatorCommand : actuatorCommand,
 							FlightStatus : flightStatus,
-							FlightTelemetryStats : flightTelemetryStats,
-							IsRecording : recording
+							FlightTelemetryStats : flightTelemetryStats
 						});
 					});
 				});
@@ -371,6 +370,10 @@ async.waterfall([ function(callback) {// exit sequence
 			child_process.exec(cmd, function(){
 				callback(filename);
 				});
+		});
+
+		socket.on("isRecording", function(callback) {
+			callback(recording);
 		});
 
 		socket.on("disconnect", function() {
