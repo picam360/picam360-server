@@ -18,7 +18,7 @@ var needToCapture = true;
 var frame_duration = 0;
 var last_frame_date = null;
 var memoryusage_start = 0;
-var GC_THRESH = 50*1024*1024;//50M
+var GC_THRESH = 32*1024*1024;//32M
 
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
@@ -80,13 +80,8 @@ async.waterfall([ function(callback) {// exit sequence
 						cam1.capture();
 						needToCapture = false;
 					}
-					if(memoryusage_start == 0)
-					{
-						memoryusage_start = process.memoryUsage();
-						console.log("memoryusage_start : " + memoryusage_start);
-					}
-					if(global.gc && process.memoryUsage() - memoryusage_start > GC_THRESH) {
-						console.log("gc : " + process.memoryUsage());
+					if(global.gc && os.freemem() < GC_THRESH) {
+						console.log("gc at : " + process.memoryUsage().rss);
 						global.gc();
 					}
 				}, 100);
