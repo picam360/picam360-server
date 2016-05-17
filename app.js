@@ -1,5 +1,6 @@
 process.chdir(__dirname);
 
+var os = require('os');
 var agent = require('webkit-devtools-agent');
 var OpenPilot = require('./openpilot.js');
 var child_process = require('child_process');
