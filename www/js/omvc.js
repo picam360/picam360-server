@@ -1,3 +1,36 @@
+
+function gestureStartHandler(e) {
+  _dragEnabled = false;
+  _startScale = _rect.scaleX;
+  _startRotation = _rect.rotation;
+}
+
+function gestureChangeHandler(e) {
+  if (_hitTouches.length === 0) {
+    return;
+  }
+  var scale = _startScale + e.scale - 1;
+  scale = (scale < MIN_SCALE) ? MIN_SCALE : (MAX_SCALE < scale) ? MAX_SCALE : scale;
+  _rect.scaleX = _rect.scaleY = scale;
+  _rect.rotation = (_startRotation + e.rotation + 360) % 360;
+  alert(_rect.scaleX);
+}
+
+function gestureEndHandler(e) {
+  _startScale = null;
+  _startRotation = null;
+  for (var i = 0, l = _hitTouches.length; i < l; ++i) {
+    var touch = _hitTouches[i].touch;
+    var target = touch.target;
+    var stageX = touch.pageX - target.offsetLeft;
+    var stageY = touch.pageY - target.offsetTop;
+    var offsetX = _rect.x - stageX;
+    var offsetY = _rect.y - stageY;
+    _hitTouches[i].offset = new Point(offsetX, offsetY);
+  }
+  _dragEnabled = true;
+}
+			
 var socket = null;
 var omvc = OMVC();
 function OMVC() {
@@ -79,7 +112,6 @@ function OMVC() {
 	var self = {
 		omvr : new OMVR(),
 		init : function() {
-
 			self.initSocket();
 			self.initOmvr();
 			self.initGamepadEventLisener();
