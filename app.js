@@ -68,6 +68,7 @@ async.waterfall([ function(callback) {// exit sequence
 				setInterval(function() {
 					if(global.gc && os.freemem() < GC_THRESH) {
 						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
+						console.log("disk_free=" + disk_free);
 						global.gc();
 					}
 					if (recording && disk_free > 1024*1024) {
