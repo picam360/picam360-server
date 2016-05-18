@@ -62,16 +62,10 @@ async.waterfall([ function(callback) {// exit sequence
 					if (recording) {
 						nowTime = new Date();
 						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
-						if(duration >= frame_duration) {
+						if(duration >= frame_duration && framecount < 3000) {
 							cam1.capture(function(){
 								cam1.addFrame(cam2);
 								framecount++;
-								if (framecount == 300) {
-									recording = false;
-									framecount = 0;
-									cam1.stopRecord();
-									console.log("camera recording stop");
-								}
 							});
 							last_frame_date = nowTime;
 							return;
