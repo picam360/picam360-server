@@ -70,6 +70,7 @@ async.waterfall([ function(callback) {// exit sequence
 							cam1.capture(function(){
 								cam1.addFrame(cam2);
 								framecount++;
+								console.log("framecount=" + framecount);
 							});
 							last_frame_date = nowTime;
 							return;
