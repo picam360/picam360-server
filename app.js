@@ -59,6 +59,10 @@ async.waterfall([ function(callback) {// exit sequence
 				cam1.start();
 				cam1.setRotation(0, 0, 0);
 				setInterval(function() {
+					if(global.gc && os.freemem() < GC_THRESH) {
+						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
+						global.gc();
+					}
 					if (recording && framecount < 3000) {
 						nowTime = new Date();
 						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
@@ -74,10 +78,6 @@ async.waterfall([ function(callback) {// exit sequence
 					if(needToCapture) {
 						cam1.capture();
 						needToCapture = false;
-					}
-					if(global.gc && os.freemem() < GC_THRESH) {
-						console.log("gc at : " + process.memoryUsage().rss);
-						global.gc();
 					}
 				}, 100);
 				//cam2 = new v4l2camera.Camera("/dev/video1");
