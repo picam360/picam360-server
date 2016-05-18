@@ -59,10 +59,10 @@ async.waterfall([ function(callback) {// exit sequence
 				cam1.start();
 				cam1.setRotation(0, 0, 0);
 				setInterval(function() {
-					if (recording) {
+					if (recording && framecount < 3000) {
 						nowTime = new Date();
 						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
-						if(duration >= frame_duration && framecount < 3000) {
+						if(duration >= frame_duration) {
 							cam1.capture(function(){
 								cam1.addFrame(cam2);
 								framecount++;
