@@ -63,7 +63,7 @@ async.waterfall([ function(callback) {// exit sequence
 						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
 						global.gc();
 					}
-					if (recording && framecount < 3000) {
+					if (recording && framecount < 900) {//5fps 3min
 						nowTime = new Date();
 						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
 						if(duration >= frame_duration) {
