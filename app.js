@@ -1,6 +1,7 @@
 process.chdir(__dirname);
 
 var os = require('os');
+var path = require('path');
 var disk = require('diskusage');
 var agent = require('webkit-devtools-agent');
 var OpenPilot = require('./openpilot.js');
@@ -56,9 +57,6 @@ async.waterfall([ function(callback) {// exit sequence
 	var disk_free = 0;
 	setInterval(function() {
 		disk.check('/tmp', function(err, info) {
-			console.log(info.available);
-			console.log(info.free);
-			console.log(info.total);
 			disk_free = info.available;
 		});
 	}, 1000);
@@ -378,7 +376,13 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 
 		socket.on("isRecording", function(callback) {
-			callback(recording);
+			if(recording) {
+				callback(true);
+			} else {
+				path.exists('/tmp/movie.h264', function(exists) { 
+					callback(exists);
+				}); 
+			}			
 		});
 
 		socket.on("disconnect", function() {
