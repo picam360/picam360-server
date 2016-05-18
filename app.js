@@ -1,7 +1,6 @@
 process.chdir(__dirname);
 
 var os = require('os');
-var path = require('path');
 var disk = require('diskusage');
 var agent = require('webkit-devtools-agent');
 var OpenPilot = require('./openpilot.js');
@@ -379,7 +378,7 @@ async.waterfall([ function(callback) {// exit sequence
 			if(recording) {
 				callback(true);
 			} else {
-				path.exists('/tmp/movie.h264', function(exists) { 
+				fs.exists('/tmp/movie.h264', function(exists) { 
 					callback(exists);
 				}); 
 			}			
