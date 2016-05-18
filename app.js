@@ -1,6 +1,7 @@
 process.chdir(__dirname);
 
 var os = require('os');
+var disk = require('diskusage');
 var agent = require('webkit-devtools-agent');
 var OpenPilot = require('./openpilot.js');
 var child_process = require('child_process');
@@ -52,6 +53,15 @@ async.waterfall([ function(callback) {// exit sequence
 	callback(null);
 }, function(callback) {// camera startup
 	console.log("camera starting up");
+	var disk_free = 0;
+	setInterval(function() {
+		disk.check('/tmp', function(err, info) {
+			console.log(info.available);
+			console.log(info.free);
+			console.log(info.total);
+			disk_free = info.available;
+		});
+	}, 1000);
 	child_process.exec('sudo killall uv4l', function() {
 		child_process.exec('sh sh/start-uv4l.sh "--width=720 --height=720 --sharpness=100 --output-buffers=1 --framerate=10 --statistics=off --text-overlay=off"', function() {	
 			setTimeout(function() {
@@ -63,7 +73,7 @@ async.waterfall([ function(callback) {// exit sequence
 						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
 						global.gc();
 					}
-					if (recording && framecount < 900) {//5fps 3min
+					if (recording && disk_free < 1024*1024) {
 						nowTime = new Date();
 						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
 						if(duration >= frame_duration) {
