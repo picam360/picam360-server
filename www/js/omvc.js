@@ -110,7 +110,7 @@ function OMVC() {
 			self.initViewEventLisener();
 
 			self.setOperationMode("dive");
-			self.animate();
+			self.animate(0);
 			
 			var _fov = 70;
 			function gestureStartHandler(e) {
@@ -589,7 +589,7 @@ function OMVC() {
 			}
 		},
 
-		animate : function() {
+		animate : function(elapsedTime) {
 			switch (operationMode) {
 			case OperationModeEnum.Drive:
 				self.omvr.setMyAttitude(myAttitude);
@@ -618,7 +618,7 @@ function OMVC() {
 				break;
 			}
 
-			self.omvr.animate();
+			self.omvr.animate(elapsedTime);
 
 			{// status
 				fpsMsgNode.nodeValue = self.omvr.fps.toFixed(1) + "fps";
