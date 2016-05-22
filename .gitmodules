@@ -1,3 +1,7 @@
 [submodule "submodules/spatial-media"]
 	path = submodules/spatial-media
 	url = https://github.com/google/spatial-media.git
+
+[submodule "www"]
+	path = www
+	url = https://github.com/picam360/picam360-viewer.git
