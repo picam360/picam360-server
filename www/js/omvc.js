@@ -68,10 +68,9 @@ function OMVC() {
 	    return result;
 	}
 	var query = GetQueryString();
-
-	window.addEventListener("orientationchange", function() {
-		// alert(window.orientation);
-	});
+	if(query['default-image-url'] && !query['socket']) {
+		query['socket'] = "off";
+	}
 
 	document.getElementById("overlay").style.display = "none";
 	document.getElementById("infoTypeBox").style.display = "none";
@@ -102,7 +101,9 @@ function OMVC() {
 	var self = {
 		omvr : new OMVR(),
 		init : function() {
-			self.initSocket();
+			if(!query['socket'] || query['socket'] == "on") {
+				self.initSocket();
+			}
 			self.initOmvr();
 			self.initGamepadEventLisener();
 			self.initKeyboardEventLisener();
