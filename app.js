@@ -101,6 +101,7 @@ async.waterfall([ function(callback) {// exit sequence
 					capture();
 				}				
 			});
+			capture();
 		}
 	} else {
 		setInterval(function() {
