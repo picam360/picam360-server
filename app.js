@@ -101,8 +101,8 @@ async.waterfall([ function(callback) {// exit sequence
 					capture();
 				}				
 			});
-			capture();
 		}
+		capture();
 	} else {
 		setInterval(function() {
 			if(global.gc && os.freemem() < GC_THRESH) {
