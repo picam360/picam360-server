@@ -90,7 +90,6 @@ async.waterfall([ function(callback) {// exit sequence
 					size += chunk.length;
 				}).on('end', function(err) {
 					console.log("file uploaded : " + size);
-					callback(null);
 				}).pipe(request.put(process.argv[2]));
 				
 			});
