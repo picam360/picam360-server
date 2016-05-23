@@ -38,7 +38,7 @@ async.waterfall([ function(callback) {// exit sequence
 		console.log(size);
 	}).on('end', function(err) {
 		callback(null);
-	}).pipe(request.put('http://localhost:9001/img/picam360.jpeg'));
+	}).pipe(request.put('http://www.ohmydigifab.com:9001/img/picam360.jpeg'));
 	
 } ], function(err, result) {
 	console.log("done");

@@ -55,8 +55,33 @@ async.waterfall([ function(callback) {// exit sequence
 			res.end();
 	    });
 	});
+
+	app.head('/img/picam360.jpeg', function(req, res){
+		var stat = fs.statSync(path);
+		var etag = '"' + stat.size + '-' + Number(stat.mtime) + '"';
+		res.writeHead(200, {
+			'Content-Type' : 'image/jpeg',
+			'Content-Length' : stat.size,
+			'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
+			'Expires' : '-1',
+			'Pragma' : 'no-cache',
+			'ETag' : etag
+		});
+		res.end();
+		console.log(etag);
+	}		
 	
 	app.get('/img/picam360.jpeg', function(req, res){
+		var stat = fs.statSync(path);
+		var etag = '"' + stat.size + '-' + Number(stat.mtime) + '"';
+		
+		//check modified
+		if( req.headers['if-none-match'] === etag ) {
+			res.writeHead(304);
+			res.end();
+			return;
+		}
+	
 		fs.readFile('/tmp/vr.jpeg', function(err, data) {
 			if (err) {
 				res.writeHead(404);
@@ -67,8 +92,10 @@ async.waterfall([ function(callback) {// exit sequence
 					'Content-Type' : 'image/jpeg',
 					'Content-Length' : data.length,
 					'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
+					'Access-Control-Allow-Origin' : '*',
 					'Expires' : '-1',
 					'Pragma' : 'no-cache',
+					'ETag' : etag
 				});
 				res.end(data);
 				console.log("200");
