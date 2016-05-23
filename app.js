@@ -120,13 +120,13 @@ async.waterfall([ function(callback) {// exit sequence
 				needToCapture = false;
 			}
 		}, 100);
+		//cam2 = new v4l2camera.Camera("/dev/video1");
+		//cam2.start();
+		//cam2.capture(function loop2() {
+		//	cam2.capture(loop2);
+		//});
+		callback(null);
 	}
-	//cam2 = new v4l2camera.Camera("/dev/video1");
-	//cam2.start();
-	//cam2.capture(function loop2() {
-	//	cam2.capture(loop2);
-	//});
-	callback(null);
 }, function(callback) {// connect to openpilot
 	//op.init(function() {
 	//	callback(null);

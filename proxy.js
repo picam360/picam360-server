@@ -40,13 +40,12 @@ async.waterfall([ function(callback) {// exit sequence
 			.on('drain', function ()         { console.log('write: drain'); })
             .on('error', function (exeption) { console.log('write: error'); })
             .on('close', function ()         {
-		    	console.log('/tmp/_vr.jpeg saved');
+		    	console.log('/tmp/_vr.jpeg saved : ' + size);
 				child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
 			})
             .on('pipe',  function (src)      { console.log('write: pipe');  });
 	    req.on('data', function(chunk) {
 			size += chunk.length;
-			console.log(size);
 	    	write_stream.write(chunk);
 	    });
 	    req.on('end', function(chunk) {
