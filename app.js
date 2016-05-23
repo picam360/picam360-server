@@ -73,27 +73,35 @@ async.waterfall([ function(callback) {// exit sequence
 	cam1.setRotation(0, 0, 0);
 	if(process.argv[2]) { //upload to proxy server
 		var request = require('request');
-		setInterval(function() {
-			if(global.gc && os.freemem() < GC_THRESH) {
-				console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
-				console.log("disk_free=" + disk_free);
-				global.gc();
-			}
+		frame_duration = 1000;
+		var capture = function() {
 			cam1.capture(function(){
-				cam1.toJpeg('/tmp/_vr.jpeg');
-				child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
-				
-				var size = 0;
-				fs.createReadStream('/tmp/vr.jpeg').on('error', function(err) {
-					console.log(err);
-				}).on('data', function(chunk) {
-					size += chunk.length;
-				}).on('end', function(err) {
-					console.log("file uploaded : " + size);
-				}).pipe(request.put(process.argv[2]));
-				
+				nowTime = new Date();
+				var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
+				if(duration >= frame_duration) {
+					if(global.gc && os.freemem() < GC_THRESH) {
+						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
+						console.log("disk_free=" + disk_free);
+						global.gc();
+					}
+					cam1.toJpeg('/tmp/_vr.jpeg');
+					child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
+					
+					var size = 0;
+					fs.createReadStream('/tmp/vr.jpeg').on('error', function(err) {
+						console.log(err);
+					}).on('data', function(chunk) {
+						size += chunk.length;
+					}).on('end', function(err) {
+						console.log("file uploaded : " + size);
+						last_frame_date = nowTime;
+						capture();
+					}).pipe(request.put(process.argv[2]));
+				} else {
+					capture();
+				}				
 			});
-		}, 5000);
+		}
 	} else {
 		setInterval(function() {
 			if(global.gc && os.freemem() < GC_THRESH) {
