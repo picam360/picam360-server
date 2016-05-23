@@ -6,6 +6,7 @@
   "start": "node app"
  },
  "dependencies": {
+  "webkit-devtools-agent" : "*",
   "uavtalk": "0.0.4",
   "async": ">0.0.1",
   "serialport": ">0.0.1",
@@ -15,6 +16,8 @@
   "jade": "*",
   "pi-blaster.js": "*",
   "moment": "*",
-  "diskusage": "*"
+  "diskusage": "*",
+  "multer": "*",
+  "request": "*"
  }
 }
