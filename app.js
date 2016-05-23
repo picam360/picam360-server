@@ -62,42 +62,71 @@ async.waterfall([ function(callback) {// exit sequence
 	child_process.exec('sudo killall uv4l', function() {
 		child_process.exec('sh sh/start-uv4l.sh "--width=720 --height=720 --sharpness=100 --output-buffers=1 --framerate=10 --statistics=off --text-overlay=off"', function() {	
 			setTimeout(function() {
-				cam1 = new picam360.Camera("/dev/video0", 1440, 720);
-				cam1.start();
-				cam1.setRotation(0, 0, 0);
-				setInterval(function() {
-					if(global.gc && os.freemem() < GC_THRESH) {
-						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
-						console.log("disk_free=" + disk_free);
-						global.gc();
-					}
-					if (recording && disk_free > 1024*1024) {
-						nowTime = new Date();
-						var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
-						if(duration >= frame_duration) {
-							cam1.capture(function(){
-								cam1.addFrame(cam2);
-								framecount++;
-								console.log("framecount=" + framecount);
-							});
-							last_frame_date = nowTime;
-							return;
-						}
-					}
-					if(needToCapture) {
-						cam1.capture();
-						needToCapture = false;
-					}
-				}, 100);
-				//cam2 = new v4l2camera.Camera("/dev/video1");
-				//cam2.start();
-				//cam2.capture(function loop2() {
-				//	cam2.capture(loop2);
-				//});
 				callback(null);
 			}, 3000);
 		});
 	});
+}, function(callback) {//cam
+	console.log("camera instance");
+	cam1 = new picam360.Camera("/dev/video0", 1440, 720);
+	cam1.start();
+	cam1.setRotation(0, 0, 0);
+	if(process.argv[2]) { //upload to proxy server
+		var request = require('request');
+		setInterval(function() {
+			if(global.gc && os.freemem() < GC_THRESH) {
+				console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
+				console.log("disk_free=" + disk_free);
+				global.gc();
+			}
+			cam1.capture(function(){
+				cam1.toJpeg('/tmp/_vr.jpeg');
+				child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
+				
+				var size = 0;
+				fs.createReadStream('/tmp/vr.jpeg').on('error', function(err) {
+					console.log(err);
+				}).on('data', function(chunk) {
+					size += chunk.length;
+				}).on('end', function(err) {
+					console.log("file uploaded : " + size);
+					callback(null);
+				}).pipe(request.put(process.argv[2]));
+				
+			});
+		}, 5000);
+	} else {
+		setInterval(function() {
+			if(global.gc && os.freemem() < GC_THRESH) {
+				console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
+				console.log("disk_free=" + disk_free);
+				global.gc();
+			}
+			if (recording && disk_free > 1024*1024) {
+				nowTime = new Date();
+				var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
+				if(duration >= frame_duration) {
+					cam1.capture(function(){
+						cam1.addFrame(cam2);
+						framecount++;
+						console.log("framecount=" + framecount);
+					});
+					last_frame_date = nowTime;
+					return;
+				}
+			}
+			if(needToCapture) {
+				cam1.capture();
+				needToCapture = false;
+			}
+		}, 100);
+	}
+	//cam2 = new v4l2camera.Camera("/dev/video1");
+	//cam2.start();
+	//cam2.capture(function loop2() {
+	//	cam2.capture(loop2);
+	//});
+	callback(null);
 }, function(callback) {// connect to openpilot
 	//op.init(function() {
 	//	callback(null);
