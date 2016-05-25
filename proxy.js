@@ -42,11 +42,11 @@ async.waterfall([ function(callback) {// exit sequence
 			.on('drain', function ()         { console.log('write: drain'); })
             .on('error', function (exeption) { console.log('write: error'); })
             .on('close', function ()         {
-				child_process.exec('mv '/tmp/_' + filename + ' /tmp/' + filename, function(){
+				child_process.exec('mv /tmp/_' + filename + ' /tmp/' + filename, function(){
 					image_num++;
 		    		console.log('/tmp/' + filename + ' saved : ' + size);
+					child_process.exec('rm /tmp/vr_' + (image_num - 1) + '.jpeg');
 				});
-				child_process.exec('rm /tmp/vr_' + (image_num - 1) + '.jpeg');
 			})
             .on('pipe',  function (src)      { console.log('write: pipe');  });
 	    req.on('data', function(chunk) {
