@@ -29,6 +29,7 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// start up websocket server
 	console.log("websocket server starting up");
 
+	var put_image_num = 0;
 	var image_num = 0;
 	var express = require('express');  
 	var app = express();
@@ -36,8 +37,9 @@ async.waterfall([ function(callback) {// exit sequence
 	app.use(express.bodyParser());
 	
 	app.put('/img/picam360.jpeg', function(req, res) {
+		put_image_num++;
 		var size = 0;
-		var filename = 'vr_' + (image_num + 1) + '.jpeg';
+		var filename = 'vr_' + put_image_num + '.jpeg';
 		var write_stream = fs.createWriteStream('/tmp/_' + filename)
 			.on('drain', function ()         { console.log('write: drain'); })
             .on('error', function (exeption) { console.log('write: error'); })
