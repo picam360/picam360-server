@@ -53,12 +53,6 @@ async.waterfall([ function(callback) {// exit sequence
 	callback(null);
 }, function(callback) {// camera startup
 	console.log("camera starting up");
-	var disk_free = 0;
-	setInterval(function() {
-		disk.check('/tmp', function(err, info) {
-			disk_free = info.available;
-		});
-	}, 1000);
 	child_process.exec('sudo killall uv4l', function() {
 		child_process.exec('sh sh/start-uv4l.sh "--width=720 --height=720 --sharpness=100 --output-buffers=1 --framerate=10 --statistics=off --text-overlay=off"', function() {	
 			setTimeout(function() {
@@ -68,6 +62,14 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 }, function(callback) {//cam
 	console.log("camera instance");
+	
+	var disk_free = 0;
+	setInterval(function() {
+		disk.check('/tmp', function(err, info) {
+			disk_free = info.available;
+		});
+	}, 1000);
+	
 	cam1 = new picam360.Camera("/dev/video0", 1440, 720);
 	cam1.start();
 	cam1.setRotation(0, 0, 0);

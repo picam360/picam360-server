@@ -29,6 +29,7 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// start up websocket server
 	console.log("websocket server starting up");
 
+	var image_num = 0;
 	var express = require('express');  
 	var app = express();
 	var http = require('http').Server(app);
@@ -36,12 +37,13 @@ async.waterfall([ function(callback) {// exit sequence
 	
 	app.put('/img/picam360.jpeg', function(req, res) {
 		var size = 0;
-		var write_stream = fs.createWriteStream('/tmp/_vr.jpeg')
+		var write_stream = fs.createWriteStream('/tmp/vr_' + (image_num + 1) + '.jpeg')
 			.on('drain', function ()         { console.log('write: drain'); })
             .on('error', function (exeption) { console.log('write: error'); })
             .on('close', function ()         {
-		    	console.log('/tmp/_vr.jpeg saved : ' + size);
-				child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
+				image_num++;
+		    	console.log('/tmp/vr_' + image_num + '.jpeg saved : ' + size);
+				child_process.exec('rm /tmp/vr_' + (image_num - 1) + '.jpeg');
 			})
             .on('pipe',  function (src)      { console.log('write: pipe');  });
 	    req.on('data', function(chunk) {
@@ -56,7 +58,7 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	
 	function get_picam360_image_headers() {
-		var stat = fs.statSync('/tmp/vr.jpeg');
+		var stat = fs.statSync('/tmp/vr' + image_num + '.jpeg');
 		return {
 			'Content-Type' : 'image/jpeg',
 			'Content-Length' : stat.size,
@@ -74,7 +76,7 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	
 	app.get('/img/picam360.jpeg', function(req, res){
-		fs.readFile('/tmp/vr.jpeg', function(err, data) {
+		fs.readFile('/tmp/vr' + image_num + '.jpeg', function(err, data) {
 			if (err) {
 				res.writeHead(404);
 				res.end();
