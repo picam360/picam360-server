@@ -58,7 +58,7 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	
 	function get_picam360_image_headers() {
-		var stat = fs.statSync('/tmp/vr' + image_num + '.jpeg');
+		var stat = fs.statSync('/tmp/vr_' + image_num + '.jpeg');
 		return {
 			'Content-Type' : 'image/jpeg',
 			'Content-Length' : stat.size,
