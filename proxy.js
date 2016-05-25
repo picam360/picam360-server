@@ -38,6 +38,7 @@ async.waterfall([ function(callback) {// exit sequence
 	
 	app.put('/img/picam360.jpeg', function(req, res) {
 		put_image_num++;
+		var next_image_num = put_image_num;
 		var size = 0;
 		var filename = 'vr_' + put_image_num + '.jpeg';
 		var write_stream = fs.createWriteStream('/tmp/_' + filename)
@@ -45,9 +46,14 @@ async.waterfall([ function(callback) {// exit sequence
             .on('error', function (exeption) { console.log('write: error'); })
             .on('close', function ()         {
 				child_process.exec('mv /tmp/_' + filename + ' /tmp/' + filename, function(){
-					image_num++;
-		    		console.log('/tmp/' + filename + ' saved : ' + size);
-					child_process.exec('rm /tmp/vr_' + (image_num - 1) + '.jpeg');
+					if(next_image_num > image_num) {
+		    			console.log('/tmp/' + filename + ' saved : ' + size);
+						child_process.exec('rm /tmp/vr_' + image_num + '.jpeg');
+						image_num = next_image_num;
+					} else { //skip
+		    			console.log('/tmp/' + filename + ' saved : ' + size + ' but skipped');
+						child_process.exec('rm /tmp/vr_' + filename + '.jpeg');
+					}
 				});
 			})
             .on('pipe',  function (src)      { console.log('write: pipe');  });
