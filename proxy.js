@@ -43,7 +43,7 @@ async.waterfall([ function(callback) {// exit sequence
             .on('close', function ()         {
 				image_num++;
 		    	console.log('/tmp/vr_' + image_num + '.jpeg saved : ' + size);
-				child_process.exec('rm /tmp/vr_' + (image_num - 1) + '.jpeg');
+				child_process.exec('rm /tmp/vr_' + (image_num - 2) + '.jpeg');
 			})
             .on('pipe',  function (src)      { console.log('write: pipe');  });
 	    req.on('data', function(chunk) {
@@ -58,7 +58,7 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	
 	function get_picam360_image_headers() {
-		var stat = fs.statSync('/tmp/vr_' + image_num + '.jpeg');
+		var stat = fs.statSync('/tmp/vr_' + (image_num - 1) + '.jpeg');
 		return {
 			'Content-Type' : 'image/jpeg',
 			'Content-Length' : stat.size,
@@ -76,7 +76,7 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	
 	app.get('/img/picam360.jpeg', function(req, res){
-		fs.readFile('/tmp/vr' + image_num + '.jpeg', function(err, data) {
+		fs.readFile('/tmp/vr_' + (image_num - 1) + '.jpeg', function(err, data) {
 			if (err) {
 				res.writeHead(404);
 				res.end();
