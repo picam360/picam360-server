@@ -4,3 +4,6 @@
 [submodule "www"]
 	path = www
 	url = https://github.com/picam360/picam360-viewer.git
+[submodule "submodules/image-server"]
+	path = submodules/image-server
+	url = https://github.com/picam360/picam360-oculus-viewer.git
