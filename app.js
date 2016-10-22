@@ -8,7 +8,6 @@ var child_process = require('child_process');
 var async = require('async');
 var fs = require("fs");
 var express = require('express');
-var picam360 = require("picam360");
 var cam1;
 var cam2;
 var piblaster = require('pi-blaster.js');
@@ -16,12 +15,12 @@ var moment = require("moment");
 
 var recording = false;
 var framecount = 0;
-var needToCapture = true;
 var frame_duration = 0;
 var last_frame_date = null;
 var memoryusage_start = 0;
 var GC_THRESH = 16*1024*1024;//16MB
 
+var capture_if;
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
 	process.on('SIGINT', function() {
@@ -51,11 +50,13 @@ async.waterfall([ function(callback) {// exit sequence
 	piblaster.setPwm(40, 0);
 	piblaster.setPwm(41, 0);
 	callback(null);
-}, function(callback) {// camera startup
+}, function(callback) {// capture startup
 	console.log("camera starting up");
-	child_process.exec('sudo killall uv4l', function() {
-		child_process.exec('sh sh/start-uv4l.sh "--width=720 --height=720 --sharpness=100 --output-buffers=1 --framerate=10 --statistics=off --text-overlay=off"', function() {	
+	child_process.exec('sudo killall picam360-capture.bin', function() {
+		child_process.exec('bash ../picam360-capture/lunch.sh -w 1440 -h 1440 -W 1440 -H 720 -E -B', function() {	
 			setTimeout(function() {
+				capture_if = fs.createWriteStream('../picam360-capture/cmd');
+				capture_if.write("exit");
 				callback(null);
 			}, 3000);
 		});
@@ -69,74 +70,14 @@ async.waterfall([ function(callback) {// exit sequence
 			disk_free = info.available;
 		});
 	}, 1000);
-	
-	cam1 = new picam360.Camera("/dev/video0", 1440, 720);
-	cam1.start();
-	cam1.setRotation(0, 0, 0);
-	if(process.argv[2]) { //upload to proxy server
-		var request = require('request');
-		frame_duration = 1000;
-		var capture = function() {
-			cam1.capture(function(){
-				nowTime = new Date();
-				var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
-				if(duration >= frame_duration) {
-					if(global.gc && os.freemem() < GC_THRESH) {
-						console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
-						console.log("disk_free=" + disk_free);
-						global.gc();
-					}
-					cam1.toJpeg('/tmp/_vr.jpeg');
-					child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
-					
-					var size = 0;
-					fs.createReadStream('/tmp/vr.jpeg').on('error', function(err) {
-						console.log(err);
-					}).on('data', function(chunk) {
-						size += chunk.length;
-					}).on('end', function(err) {
-						console.log("file uploaded : " + size);
-						last_frame_date = nowTime;
-						capture();
-					}).pipe(request.put(process.argv[2]));
-				} else {
-					capture();
-				}				
-			});
+	setInterval(function() {
+		if(global.gc && os.freemem() < GC_THRESH) {
+			console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
+			console.log("disk_free=" + disk_free);
+			global.gc();
 		}
-		capture();
-	} else {
-		setInterval(function() {
-			if(global.gc && os.freemem() < GC_THRESH) {
-				console.log("gc : free=" + os.freemem() + " usage=" + process.memoryUsage().rss);
-				console.log("disk_free=" + disk_free);
-				global.gc();
-			}
-			if (recording && disk_free > 1024*1024) {
-				nowTime = new Date();
-				var duration = (last_frame_date == null) ? frame_duration : nowTime.getTime() - last_frame_date.getTime();//milisec
-				if(duration >= frame_duration) {
-					cam1.capture(function(){
-						cam1.addFrame(cam2);
-						framecount++;
-						console.log("framecount=" + framecount);
-					});
-					last_frame_date = nowTime;
-					return;
-				}
-			}
-			if(needToCapture) {
-				cam1.capture();
-				needToCapture = false;
-			}
-		}, 100);
-		//cam2 = new v4l2camera.Camera("/dev/video1");
-		//cam2.start();
-		//cam2.capture(function loop2() {
-		//	cam2.capture(loop2);
-		//});
-		callback(null);
-	}
+	}, 100);
+	callback(null);
 }, function(callback) {// connect to openpilot
 	//op.init(function() {
 	//	callback(null);
@@ -179,9 +120,7 @@ async.waterfall([ function(callback) {// exit sequence
 				res.end(data);
 				console.log("200");
 			}
-			cam1.toJpeg('/tmp/_vr.jpeg');
-			child_process.exec('mv /tmp/_vr.jpeg /tmp/vr.jpeg');
-			needToCapture = true;
+			capture_if.write('snap /tmp/vr.jpeg');
 		});
 	});
 	
@@ -391,7 +330,8 @@ async.waterfall([ function(callback) {// exit sequence
 			if(recording)
 				return;
 			duration = (duration==null)?0:duration;
-			cam1.startRecord('/tmp/movie.h264', 16000);
+			capture_if.write('set_duration ' + duration);
+			capture_if.write('start_record /tmp/movie.h264');
 			console.log("camera recording start duration=" + duration);
 			recording = true;
 			frame_duration = duration;
@@ -400,7 +340,7 @@ async.waterfall([ function(callback) {// exit sequence
 
 		socket.on("stopRecord", function(callback) {
 			recording = false;
-			cam1.stopRecord();
+			capture_if.write('stop_record');
 			console.log("camera recording stop");
 			var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
 			var ffmpeg_cmd = 'ffmpeg -y -r 5 -i /tmp/movie.h264 -c:v copy userdata/' + filename;
