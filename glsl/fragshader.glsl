@@ -11,7 +11,7 @@ const vec2 center2 = vec2(0.50, 0.50);
 const float color_offset = 0.15;
 const float color_factor = 1.0 / (1.0 - color_offset);
 float k = 1.0;
-float step = 1.0 / 640.0;
+float step = 1.0 / 2048.0;
 
 void main(void) {
 	float u_factor = aspect * image_r;
@@ -27,36 +27,23 @@ void main(void) {
 	pos = unif_matrix * pos;
 	float roll = asin(pos.z);
 	float yaw = atan(pos.x, pos.y); //yaw starts from y
-	//if(roll > -0.1 && roll < 0.1) {
-	//} else
-	if (roll > -M_PI) {
-		float r = (M_PI / 2.0 - roll) / M_PI;
-		if (r > 0.40) {
-			float tmp = r - 0.4;
-			r = pow(tmp, 1.09) + 0.4;
-		}
+	
+	float r = (M_PI / 2.0 - roll) / M_PI;
+	if (r >= 0.55) {
+			r = pow(r - 0.55, 1.2) + pow(0.05, 1.1) + pow(0.10, 1.09) + 0.4;
+	} else if (r >= 0.50) {
+			r = pow(r - 0.50, 1.1) + pow(0.10, 1.09) + 0.4;
+	} else if (r >= 0.40) {
+			r = pow(r - 0.4, 1.09) + 0.4;
+	}
+
 //		r = pow(r/0.5, 0.8) * 0.5;
-		float yaw2 = -yaw + M_PI;
-		u = u_factor * r * cos(yaw2) + center1.x;
-		v = v_factor * r * sin(yaw2) + center1.y;
-		if (u <= 0.0 || u > 1.0 || v <= 0.0 || v > 1.0) {
-			u = 0.0;
-			v = 0.0;
-		}
-// else {
-//                        v = v * 0.5;
-//                }
-	} else {
-		float r = (roll + M_PI / 2.0) / M_PI;
-		float yaw2 = yaw;
-		u = u_factor * r * cos(yaw2) + center2.x;
-		v = v_factor * r * sin(yaw2) + center2.y;
-		if (u <= 0.0 || u > 1.0 || v <= 0.0 || v > 1.0) {
-			u = 0.0;
-			v = 0.0;
-		} else {
-			v = v * 0.5 + 0.5;
-		}
+	float yaw2 = -yaw + M_PI;
+	u = u_factor * r * cos(yaw2) + center1.x;
+	v = v_factor * r * sin(yaw2) + center1.y;
+	if (u <= 0.0 || u > 1.0 || v <= 0.0 || v > 1.0) {
+		u = 0.0;
+		v = 0.0;
 	}
 	if (u == 0.0 && v == 0.0) {
 		gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
@@ -75,6 +62,47 @@ void main(void) {
 		//fc -= texture2D(tex, vec2(u + 1.0*step, v + 1.0*step)) * k;
 
 		fc = (fc - color_offset) * color_factor;
+        if (r >= 0.45) {
+			float r_r = pow(r - 0.45, 1.006) + 0.45;
+			u = u_factor * r_r * cos(yaw2) + center1.x;
+			v = v_factor * r_r * sin(yaw2) + center1.y;
+			vec4 fc_b = texture2D(tex, vec2(u, v)) * (1.0 + 4.0 * k);
+		
+			//fc -= texture2D(tex, vec2(u - 1.0*step, v - 1.0*step)) * k;
+			fc_b -= texture2D(tex, vec2(u - 1.0*step, v)) * k;
+			//fc -= texture2D(tex, vec2(u - 1.0*step, v + 1.0*step)) * k;
+		
+			fc_b -= texture2D(tex, vec2(u, v - 1.0*step)) * k;
+			fc_b -= texture2D(tex, vec2(u, v + 1.0*step)) * k;
+		
+			//fc -= texture2D(tex, vec2(u + 1.0*step, v - 1.0*step)) * k;
+			fc_b -= texture2D(tex, vec2(u + 1.0*step, v)) * k;
+			//fc -= texture2D(tex, vec2(u + 1.0*step, v + 1.0*step)) * k;
+		
+			fc_b = (fc_b - color_offset) * color_factor;
+			fc.z = fc_b.z;
+		
+			r_r = pow(r - 0.45, 1.003) + 0.45;
+			u = u_factor * r_r * cos(yaw2) + center1.x;
+			v = v_factor * r_r * sin(yaw2) + center1.y;
+			fc_b = texture2D(tex, vec2(u, v)) * (1.0 + 4.0 * k);
+
+            //fc -= texture2D(tex, vec2(u - 1.0*step, v - 1.0*step)) * k;
+            fc_b -= texture2D(tex, vec2(u - 1.0*step, v)) * k;
+            //fc -= texture2D(tex, vec2(u - 1.0*step, v + 1.0*step)) * k;
+
+            fc_b -= texture2D(tex, vec2(u, v - 1.0*step)) * k;
+            fc_b -= texture2D(tex, vec2(u, v + 1.0*step)) * k;
+
+            //fc -= texture2D(tex, vec2(u + 1.0*step, v - 1.0*step)) * k;
+            fc_b -= texture2D(tex, vec2(u + 1.0*step, v)) * k;
+            //fc -= texture2D(tex, vec2(u + 1.0*step, v + 1.0*step)) * k;
+
+            fc_b = (fc_b - color_offset) * color_factor;
+            fc.y = fc_b.y;
+
+		}
+		
 		gl_FragColor = fc;
 	}
 }
