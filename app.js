@@ -2,15 +2,12 @@ process.chdir(__dirname);
 
 var os = require('os');
 var disk = require('diskusage');
-var agent = require('webkit-devtools-agent');
 var OpenPilot = require('./openpilot.js');
 var child_process = require('child_process');
 var async = require('async');
 var fs = require("fs");
 var express = require('express');
-var cam1;
-var cam2;
-var piblaster = require('pi-blaster.js');
+//var piblaster = require('pi-blaster.js');
 var moment = require("moment");
 
 var recording = false;
@@ -46,21 +43,21 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	callback(null);
 }, function(callback) {// led startup
-	console.log("led starting up");
-	piblaster.setPwm(40, 0);
-	piblaster.setPwm(41, 0);
+	//console.log("led starting up");
+	//piblaster.setPwm(40, 0);
+	//piblaster.setPwm(41, 0);
 	callback(null);
 }, function(callback) {// capture startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall picam360-capture.bin', function() {
 		child_process.exec('bash ../picam360-capture/lunch.sh -w 1440 -h 1440 -W 1440 -H 720 -E -B', function() {	
-			setTimeout(function() {
-				capture_if = fs.createWriteStream('../picam360-capture/cmd');
-				capture_if.write("exit");
-				callback(null);
-			}, 3000);
 		});
 	});
+	setTimeout(function() {
+		capture_if = fs.createWriteStream('../picam360-capture/cmd');
+		capture_if.write("exit");
+		callback(null);
+	}, 3000);
 }, function(callback) {//cam
 	console.log("camera instance");
 	
@@ -120,7 +117,7 @@ async.waterfall([ function(callback) {// exit sequence
 				res.end(data);
 				console.log("200");
 			}
-			capture_if.write('snap /tmp/vr.jpeg');
+			capture_if.write('snap /tmp/vr.jpeg\n');
 		});
 	});
 	
@@ -330,8 +327,8 @@ async.waterfall([ function(callback) {// exit sequence
 			if(recording)
 				return;
 			duration = (duration==null)?0:duration;
-			capture_if.write('set_duration ' + duration);
-			capture_if.write('start_record /tmp/movie.h264');
+			capture_if.write('set_duration ' + duration + '\n');
+			capture_if.write('start_record /tmp/movie.h264\n');
 			console.log("camera recording start duration=" + duration);
 			recording = true;
 			frame_duration = duration;
@@ -340,7 +337,7 @@ async.waterfall([ function(callback) {// exit sequence
 
 		socket.on("stopRecord", function(callback) {
 			recording = false;
-			capture_if.write('stop_record');
+			capture_if.write('stop_record\n');
 			console.log("camera recording stop");
 			var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
 			var ffmpeg_cmd = 'ffmpeg -y -r 5 -i /tmp/movie.h264 -c:v copy userdata/' + filename;
