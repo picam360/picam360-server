@@ -55,7 +55,6 @@ async.waterfall([ function(callback) {// exit sequence
 	});
 	setTimeout(function() {
 		capture_if = fs.createWriteStream('../picam360-capture/cmd');
-		capture_if.write("exit");
 		callback(null);
 	}, 3000);
 }, function(callback) {//cam
