@@ -22,8 +22,8 @@ var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
 	process.on('SIGINT', function() {
 		console.log("led shutting down");
-		piblaster.setPwm(40, 0);
-		piblaster.setPwm(41, 0);
+		//piblaster.setPwm(40, 0);
+		//piblaster.setPwm(41, 0);
 		// console.log("camera shutting down");
 		// cam1.stop();
 		console.log("exit process done");
@@ -315,11 +315,11 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 
 		socket.on("setUpperLedValue", function(value) {
-			piblaster.setPwm(40, value / 100.0);
+			//piblaster.setPwm(40, value / 100.0);
 		});
 
 		socket.on("setBottomLedValue", function(value) {
-			piblaster.setPwm(41, value / 100.0);
+			//piblaster.setPwm(41, value / 100.0);
 		});
 
 		socket.on("startRecord", function(duration) {
