@@ -11,7 +11,7 @@ git reset --hard & git pull
 sudo rm /home/pi/.bash_history
 sudo cp /etc/rc.local.server /etc/rc.local
 #need to be last because wifi connection will be disable
-echo "disable wpa? [y/N]
+echo "disable wpa? [y/N]"
 read WPA
 case $WPA in
 	y)
@@ -19,5 +19,5 @@ case $WPA in
 		echo "disabled wpa."
 		;;
 	*)
-	;;
+		;;
 esac
