@@ -11,4 +11,13 @@ git reset --hard & git pull
 sudo rm /home/pi/.bash_history
 sudo cp /etc/rc.local.server /etc/rc.local
 #need to be last because wifi connection will be disable
-sudo cp /etc/wpa_supplicant/wpa_supplicant.conf.init /etc/wpa_supplicant/wpa_supplicant.conf
+echo "disable wpa? [y/N]
+read WPA
+case $WPA in
+	y)
+		sudo cp /etc/wpa_supplicant/wpa_supplicant.conf.init /etc/wpa_supplicant/wpa_supplicant.conf
+		echo "disabled wpa."
+		;;
+	*)
+	;;
+esac
