@@ -16,7 +16,7 @@ read WPA
 case $WPA in
 	y)
 		sudo cp /etc/wpa_supplicant/wpa_supplicant.conf.init /etc/wpa_supplicant/wpa_supplicant.conf
-		echo "disabled wpa."
+		echo "wpa disabled."
 		;;
 	*)
 		;;
