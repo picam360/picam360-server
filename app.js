@@ -51,7 +51,7 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// capture startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall picam360-capture.bin', function() {
-		child_process.exec('bash ../picam360-capture/lunch.sh -w 1440 -h 1440 -W 1440 -H 720 -E -B', function() {	
+		child_process.exec('bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -W 512 -H 512 -S -B', function() {	
 		});
 	});
 	setTimeout(function() {
