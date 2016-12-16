@@ -9,6 +9,7 @@ var fs = require("fs");
 var express = require('express');
 //var piblaster = require('pi-blaster.js');
 var moment = require("moment");
+var sprintf = require('sprintf').sprintf;
 
 var recording = false;
 var framecount = 0;
@@ -231,18 +232,12 @@ async.waterfall([ function(callback) {// exit sequence
 		socket.on("connected", function() {
 		});
 
-		socket.on("ping", function(time) {
-			op.getObject("ActuatorCommand", function(actuatorCommand) {
-				op.getObject("FlightStatus", function(flightStatus) {
-					op.getObject("FlightTelemetryStats", function(flightTelemetryStats) {
-						socket.emit("pong", {
-							ActuatorCommand : actuatorCommand,
-							FlightStatus : flightStatus,
-							FlightTelemetryStats : flightTelemetryStats
-						});
-					});
-				});
-			});
+		socket.on("ping", function(state) {
+			if(state['view_orientation']) {
+				var cmd = sprintf('set_camera_orientation %f,%f,%f\n', state['view_orientation'].roll, state['view_orientation'].pitch, state['view_orientation'].yaw);
+				print(cmd);
+				capture_if.write(cmd);
+			}
 		});
 
 		socket.on("accelerate_throttle", function(value, callback) {
