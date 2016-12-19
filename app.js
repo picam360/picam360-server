@@ -51,7 +51,7 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// capture startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall picam360-capture.bin', function() {
-		child_process.exec('bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -W 512 -H 512 -S -B', function() {	
+		child_process.exec('bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -c MJPEG -f 5 -W 512 -H 512 -B -S', function() {	
 		});
 	});
 	setTimeout(function() {
@@ -232,12 +232,10 @@ async.waterfall([ function(callback) {// exit sequence
 		socket.on("connected", function() {
 		});
 
-		socket.on("ping", function(state) {
-			if(state['view_orientation']) {
-				var cmd = sprintf('set_camera_orientation %f,%f,%f\n', state['view_orientation'].roll, state['view_orientation'].pitch, state['view_orientation'].yaw);
-				print(cmd);
-				capture_if.write(cmd);
-			}
+		socket.on("set_view_orientation", function(view_orientation) {
+			var cmd = 'set_camera_orientation ' + state['view_orientation'].Roll + ',' + state['view_orientation'].Pitch + ',' + state['view_orientation'].Yaw + '\n');
+			print(cmd);
+			capture_if.write(cmd);
 		});
 
 		socket.on("accelerate_throttle", function(value, callback) {
