@@ -232,8 +232,8 @@ async.waterfall([ function(callback) {// exit sequence
 		socket.on("connected", function() {
 		});
 
-		socket.on("set_view_orientation", function(view_orientation) {
-			var cmd = 'set_camera_orientation ' + state['view_orientation'].Roll + ',' + state['view_orientation'].Pitch + ',' + state['view_orientation'].Yaw + '\n');
+		socket.on("set_view_orientation", function(orientation) {
+			var cmd = sprintf('set_camera_orientation %f,%f,%f\n', orientation.Roll, orientation.Pitch, orientation.Yaw);
 			print(cmd);
 			capture_if.write(cmd);
 		});
