@@ -234,7 +234,7 @@ async.waterfall([ function(callback) {// exit sequence
 
 		socket.on("set_view_orientation", function(orientation) {
 			var cmd = sprintf('set_camera_orientation %f,%f,%f\n', orientation.Roll, orientation.Pitch, orientation.Yaw);
-			print(cmd);
+			console.log(cmd);
 			capture_if.write(cmd);
 		});
 
