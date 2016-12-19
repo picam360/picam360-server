@@ -9,7 +9,7 @@ var fs = require("fs");
 var express = require('express');
 //var piblaster = require('pi-blaster.js');
 var moment = require("moment");
-var sprintf = require('sprintf').sprintf;
+var sprintf = require('sprintf-js').sprintf;
 
 var recording = false;
 var framecount = 0;
@@ -234,7 +234,7 @@ async.waterfall([ function(callback) {// exit sequence
 
 		socket.on("set_view_orientation", function(orientation) {
 			var cmd = sprintf('set_camera_orientation %f,%f,%f\n', orientation.Roll, orientation.Pitch, orientation.Yaw);
-			console.log(cmd);
+			//console.log(cmd);
 			capture_if.write(cmd);
 		});
 
