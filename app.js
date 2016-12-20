@@ -90,11 +90,11 @@ async.waterfall([ function(callback) {// exit sequence
 
 	var veicle_attitude = {
 		// -180 - 180
-		Roll : 0,
-		// -180 - 180
 		Pitch : 0,
 		// -180 - 180
-		Yaw : 0
+		Yaw : 0,
+		// -180 - 180
+		Roll : 0,
 	};
 	var app = require('express')();
 	var http = require('http').Server(app);
@@ -154,11 +154,11 @@ async.waterfall([ function(callback) {// exit sequence
 		// 0% - 100%
 		Throttle : 0,
 		// -180 - 180
-		Roll : 0,
-		// -180 - 180
 		Pitch : 0,
 		// -180 - 180
-		Yaw : 0
+		Yaw : 0,
+		// -180 - 180
+		Roll : 0,
 	};
 	var accel_factor = 0.02;
 
@@ -180,60 +180,13 @@ async.waterfall([ function(callback) {// exit sequence
 		return dst;
 	}
 
-	var lastThrottle = 0;
-	var controlValueUpdating = false;
-	op.onAttitudeStateChanged(function(attitude) {
-		veicle_attitude = attitude;
-		cam1.setRotation(-veicle_attitude.Roll, -veicle_attitude.Pitch, -veicle_attitude.Yaw);
-		if (controlValue.Throttle > 0 || lastThrottle != 0) {
-			if (controlValueUpdating) {
-				return;
-			}
-			controlValueUpdating = true;
-
-			var value = {
-				// 0 - 1
-				Throttle : 0,
-				// -1 - 1
-				Roll : 0,
-				// -1 - 1
-				Pitch : 0,
-				// -1 - 1
-				Yaw : 0
-			};
-
-			var length = Math.sqrt(controlValue.Roll * controlValue.Roll + controlValue.Pitch * controlValue.Pitch);
-			var angle = radToDeg(Math.atan2(controlValue.Roll, controlValue.Pitch));
-			var roll = 0;
-			var pitch = 0;
-			if (attitude.Roll < -90 || attitude.Roll > 90) {
-				angle -= attitude.Yaw - yaw_offset;
-				roll = length * -Math.sin(degToRad(angle));
-				pitch = length * Math.cos(degToRad(angle));
-			} else {
-				angle += attitude.Yaw - yaw_offset;
-				roll = length * Math.sin(degToRad(angle));
-				pitch = length * Math.cos(degToRad(angle));
-			}
-
-			value.Throttle = controlValue.Throttle / 100;
-			value.Roll = degToOne(roll);
-			value.Pitch = degToOne(pitch);
-			value.Yaw = degToOne(controlValue.Yaw);
-			op.setControlValue(value, function(res) {
-				controlValueUpdating = false;
-			});
-			lastThrottle = value.Throttle;
-		}
-	});
-
 	io.sockets.on("connection", function(socket) {
 
 		socket.on("connected", function() {
 		});
 
 		socket.on("set_view_orientation", function(orientation) {
-			var cmd = sprintf('set_camera_orientation %f,%f,%f\n', orientation.Roll, orientation.Pitch, orientation.Yaw);
+			var cmd = sprintf('set_camera_orientation %f,%f,%f\n', orientation.Pitch, orientation.Yaw, orientation.Roll);
 			//console.log(cmd);
 			capture_if.write(cmd);
 		});
