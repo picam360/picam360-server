@@ -10,6 +10,7 @@ var express = require('express');
 //var piblaster = require('pi-blaster.js');
 var moment = require("moment");
 var sprintf = require('sprintf-js').sprintf;
+var watch = require('node-watch');
 
 var recording = false;
 var framecount = 0;
@@ -266,6 +267,15 @@ async.waterfall([ function(callback) {// exit sequence
 
 		socket.on("setBottomLedValue", function(value) {
 			//piblaster.setPwm(41, value / 100.0);
+		});
+
+		socket.on("still", function(callback) {
+			var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
+			capture_if.write('still -E -W 3072 -H 1536 -o /tmp/' + filename + '\n');
+			watch('/tmp/' + filename, function(filename) {
+				console.log(filename, ' saved.');
+				callback(filename);
+			});
 		});
 
 		socket.on("startRecord", function(duration) {
