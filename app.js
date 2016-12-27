@@ -269,9 +269,9 @@ async.waterfall([ function(callback) {// exit sequence
 			//piblaster.setPwm(41, value / 100.0);
 		});
 
-		socket.on("still", function(callback) {
+		socket.on("snap", function(callback) {
 			var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
-			capture_if.write('still -E -W 3072 -H 1536 -o /tmp/' + filename + '\n');
+			capture_if.write('snap -E -W 3072 -H 1536 -o /tmp/' + filename + '\n');
 			watch('/tmp/' + filename, function(filename) {
 				console.log(filename, ' saved.');
 				callback(filename);
