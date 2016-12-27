@@ -187,7 +187,8 @@ async.waterfall([ function(callback) {// exit sequence
 		});
 
 		socket.on("set_view_orientation", function(orientation) {
-			var cmd = sprintf('set_view_orientation %f,%f,%f\n', orientation.Pitch, orientation.Yaw, orientation.Roll);
+			var id = 0;
+			var cmd = sprintf('set_view_orientation %d %f,%f,%f\n', id, orientation.Pitch, orientation.Yaw, orientation.Roll);
 			//console.log(cmd);
 			capture_if.write(cmd);
 		});

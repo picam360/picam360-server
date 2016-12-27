@@ -17,6 +17,7 @@
   "diskusage": "*",
   "multer": "*",
   "request": "*",
-  "sprintf-js" : "*"
+  "sprintf-js" : "*",
+  "node-watch" : "*"
  }
 }
