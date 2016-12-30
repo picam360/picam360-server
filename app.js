@@ -120,8 +120,14 @@ async.waterfall([ function(callback) {// exit sequence
 	var http = require('http').Server(app);
 	var io = require("socket.io").listen(http);
 	
-	app.get('/img/picam360.jpeg', function(req, res){
-		fs.readFile('/tmp/vr.jpeg', function(err, data) {
+	app.get('/img/*.jpeg', function(req, res){
+		var url = req.url.split("?")[0];
+		var query = req.url.split("?")[1];
+		var filepath = 'userdata/' + url.split("/")[2];
+		console.log(url);
+		console.log(query);
+		console.log(filepath);
+		fs.readFile(filepath, function(err, data) {
 			if (err) {
 				res.writeHead(404);
 				res.end();
@@ -137,7 +143,6 @@ async.waterfall([ function(callback) {// exit sequence
 				res.end(data);
 				console.log("200");
 			}
-			capture_if.write('snap /tmp/vr.jpeg\n');
 		});
 	});
 	
