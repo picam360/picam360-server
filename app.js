@@ -10,7 +10,26 @@ var express = require('express');
 //var piblaster = require('pi-blaster.js');
 var moment = require("moment");
 var sprintf = require('sprintf-js').sprintf;
-var watch = require('node-watch');
+
+
+function watchFile(filepath, oncreate, ondelete) {
+  var
+    fs = require('fs'),
+    path = require('path'),
+    filedir = path.dirname(filepath),
+    filename = path.basename(filepath);
+
+  fs.watch(filedir, function(event, who) {
+    if (event === 'rename' && who === filename) {
+      if (fs.existsSync(filepath)) {
+        oncreate();
+      } else {
+        ondelete();
+      }
+    }
+  });
+}
+
 
 var recording = false;
 var framecount = 0;
@@ -273,9 +292,13 @@ async.waterfall([ function(callback) {// exit sequence
 		socket.on("snap", function(callback) {
 			var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
 			capture_if.write('snap -E -W 3072 -H 1536 -o /tmp/' + filename + '\n');
-			watch('/tmp/' + filename, function(filename) {
+			watchFile('/tmp/' + filename, function() {
 				console.log(filename, ' saved.');
-				callback(filename);
+				var cmd = 'mv ' + '/tmp/' + filename + 'userdata/' + filename;
+				console.log(cmd);
+				child_process.exec(cmd, function(){
+					callback(filename);
+				});
 			});
 		});
 
