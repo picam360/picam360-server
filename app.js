@@ -294,7 +294,7 @@ async.waterfall([ function(callback) {// exit sequence
 			capture_if.write('snap -E -W 3072 -H 1536 -o /tmp/' + filename + '\n');
 			watchFile('/tmp/' + filename, function() {
 				console.log(filename, ' saved.');
-				var cmd = 'mv ' + '/tmp/' + filename + 'userdata/' + filename;
+				var cmd = 'mv' + ' /tmp/' + filename + ' userdata/' + filename;
 				console.log(cmd);
 				child_process.exec(cmd, function(){
 					callback(filename);
