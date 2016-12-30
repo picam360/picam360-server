@@ -22,9 +22,9 @@ function watchFile(filepath, oncreate, ondelete) {
   fs.watch(filedir, function(event, who) {
     if (event === 'rename' && who === filename) {
       if (fs.existsSync(filepath)) {
-        oncreate();
+        if(oncreate) oncreate();
       } else {
-        ondelete();
+    	if(ondelete) ondelete();
       }
     }
   });
