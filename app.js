@@ -296,7 +296,9 @@ async.waterfall([ function(callback) {// exit sequence
 
 		socket.on("snap", function(callback) {
 			var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
-			capture_if.write('snap -E -W 3072 -H 1536 -o /tmp/' + filename + '\n');
+			var cmd = 'snap -E -W 3072 -H 1536 -o /tmp/' + filename + '\n';
+			capture_if.write(cmd);
+			console.log(cmd);
 			watchFile('/tmp/' + filename, function() {
 				console.log(filename, ' saved.');
 				var cmd = 'mv' + ' /tmp/' + filename + ' userdata/' + filename;
