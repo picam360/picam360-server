@@ -39,6 +39,7 @@ var memoryusage_start = 0;
 var GC_THRESH = 16*1024*1024;//16MB
 
 var capture_if;
+var capture_process;
 var op = new OpenPilot();
 async.waterfall([ function(callback) {// exit sequence
 	process.on('SIGINT', function() {
@@ -71,10 +72,11 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// capture startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall picam360-capture.bin', function() {
-		//var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 800 -H 800 -r -n 2 -c MJPEG -B -S';
-		var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 800 -H 800 -c MJPEG -B -S';
-		child_process.exec(cmd, function() {	
+		//var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 800 -H 800 -r -n 2 -c MJPEG -S';
+		var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 800 -H 800 -c MJPEG -S';
+		capture_process = child_process.exec(cmd, function() {	
 		});
+		capture_if = capture_process.stdin;
 	});
 	setTimeout(function() {
 		capture_if = fs.createWriteStream('../picam360-capture/cmd');
@@ -302,7 +304,7 @@ async.waterfall([ function(callback) {// exit sequence
 			capture_if.write(cmd);
 			console.log(cmd);
 			watchFile('/tmp/' + filename, function() {
-				console.log(filename, ' saved.');
+				console.log(filename + ' saved.');
 				var cmd = 'mv' + ' /tmp/' + filename + ' userdata/' + filename;
 				console.log(cmd);
 				child_process.exec(cmd, function(){
