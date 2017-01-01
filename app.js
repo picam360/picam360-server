@@ -314,7 +314,7 @@ async.waterfall([ function(callback) {// exit sequence
 			if(recording)
 				return;
 			duration = (duration==null)?0:duration;
-			var cmd = 'start_record -E -W 3072 -H 1536 -o /tmp/movie.h264\n';
+			var cmd = 'start_record -E -W 1024 -H 512 -o /tmp/movie.h264\n';
 			capture_if.write(cmd);
 			console.log(cmd);
 			//console.log("camera recording start duration=" + duration);
