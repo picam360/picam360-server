@@ -160,17 +160,28 @@ async.waterfall([ function(callback) {// exit sequence
 				res.end();
 				console.log("404");
 			} else {
-				res.writeHead(200, {
-					'Content-Type' : 'video/mp4',
-					'ETag' : '9077fe17af51ce1:0',
-					'Accept-Ranges' : 'bytes',
-					'Content-Length' : data.length,
-					//'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
-					//'Expires' : '-1',
-					//'Pragma' : 'no-cache',
-				});
-				res.end(data);
-				console.log("200");
+		        var range = req.headers.range // bytes=0-1
+		        if (!range){
+		                res.writeHead(200, {
+		                        "Content-Type": "video/mp4",
+		                        "X-UA-Compatible": "IE=edge;chrome=1",
+		                        'Content-Length': data.length
+		                });
+		                res.end(data)
+		        }else{
+		                var total = data.length;
+		                var split = range.split(/[-=]/);
+		                var ini = +split[1];
+		                var end = split[2]?+split[2]:total-1;
+		                var chunkSize = end - ini + 1;
+		                res.writeHead(206, {
+		                        "Content-Range": "bytes " + ini + "-" + end + "/" + total,
+		                        "Accept-Ranges": "bytes",
+		                        "Content-Length": chunkSize,
+		                        "Content-Type": "video/mp4",
+		                })
+		                res.end(data.slice(ini, chunkSize+ini))
+		        }
 			}
 		});
 	});	
