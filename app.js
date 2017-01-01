@@ -162,11 +162,12 @@ async.waterfall([ function(callback) {// exit sequence
 			} else {
 				res.writeHead(200, {
 					'Content-Type' : 'video/mp4',
-					'Content-Length' : data.length,
-					'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
-					'Expires' : '-1',
-					'Pragma' : 'no-cache',
+					'ETag' : '9077fe17af51ce1:0',
 					'Accept-Ranges' : 'bytes',
+					'Content-Length' : data.length,
+					//'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
+					//'Expires' : '-1',
+					//'Pragma' : 'no-cache',
 				});
 				res.end(data);
 				console.log("200");
