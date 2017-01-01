@@ -77,11 +77,8 @@ async.waterfall([ function(callback) {// exit sequence
 		capture_process = child_process.exec(cmd, function() {	
 		});
 		capture_if = capture_process.stdin;
-	});
-	setTimeout(function() {
-		capture_if = fs.createWriteStream('../picam360-capture/cmd');
 		callback(null);
-	}, 3000);
+	});
 }, function(callback) {//cam
 	console.log("camera instance");
 	
