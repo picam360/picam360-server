@@ -166,6 +166,7 @@ async.waterfall([ function(callback) {// exit sequence
 					'Cache-Control' : 'private, no-cache, no-store, must-revalidate',
 					'Expires' : '-1',
 					'Pragma' : 'no-cache',
+					'Accept-Ranges' : 'bytes',
 				});
 				res.end(data);
 				console.log("200");
