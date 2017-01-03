@@ -231,6 +231,13 @@ async.waterfall([ function(callback) {// exit sequence
 			capture_if.write(cmd);
 		});
 
+		socket.on("setFov", function(fov) {
+			var id = 0;
+			var cmd = sprintf('set_fov %d=%f\n', id, fov);
+			//console.log(cmd);
+			capture_if.write(cmd);
+		});
+
 		socket.on("accelerate_throttle", function(value, callback) {
 			controlValue.Throttle += accel_factor * value;
 			if (controlValue.Throttle < 0.0) {
