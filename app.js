@@ -72,8 +72,8 @@ async.waterfall([ function(callback) {// exit sequence
 }, function(callback) {// capture startup
 	console.log("camera starting up");
 	child_process.exec('sudo killall picam360-capture.bin', function() {
-		//var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 800 -H 800 -r -n 2 -c MJPEG -S';
-		var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 800 -H 800 -c MJPEG -S';
+		//var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 480 -H 600 -r -n 2 -c MJPEG -S';
+		var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 480 -H 600 -c MJPEG -S';
 		capture_process = child_process.exec(cmd, function() {	
 		});
 		capture_if = capture_process.stdin;
@@ -334,7 +334,7 @@ async.waterfall([ function(callback) {// exit sequence
 			if(recording)
 				return;
 			duration = (duration==null)?0:duration;
-			var cmd = 'start_record -E -W 1024 -H 512 -o /tmp/movie.h264\n';
+			var cmd = 'start_record -E -W 1920 -H 960 -o /tmp/movie.h264\n';
 			capture_if.write(cmd);
 			console.log(cmd);
 			//console.log("camera recording start duration=" + duration);
