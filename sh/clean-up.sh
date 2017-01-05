@@ -2,7 +2,7 @@ cd /home/pi/picam360/picam360-capture
 git remote set-url origin https://github.com/picam360/picam360-capture.git
 git reset --hard & git pull
 make
-cd /home/pi/picam360/picam360-software
+cd /home/pi/picam360/picam360-server
 sudo rm -r userdata
 mkdir userdata
 git remote set-url origin https://github.com/picam360/picam360-server.git
