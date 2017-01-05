@@ -5,7 +5,7 @@ make
 cd /home/pi/picam360/picam360-software
 sudo rm -r userdata
 mkdir userdata
-git remote set-url origin https://github.com/picam360/picam360-software.git
+git remote set-url origin https://github.com/picam360/picam360-server.git
 git reset --hard & git pull
 
 sudo rm /home/pi/.bash_history
