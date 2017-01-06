@@ -322,9 +322,9 @@ async.waterfall([ function(callback) {// exit sequence
 			console.log(cmd);
 			watchFile('/tmp/' + filename, function() {
 				console.log(filename + ' saved.');
-				var exiftool_cmd = 'exiftool -ProjectionType="equirectangular" -o ' + ' userdata/' + filename + ' /tmp/' + filename;
-				var mv_cmd = 'rm' + ' /tmp/' + filename;
-				var cmd = exiftool_cmd + ' && ' + mv_cmd;
+				var exiftool_cmd = 'exiftool -ProjectionType="equirectangular" -o' + ' userdata/' + filename + ' /tmp/' + filename;
+				var rm_cmd = 'rm' + ' /tmp/' + filename;
+				var cmd = exiftool_cmd + ' && ' + rm_cmd;
 				console.log(cmd);
 				child_process.exec(cmd, function(){
 					callback(filename);
