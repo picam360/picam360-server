@@ -76,15 +76,15 @@ async.waterfall([ function(callback) {// exit sequence
 			//var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 480 -H 600 -r -n 2 -c MJPEG -S';
 			var cmd = 'bash ../picam360-capture/lunch.sh -w 2048 -h 2048 -f 5 -W 480 -H 600 -c MJPEG -S';
 			capture_process = child_process.exec(cmd, function (error, stdout, stderr) {
-			    if(stdout){
-			        console.log('stdout: ' + stdout);
-			    }
-			    if(stderr){
-			        console.log('stderr: ' + stderr);
-			    }
-			    if (error !== null) {
-			    	console.log('Exec error: ' + error);
-			    }
+			    //if(stdout){
+			    //    console.log('stdout: ' + stdout);
+			    //}
+			    //if(stderr){
+			    //    console.log('stderr: ' + stderr);
+			    //}
+			    //if (error !== null) {
+			    //	console.log('Exec error: ' + error);
+			    //}
 			});
 			capture_if = capture_process.stdin;
 			callback(null);
