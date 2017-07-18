@@ -1,5 +1,5 @@
 {
- "name": "picam360-software",
+ "name": "picam360-server”,
  "version": "0.0.1",
  "private": true,
  "scripts": {
@@ -12,7 +12,6 @@
   "express": "*",
   "socket.io": "*",
   "jade": "*",
-  "pi-blaster.js": "*",
   "moment": "*",
   "diskusage": "*",
   "multer": "*",
