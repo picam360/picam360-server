@@ -123,27 +123,9 @@ function set_callback(port, callback) {
 	rtp_rx.bind(port);
 }
 
-function sendpacket(ws, _packet, callback) {
-	if (Array.isArray(_packet)) {
-		var packets = _packet;
-		if (packets.length) {
-			var packet = packets.shift();
-			if (packet) {
-				ws.emit("rtp", packet.GetPacketData(), function() {
-					sendpacket(ws, packets, callback);
-				});
-			} else {
-				callback();
-			}
-		} else {
-			setTimeout(function() {
-				sendpacket(ws, packets, callback);
-			}, 20);
-		}
-	} else {
-		var packet = _packet;
-		ws.emit("rtp", packet.GetPacketData(), callback);
-	}
+//@_packet : Buffer
+function sendpacket(ws, packet, callback) {
+	ws.emit("rtp", packet, callback);
 }
 
 exports.set_callback = set_callback;

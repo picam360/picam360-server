@@ -8,6 +8,7 @@ var express = require('express');
 var moment = require("moment");
 var sprintf = require('sprintf-js').sprintf;
 var rtp = require("./rtp.js");
+var rtcp = require("./rtcp.js");
 
 function watchFile(filepath, oncreate, ondelete) {
 	var fs = require('fs'), path = require('path'), filedir = path
@@ -56,9 +57,11 @@ async
 			callback(null);
 		},
 		function(callback) {
-			// connect to picam-capture
-			console.log("connect to picam-capture");
+			console.log("init data stream");
 
+			var UPSTREAM_DOMAIN = "upstream.";
+			var cmd2upstream_list = [];
+			var rtcp_command_id = 0;
 			var active_frame = null;
 			var startTime = new Date();
 			var num_of_frame = 0;
@@ -74,24 +77,31 @@ async
 							if (data[header_len] == 0xFF
 								&& data[header_len + 1] == 0xD8) { // SOI
 								active_frame = [];
+								// console.log("new_frame");
+							}
+						}
+						if (active_frame) {
+							active_frame.push(data);
+							if (data[data_len - 2] == 0xFF
+								&& data[data_len - 1] == 0xD9) { // EOI
 								rtp_rx_watcher
 									.forEach(function(watcher) {
 										if (!watcher.active_frame) {
 											watcher.active_frame = active_frame;
 											rtp
-												.sendpacket(watcher.ws, active_frame, function() {
+												.sendpacket(watcher.ws, active_frame, function(
+													value) {
+													if (value
+														&& value
+															.startsWith(UPSTREAM_DOMAIN)) {
+														cmd2upstream_list
+															.push(value
+																.substr(UPSTREAM_DOMAIN.length));
+													}
 													watcher.active_frame = null;
 												});
 										}
 									});
-								// console.log("new_frame");
-							}
-						}
-						if (active_frame) {
-							active_frame.push(pack);
-							if (data[data_len - 2] == 0xFF
-								&& data[data_len - 1] == 0xD9) { // EOI
-								active_frame.push(null);
 								active_frame = null;
 								// console.log("active_frame");
 								num_of_frame++;
@@ -106,6 +116,30 @@ async
 						}
 					}
 				});
+			rtcp.set_callback(function(pack) {
+				if (pack.GetPayloadType() == 101) {
+					var cmd = pack.GetPacketData().toString('ascii', pack
+						.GetHeaderLength());
+					var split = cmd.split('\"');
+					var id = split[1];
+					var value = split[3];
+					if (value.startsWith(UPSTREAM_DOMAIN)) {
+						cmd2upstream_list.push(value
+							.substr(UPSTREAM_DOMAIN.length));
+					}
+				}
+			});
+			setInterval(function() {
+				if (cmd2upstream_list.length) {
+					var value = cmd2upstream_list.shift();
+					var cmd = "<picam360:command id=\"" + rtcp_command_id
+						+ "\" value=\"" + value + "\" />";
+					rtcp
+						.sendpacket(new Buffer(cmd, 'ascii'), 101, 9005, "127.0.0.1");
+
+					rtcp_command_id++;
+				}
+			}, 20);
 			callback(null);
 		},
 		function(callback) {// cam
@@ -215,6 +249,7 @@ async
 						active_frame : null
 					};
 					rtp_rx_watcher.push(watcher);
+					rtcp.add_websocket(socket);
 					console.log("add rtp rx watcher");
 					socket.on("connected", function() {
 					});
