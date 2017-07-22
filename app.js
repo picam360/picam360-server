@@ -86,8 +86,9 @@ async
 								&& data[data_len - 1] == 0xD9) { // EOI
 								rtp_rx_watcher
 									.forEach(function(watcher) {
-										if (!watcher.active_frame) {
-											watcher.active_frame = active_frame;
+										if (watcher.active_frame_count < 5) {
+											watcher.skip_count = 0;
+											watcher.active_frame_count++;
 											rtp
 												.sendpacket(watcher.ws, active_frame, function(
 													value) {
@@ -98,8 +99,10 @@ async
 															.push(value
 																.substr(UPSTREAM_DOMAIN.length));
 													}
-													watcher.active_frame = null;
+													watcher.active_frame_count--;
 												});
+										} else {
+											watcher.skip_count++;
 										}
 									});
 								active_frame = null;
@@ -142,8 +145,8 @@ async
 			}, 20);
 			callback(null);
 		},
-		function(callback) {// cam
-			console.log("camera instance");
+		function(callback) {// gc
+			console.log("gc");
 			var disk_free = 0;
 			setInterval(function() {
 				disk.check('/tmp', function(err, info) {
@@ -246,7 +249,8 @@ async
 				.on("connection", function(socket) {
 					var watcher = {
 						ws : socket,
-						active_frame : null
+						active_frame_count : 0,
+						skip_count : 0
 					};
 					rtp_rx_watcher.push(watcher);
 					rtcp.add_websocket(socket);
