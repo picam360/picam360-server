@@ -26,6 +26,7 @@ function watchFile(filepath, oncreate, ondelete) {
 	});
 }
 var rtp_rx_watcher = [];
+var primary_socket = null;
 
 var recording = false;
 var framecount = 0;
@@ -92,7 +93,8 @@ async
 											rtp
 												.sendpacket(watcher.ws, active_frame, function(
 													value) {
-													if (value
+													if (watcher.ws == primary_socket
+														&& value
 														&& value
 															.startsWith(UPSTREAM_DOMAIN)) {
 														cmd2upstream_list
@@ -252,6 +254,7 @@ async
 						active_frame_count : 0,
 						skip_count : 0
 					};
+					primary_socket = socket;
 					rtp_rx_watcher.push(watcher);
 					rtcp.add_websocket(socket);
 					console.log("add rtp rx watcher");
