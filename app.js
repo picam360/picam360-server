@@ -25,8 +25,14 @@ function watchFile(filepath, oncreate, ondelete) {
 		}
 	});
 }
+function removeArray(array, value) {
+	for (var i = array.length - 1; i >= 0; i--) {
+		if (array[i] === value) {
+			array.splice(i, 1);
+		}
+	}
+}
 var rtp_rx_watcher = [];
-var primary_socket = null;
 
 var recording = false;
 var framecount = 0;
@@ -93,7 +99,8 @@ async
 											rtp
 												.sendpacket(watcher.ws, active_frame, function(
 													value) {
-													if (watcher.ws == primary_socket
+													if (rtp_rx_watcher
+														&& rtp_rx_watcher[0] == watcher
 														&& value
 														&& value
 															.startsWith(UPSTREAM_DOMAIN)) {
@@ -103,6 +110,12 @@ async
 													}
 													watcher.active_frame_count--;
 												});
+										} else if (watcher.skip_count > 1000) {// 100sec
+											// remove
+											console
+												.log("timeout remove rtp rx watcher:"
+													+ watcher.ip);
+											removeArray(rtp_rx_watcher, watcher);
 										} else {
 											watcher.skip_count++;
 										}
@@ -249,15 +262,22 @@ async
 			}
 			io.sockets
 				.on("connection", function(socket) {
+					var ip = socket.request.headers['x-forwarded-for']
+						|| socket.request.connection.remoteAddress;
+					if (rtp_rx_watcher.length >= 2) {// exceed client
+						console.log("exceeded_num_of_clients:" + ip);
+						socket.emit("custom_error", "exceeded_num_of_clients");
+						return;
+					}
 					var watcher = {
+						ip : ip,
 						ws : socket,
 						active_frame_count : 0,
 						skip_count : 0
 					};
-					primary_socket = socket;
 					rtp_rx_watcher.push(watcher);
 					rtcp.add_websocket(socket);
-					console.log("add rtp rx watcher");
+					console.log("add rtp rx watcher:" + watcher.ip);
 					socket.on("connected", function() {
 					});
 					socket
@@ -328,6 +348,11 @@ async
 							});
 						});
 					socket.on("disconnect", function() {
+						console.log("remove rtp rx watcher:" + watcher.ip);
+						removeArray(rtp_rx_watcher, watcher);
+					});
+					socket.on("error", function(event) {
+						console.log("error : " + event);
 					});
 				});
 			http.listen(9001, function() {
