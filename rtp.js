@@ -1,5 +1,9 @@
 var dgram = require("dgram");
 
+var sequencenumber = 0;
+var timestamp = 0;
+var csrc = 0;
+
 function PacketHeader(pack) {
 	var packetlength = pack.length;
 	var payloadtype = pack.readUInt8(1) & 0x7F;
@@ -26,6 +30,21 @@ function PacketHeader(pack) {
 		}
 	};
 	return self;
+}
+
+function build_packet(data, pt) {
+	var header_len = 12;
+	var pack = new Buffer(header_len + data.length);
+	pack.writeUInt8(0, 0);
+	pack.writeUInt8(pt & 0x7F, 1);
+	pack.writeUInt16BE(sequencenumber, 2);
+	pack.writeUInt32BE(timestamp, 4);
+	pack.writeUInt32BE(csrc, 8);
+	data.copy(pack, header_len);
+
+	sequencenumber++;
+
+	return pack;
 }
 
 function set_callback(port, callback) {
@@ -129,4 +148,5 @@ function sendpacket(ws, packet, callback) {
 }
 
 exports.set_callback = set_callback;
+exports.build_packet = build_packet;
 exports.sendpacket = sendpacket;

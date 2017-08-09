@@ -10,6 +10,14 @@ var sprintf = require('sprintf-js').sprintf;
 var rtp = require("./rtp.js");
 var rtcp = require("./rtcp.js");
 
+var UPSTREAM_DOMAIN = "upstream.";
+var SERVER_DOMAIN = "";
+var CAPTURE_DOMAIN = UPSTREAM_DOMAIN;
+var DRIVER_DOMAIN = UPSTREAM_DOMAIN + UPSTREAM_DOMAIN;
+var PT_STATUS = 100;
+var PT_CMD = 101;
+var PT_CAM_BASE = 110;
+
 function watchFile(filepath, oncreate, ondelete) {
 	var fs = require('fs'), path = require('path'), filedir = path
 		.dirname(filepath), filename = path.basename(filepath);
@@ -32,9 +40,14 @@ function removeArray(array, value) {
 		}
 	}
 }
-var rtp_rx_watcher = [];
 
-var recording = false;
+var plugin_host = {};
+var rtp_rx_watcher = [];
+var cmd2upstream_list = [];
+var watches = [];
+var statuses = [];
+
+var is_recording = false;
 var framecount = 0;
 var frame_duration = 0;
 var last_frame_date = null;
@@ -42,6 +55,7 @@ var memoryusage_start = 0;
 var GC_THRESH = 16 * 1024 * 1024;// 16MB
 var capture_if;
 var capture_process;
+
 async
 	.waterfall([
 		function(callback) {// exit sequence
@@ -66,14 +80,13 @@ async
 		function(callback) {
 			console.log("init data stream");
 
-			var UPSTREAM_DOMAIN = "upstream.";
-			var cmd2upstream_list = [];
 			var rtcp_command_id = 0;
 			var active_frame = null;
 			var startTime = new Date();
 			var num_of_frame = 0;
 			var fps = 0;
 
+			// image from upstream
 			rtp
 				.set_callback(9004, function(pack) {
 					if (pack.GetPayloadType() == 110) {
@@ -91,6 +104,7 @@ async
 							active_frame.push(data);
 							if ((data[data_len - 2] == 0xFF && data[data_len - 1] == 0xD9)
 								|| (data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)) { // EOI
+								// image to downstream
 								rtp_rx_watcher
 									.forEach(function(watcher) {
 										if (watcher.active_frame_count < 5) {
@@ -134,6 +148,7 @@ async
 						}
 					}
 				});
+			// cmd from downstream
 			rtcp.set_callback(function(pack) {
 				if (pack.GetPayloadType() == 101) {
 					var cmd = pack.GetPacketData().toString('ascii', pack
@@ -141,23 +156,60 @@ async
 					var split = cmd.split('\"');
 					var id = split[1];
 					var value = split[3];
-					if (value.startsWith(UPSTREAM_DOMAIN)) {
-						cmd2upstream_list.push(value
-							.substr(UPSTREAM_DOMAIN.length));
-					}
+					plugin_host.send_command(value);
 				}
 			});
+			// cmd to upstream
 			setInterval(function() {
 				if (cmd2upstream_list.length) {
 					var value = cmd2upstream_list.shift();
 					var cmd = "<picam360:command id=\"" + rtcp_command_id
 						+ "\" value=\"" + value + "\" />";
-					rtcp
-						.sendpacket(new Buffer(cmd, 'ascii'), 101, 9005, "127.0.0.1");
+					var pack = rtcp.build_packet(new Buffer(cmd, 'ascii'), 101);
+					rtcp.sendpacket(pack, 9005, "127.0.0.1");
 
 					rtcp_command_id++;
 				}
 			}, 20);
+			// status to downstream
+			setInterval(function() {
+				var pack_list = [];
+				for ( var name in statuses) {
+					if (statuses[name]) {
+						var value = statuses[name]();
+						var status = "<picam360:status name=\"" + name
+							+ "\" value=\"" + value + "\" />";
+						var pack = rtp
+							.build_packet(new Buffer(status, 'ascii'), 100);
+						pack_list.push(pack);
+					}
+				}
+				if (pack_list.length > 0) {
+					rtp_rx_watcher.forEach(function(watcher) {
+						if (watcher.active_frame_count < 5) {
+							watcher.skip_count = 0;
+							watcher.active_frame_count++;
+							rtp.sendpacket(watcher.ws, pack_list, function(
+								value) {
+								if (rtp_rx_watcher
+									&& rtp_rx_watcher[0] == watcher && value
+									&& value.startsWith(UPSTREAM_DOMAIN)) {
+									cmd2upstream_list.push(value
+										.substr(UPSTREAM_DOMAIN.length));
+								}
+								watcher.active_frame_count--;
+							});
+						} else if (watcher.skip_count > 1000) {// 100sec
+							// remove
+							console.log("timeout remove rtp rx watcher:"
+								+ watcher.ip);
+							removeArray(rtp_rx_watcher, watcher);
+						} else {
+							watcher.skip_count++;
+						}
+					});
+				}
+			}, 1000);
 			callback(null);
 		},
 		function(callback) {// gc
@@ -280,13 +332,65 @@ async
 					console.log("add rtp rx watcher:" + watcher.ip);
 					socket.on("connected", function() {
 					});
+					socket.on("snap", function(callback) {
+						var filename = moment().format('YYYYMMDD_hhmmss')
+							+ '.jpeg';
+						var cmd = CAPTURE_DOMAIN + 'snap -0 -o /tmp/'
+							+ filename;
+						plugin_host.send_command(cmd);
+						console.log(cmd);
+						watchFile('/tmp/' + filename, function() {
+							console.log(filename + ' saved.');
+							var rm_cmd = 'mv' + ' /tmp/' + filename
+								+ ' userdata/' + filename;
+							var cmd = rm_cmd;
+							console.log(cmd);
+							child_process.exec(cmd, function() {
+								callback(filename);
+							});
+						});
+					});
+					socket.on("start_record", function(duration) {
+						if (is_recording)
+							return;
+						var cmd = CAPTURE_DOMAIN
+							+ 'start_record -0 -o /tmp/movie.h264';
+						plugin_host.send_command(cmd);
+						console.log(cmd);
+						// console.log("camera
+						// recording
+						// start
+						// duration="
+						// +
+						// duration);
+						is_recording = true;
+						frame_duration = duration;
+						last_frame_date = null;
+					});
 					socket
-						.on("snap", function(callback) {
+						.on("stop_record", function(callback) {
+							is_recording = false;
+							var cmd = CAPTURE_DOMAIN + 'stop_record -0';
+							plugin_host.send_command(cmd);
+							console.log(cmd);
+							var filename = moment().format('YYYYMMDD_hhmmss')
+								+ '.mp4';
+							var ffmpeg_cmd = 'ffmpeg -y -r 10 -i /tmp/movie.h264 -c:v copy userdata/'
+								+ filename;
+							var delh264_cmd = 'rm /tmp/movie.h264';
+							var cmd = ffmpeg_cmd + ' ; ' + delh264_cmd;
+							console.log(cmd);
+							child_process.exec(cmd, function() {
+								callback(filename);
+							});
+						});
+					socket
+						.on("snap_e", function(callback) {
 							var filename = moment().format('YYYYMMDD_hhmmss')
 								+ '.jpeg';
-							var cmd = 'snap -E -W 3072 -H 1536 -o /tmp/'
-								+ filename + '\n';
-							capture_if.write(cmd);
+							var cmd = CAPTURE_DOMAIN
+								+ 'snap -E -W 3072 -H 1536 -o /tmp/' + filename;
+							plugin_host.send_command(cmd);
 							console.log(cmd);
 							watchFile('/tmp/' + filename, function() {
 								console.log(filename + ' saved.');
@@ -304,8 +408,8 @@ async
 							});
 						});
 					socket
-						.on("startRecord", function(duration) {
-							if (recording)
+						.on("start_record_e", function(duration) {
+							if (is_recording)
 								return;
 							duration = (duration == null) ? 0 : duration;
 							var cmd = 'start_record -E -W 1024 -H 512 -o /tmp/movie.h264\n';
@@ -317,13 +421,13 @@ async
 							// duration="
 							// +
 							// duration);
-							recording = true;
+							is_recording = true;
 							frame_duration = duration;
 							last_frame_date = null;
 						});
 					socket
-						.on("stopRecord", function(callback) {
-							recording = false;
+						.on("stop_record_e", function(callback) {
+							is_recording = false;
 							capture_if.write('stop_record\n');
 							console.log("camera recording stop");
 							var filename = moment().format('YYYYMMDD_hhmmss')
@@ -358,6 +462,27 @@ async
 			http.listen(9001, function() {
 				console.log('listening on *:9001');
 			});
+			callback(null);
+		},
+		function(callback) {
+			// plugin host
+			plugin_host.send_command = function(value) {
+				if (value.startsWith(UPSTREAM_DOMAIN)) {
+					cmd2upstream_list
+						.push(value.substr(UPSTREAM_DOMAIN.length));
+				}
+			};
+			plugin_host.add_watch = function(name, callback) {
+				watches[name] = callback;
+			};
+			plugin_host.add_status = function(name, callback) {
+				statuses[name] = callback;
+			};
+
+			plugin_host.add_status("is_recording", function() {
+				return is_recording;
+			});
+
 			callback(null);
 		}], function(err, result) {
 	});

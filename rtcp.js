@@ -33,20 +33,7 @@ function PacketHeader(pack) {
 	return self;
 }
 
-function set_callback(_callback) {
-	callback = _callback;
-}
-
-function add_websocket(ws) {
-	ws.on("rtcp", function(buff) {
-		if (callback) {
-			callback(PacketHeader(buff));
-		}
-	});
-}
-
-// @_packet : Buffer
-function sendpacket(data, pt, port, ip) {
+function build_packet(data, pt) {
 	var raw_header_len = 8;
 	var header_len = 12;
 	var pack = new Buffer(raw_header_len + header_len + data.length);
@@ -64,12 +51,30 @@ function sendpacket(data, pt, port, ip) {
 	pack.writeUInt32BE(timestamp, raw_header_len + 4);
 	pack.writeUInt32BE(csrc, raw_header_len + 8);
 	data.copy(pack, raw_header_len + header_len);
-	rtcp_tx.send(pack, 0, pack.length, port, ip);
 
 	sequencenumber++;
+
+	return pack;
+}
+
+function set_callback(_callback) {
+	callback = _callback;
+}
+
+function add_websocket(ws) {
+	ws.on("rtcp", function(buff) {
+		if (callback) {
+			callback(PacketHeader(buff));
+		}
+	});
+}
+
+// @_packet : Buffer
+function sendpacket(pack, port, ip) {
+	rtcp_tx.send(pack, 0, pack.length, port, ip);
 }
 
 exports.set_callback = set_callback;
 exports.add_websocket = add_websocket;
+exports.build_packet = build_packet;
 exports.sendpacket = sendpacket;
-
