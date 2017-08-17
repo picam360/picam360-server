@@ -62,9 +62,23 @@ function set_callback(_callback) {
 }
 
 function add_websocket(ws) {
+	if (!ws) {
+		return;
+	}
 	ws.on("rtcp", function(buff) {
 		if (callback) {
 			callback(PacketHeader(buff));
+		}
+	});
+}
+
+function add_peerconnection(conn) {
+	if (!conn) {
+		return;
+	}
+	conn.on('data', function(data) {
+		if (callback) {
+			callback(PacketHeader(new Buffer(data)));
 		}
 	});
 }
@@ -76,5 +90,6 @@ function sendpacket(pack, port, ip) {
 
 exports.set_callback = set_callback;
 exports.add_websocket = add_websocket;
+exports.add_peerconnection = add_peerconnection;
 exports.build_packet = build_packet;
 exports.sendpacket = sendpacket;

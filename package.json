@@ -17,6 +17,7 @@
   "multer": "*",
   "request": "*",
   "sprintf-js" : "*",
-  "node-watch" : "*"
+  "node-watch" : "*",
+  "uuid" : "*"
  }
 }

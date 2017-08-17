@@ -142,9 +142,13 @@ function set_callback(port, callback) {
 	rtp_rx.bind(port);
 }
 
-//@_packet : Buffer
-function sendpacket(ws, packet, callback) {
-	ws.emit("rtp", packet, callback);
+// @_packet : Buffer
+function sendpacket(stream, packet, callback) {
+	if (stream.emit) {
+		stream.emit("rtp", packet, callback);
+	} else if (stream.send) {
+		stream.send(packet);
+	}
 }
 
 exports.set_callback = set_callback;

@@ -9,6 +9,7 @@ var moment = require("moment");
 var sprintf = require('sprintf-js').sprintf;
 var rtp = require("./rtp.js");
 var rtcp = require("./rtcp.js");
+var uuidv1 = require('uuid/v1');
 
 var UPSTREAM_DOMAIN = "upstream.";
 var SERVER_DOMAIN = "";
@@ -40,6 +41,13 @@ function removeArray(array, value) {
 		}
 	}
 }
+function clone(src) {
+	var dst = {}
+	for ( var k in src) {
+		dst[k] = src[k];
+	}
+	return dst;
+}
 
 var plugin_host = {};
 var rtp_rx_watcher = [];
@@ -55,6 +63,10 @@ var memoryusage_start = 0;
 var GC_THRESH = 16 * 1024 * 1024;// 16MB
 var capture_if;
 var capture_process;
+
+var http = null;
+
+var options = JSON.parse(fs.readFileSync('config.json', 'utf8'));
 
 async
 	.waterfall([
@@ -86,6 +98,36 @@ async
 			var num_of_frame = 0;
 			var fps = 0;
 
+			function rtp_passthrough(pack_list) {
+				rtp_rx_watcher.forEach(function(watcher) {
+					if (watcher.active_frame_count < 5) {
+						if (watcher.ws) {
+							watcher.skip_count = 0;
+							watcher.active_frame_count++;
+							rtp.sendpacket(watcher.ws, pack_list, function(
+								value) {
+								if (rtp_rx_watcher
+									&& rtp_rx_watcher[0] == watcher && value
+									&& value.startsWith(UPSTREAM_DOMAIN)) {
+									cmd2upstream_list.push(value
+										.substr(UPSTREAM_DOMAIN.length));
+								}
+								watcher.active_frame_count--;
+							});
+						} else if (watcher.conn) {
+							rtp.sendpacket(watcher.conn, pack_list);
+						}
+					} else if (watcher.skip_count > 1000) {// 100sec
+						// remove
+						console.log("timeout remove rtp rx watcher:"
+							+ watcher.ip);
+						removeArray(rtp_rx_watcher, watcher);
+					} else {
+						watcher.skip_count++;
+					}
+				});
+			}
+
 			// image from upstream
 			rtp
 				.set_callback(9004, function(pack) {
@@ -105,35 +147,7 @@ async
 							if ((data[data_len - 2] == 0xFF && data[data_len - 1] == 0xD9)
 								|| (data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)) { // EOI
 								// image to downstream
-								rtp_rx_watcher
-									.forEach(function(watcher) {
-										if (watcher.active_frame_count < 5) {
-											watcher.skip_count = 0;
-											watcher.active_frame_count++;
-											rtp
-												.sendpacket(watcher.ws, active_frame, function(
-													value) {
-													if (rtp_rx_watcher
-														&& rtp_rx_watcher[0] == watcher
-														&& value
-														&& value
-															.startsWith(UPSTREAM_DOMAIN)) {
-														cmd2upstream_list
-															.push(value
-																.substr(UPSTREAM_DOMAIN.length));
-													}
-													watcher.active_frame_count--;
-												});
-										} else if (watcher.skip_count > 1000) {// 100sec
-											// remove
-											console
-												.log("timeout remove rtp rx watcher:"
-													+ watcher.ip);
-											removeArray(rtp_rx_watcher, watcher);
-										} else {
-											watcher.skip_count++;
-										}
-									});
+								rtp_passthrough(active_frame);
 								active_frame = null;
 								// console.log("active_frame");
 								num_of_frame++;
@@ -185,29 +199,7 @@ async
 					}
 				}
 				if (pack_list.length > 0) {
-					rtp_rx_watcher.forEach(function(watcher) {
-						if (watcher.active_frame_count < 5) {
-							watcher.skip_count = 0;
-							watcher.active_frame_count++;
-							rtp.sendpacket(watcher.ws, pack_list, function(
-								value) {
-								if (rtp_rx_watcher
-									&& rtp_rx_watcher[0] == watcher && value
-									&& value.startsWith(UPSTREAM_DOMAIN)) {
-									cmd2upstream_list.push(value
-										.substr(UPSTREAM_DOMAIN.length));
-								}
-								watcher.active_frame_count--;
-							});
-						} else if (watcher.skip_count > 1000) {// 100sec
-							// remove
-							console.log("timeout remove rtp rx watcher:"
-								+ watcher.ip);
-							removeArray(rtp_rx_watcher, watcher);
-						} else {
-							watcher.skip_count++;
-						}
-					});
+					rtp_passthrough(pack_list);
 				}
 			}, 1000);
 			callback(null);
@@ -233,8 +225,7 @@ async
 		function(callback) {// start up websocket server
 			console.log("websocket server starting up");
 			var app = require('express')();
-			var http = require('http').Server(app);
-			var io = require("socket.io").listen(http);
+			http = require('http').Server(app);
 			app
 				.get('/img/*.jpeg', function(req, res) {
 					var url = req.url.split("?")[0];
@@ -303,15 +294,14 @@ async
 				});
 			});
 			app.use(express.static('www'));// this need be set
-			// after all dynamic
-			// files
-			function clone(src) {
-				var dst = {}
-				for ( var k in src) {
-					dst[k] = src[k];
-				}
-				return dst;
-			}
+			http.listen(9001, function() {
+				console.log('listening on *:9001');
+			});
+			callback(null);
+		},
+		function(callback) {
+			// websocket
+			var io = require("socket.io").listen(http);
 			io.sockets
 				.on("connection", function(socket) {
 					var ip = socket.request.headers['x-forwarded-for']
@@ -459,9 +449,43 @@ async
 						console.log("error : " + event);
 					});
 				});
-			http.listen(9001, function() {
-				console.log('listening on *:9001');
-			});
+			callback(null);
+		},
+		function(callback) {
+			// wrtc
+			if (options["wrtc_enabled"]) {
+				var P2P_API_KEY = "v8df88o1y4zbmx6r";
+				global.Blob = "blob";
+				global.WebSocket = require("ws");
+				global.window = require("./lib/node-webrtc");
+				global.window.postMessage = function(message, origin) {
+					console.log(message);
+				};
+				var uuid = options["wrtc_uuid"] || uuidv1();
+				console.log("\n\n\n");
+				console.log("webrtc uuid : " + uuid);
+				console.log("\n\n\n");
+				var Peer = require("peerjs");
+				var peer = new Peer(uuid, {
+					key : P2P_API_KEY,
+					debug : 1
+				});
+
+				peer.on('connection', function(conn) {
+					console.log("\n\n\n");
+					console.log("p2p connection established as upstream.");
+					console.log("\n\n\n");
+
+					var watcher = {
+						ip : "conn",
+						conn : conn,
+						active_frame_count : 0,
+						skip_count : 0
+					};
+					rtp_rx_watcher.push(watcher);
+					rtcp.add_peerconnection(conn);
+				});
+			}
 			callback(null);
 		},
 		function(callback) {
