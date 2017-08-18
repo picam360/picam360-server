@@ -6,18 +6,12 @@
   "start": "node app"
  },
  "dependencies": {
-  "uavtalk": "0.0.4",
   "async": "*",
-  "serialport": "*",
   "express": "*",
   "socket.io": "*",
-  "jade": "*",
   "moment": "*",
   "diskusage": "*",
-  "multer": "*",
-  "request": "*",
   "sprintf-js" : "*",
-  "node-watch" : "*",
   "uuid" : "*"
  }
 }

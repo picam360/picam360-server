@@ -4,3 +4,11 @@
 [submodule "www"]
 	path = www
 	url = https://github.com/picam360/picam360-viewer.git
+[submodule "lib/node-webrtc"]
+	path = lib/node-webrtc
+	url = https://github.com/picam360/node-webrtc.git
+[submodule "lib/peerjs"]
+	path = lib/peerjs
+	url = https://github.com/picam360/peerjs.git
+
+	

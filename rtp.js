@@ -144,10 +144,10 @@ function set_callback(port, callback) {
 
 // @_packet : Buffer
 function sendpacket(stream, packet, callback) {
-	if (stream.emit) {
-		stream.emit("rtp", packet, callback);
-	} else if (stream.send) {
+	if (stream.peerConnection) {
 		stream.send(packet);
+	} else {
+		stream.emit("rtp", packet, callback);
 	}
 }
 

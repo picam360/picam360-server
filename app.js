@@ -171,6 +171,9 @@ async
 					var id = split[1];
 					var value = split[3];
 					plugin_host.send_command(value);
+					if (options.debug >= 5) {
+						console.log("cmd got :" + cmd);
+					}
 				}
 			});
 			// cmd to upstream
@@ -456,6 +459,7 @@ async
 			if (options["wrtc_enabled"]) {
 				var P2P_API_KEY = "v8df88o1y4zbmx6r";
 				global.Blob = "blob";
+				global.File = "file";
 				global.WebSocket = require("ws");
 				global.window = require("./lib/node-webrtc");
 				global.window.postMessage = function(message, origin) {
@@ -465,10 +469,10 @@ async
 				console.log("\n\n\n");
 				console.log("webrtc uuid : " + uuid);
 				console.log("\n\n\n");
-				var Peer = require("peerjs");
+				var Peer = require("./lib/peerjs");
 				var peer = new Peer(uuid, {
 					key : P2P_API_KEY,
-					debug : 1
+					debug : options.debug || 0
 				});
 
 				peer.on('connection', function(conn) {
