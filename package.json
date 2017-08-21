@@ -11,7 +11,9 @@
   "socket.io": "*",
   "moment": "*",
   "diskusage": "*",
-  "sprintf-js" : "*",
-  "uuid" : "*"
+  "sprintf-js": "*",
+  "uuid": "*",
+  "wrtc": "https://github.com/picam360/node-webrtc.git",
+  "peerjs": "https://github.com/picam360/peerjs.git"
  }
 }

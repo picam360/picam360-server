@@ -461,7 +461,7 @@ async
 				global.Blob = "blob";
 				global.File = "file";
 				global.WebSocket = require("ws");
-				global.window = require("./lib/node-webrtc");
+				global.window = require("wrtc");
 				global.window.postMessage = function(message, origin) {
 					console.log(message);
 				};
@@ -469,7 +469,7 @@ async
 				console.log("\n\n\n");
 				console.log("webrtc uuid : " + uuid);
 				console.log("\n\n\n");
-				var Peer = require("./lib/peerjs");
+				var Peer = require("peerjs");
 				var peer = new Peer(uuid, {
 					key : P2P_API_KEY,
 					debug : options.debug || 0
