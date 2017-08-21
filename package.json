@@ -13,7 +13,7 @@
   "diskusage": "*",
   "sprintf-js": "*",
   "uuid": "*",
-  "wrtc": "https://github.com/picam360/node-webrtc.git",
+  "wrtc": "https://github.com/picam360/node-webrtc.git#develop",
   "peerjs": "https://github.com/picam360/peerjs.git"
  }
 }
