@@ -19,6 +19,10 @@ var PT_STATUS = 100;
 var PT_CMD = 101;
 var PT_CAM_BASE = 110;
 
+var SIGNALING_HOST = "peer.picam360.com";
+var SIGNALING_PORT = 443;
+var SIGNALING_SECURE = true;
+
 function watchFile(filepath, oncreate, ondelete) {
 	var fs = require('fs'), path = require('path'), filedir = path
 		.dirname(filepath), filename = path.basename(filepath);
@@ -471,6 +475,9 @@ async
 				console.log("\n\n\n");
 				var Peer = require("peerjs");
 				var peer = new Peer(uuid, {
+					host : SIGNALING_HOST,
+					port : SIGNALING_PORT,
+					secure : SIGNALING_SECURE,
 					key : P2P_API_KEY,
 					debug : options.debug || 0
 				});
