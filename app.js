@@ -69,6 +69,7 @@ var memoryusage_start = 0;
 var GC_THRESH = 16 * 1024 * 1024;// 16MB
 var capture_if;
 var capture_process;
+var request_call = "";
 
 var http = null;
 
@@ -199,7 +200,11 @@ async
 				var pack_list = [];
 				for ( var name in statuses) {
 					if (statuses[name]) {
-						var value = statuses[name]();
+						var ret = statuses[name]();
+						if (!ret.succeeded) {
+							continue;
+						}
+						var value = ret.value;
 						var status = "<picam360:status name=\"" + name
 							+ "\" value=\"" + value + "\" />";
 						var pack = rtp
@@ -514,6 +519,25 @@ async
 					};
 					rtp_rx_watcher.push(watcher);
 					rtcp.add_peerconnection(conn);
+
+					var timeout = false;
+					conn.on('data', function(data) {
+						timeout = false;
+					});
+					var timer = setInterval(function() {
+						if (timeout) {
+							removeArray(rtp_rx_watcher, watcher);
+							clearInterval(timer);
+							console.log("p2p connection closed because timeout.");
+						} else {
+							timeout = true;
+						}
+					}, 10000);
+					conn.on('close', function() {
+						removeArray(rtp_rx_watcher, watcher);
+						clearInterval(timer);
+						console.log("p2p connection closed.");
+					});
 				});
 				peer.on('error', function(err) {
 					if (err.type == "network") {// disconnect
@@ -618,6 +642,8 @@ async
 							}
 						});
 					});
+				} else if (split[0] == "request_call") {
+					request_call = split[1];
 				}
 			}
 			setInterval(function() {
@@ -642,7 +668,30 @@ async
 			};
 
 			plugin_host.add_status("is_recording", function() {
-				return is_recording;
+				return {
+					succeeded : true,
+					value : is_recording
+				};
+			});
+
+			plugin_host.add_status("request_call", function() {
+				return {
+					succeeded : request_call != "",
+					value : request_call
+				};
+			});
+
+			plugin_host.add_status("p2p_num_of_members", function() {
+				var value = 0;
+				rtp_rx_watcher.forEach(function(watcher) {
+					if (watcher.conn) {
+						value++;
+					}
+				});
+				return {
+					succeeded : true,
+					value : value
+				};
 			});
 
 			callback(null);
