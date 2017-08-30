@@ -466,9 +466,26 @@ async
 				global.File = "file";
 				global.WebSocket = require("ws");
 				global.window = require("wrtc");
+				global.window.evt_listener = [];
 				global.window.postMessage = function(message, origin) {
 					console.log(message);
+					var event = {
+						source : global.window,
+						data : message,
+					};
+					if (global.window.evt_listener["message"]) {
+						global.window.evt_listener["message"].forEach(function(
+							callback) {
+							callback(event);
+						});
+					}
 				};
+				global.window.addEventListener = function(name, callback, bln) {
+					if (!global.window.evt_listener[name]) {
+						global.window.evt_listener[name] = [];
+					}
+					global.window.evt_listener[name].push(callback);
+				}
 				var uuid = options["wrtc_uuid"] || uuidv1();
 				console.log("\n\n\n");
 				console.log("webrtc uuid : " + uuid);
@@ -495,6 +512,13 @@ async
 					};
 					rtp_rx_watcher.push(watcher);
 					rtcp.add_peerconnection(conn);
+				});
+				peer.on('error', function(err) {
+					if (err.type == "network") {// disconnect
+						setTimeout(function() {
+							peer.reconnect();
+						}, 1000);
+					}
 				});
 			}
 			callback(null);
