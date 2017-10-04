@@ -60,6 +60,7 @@ var cmd2upstream_list = [];
 var cmd_list = [];
 var watches = [];
 var statuses = [];
+var filerequest_list = [];
 
 var is_recording = false;
 var framecount = 0;
@@ -170,14 +171,14 @@ async
 					}
 				});
 			// cmd from downstream
-			rtcp.set_callback(function(pack) {
-				if (pack.GetPayloadType() == 101) {
+			rtcp.set_callback(function(pack, socket) {
+				if (pack.GetPayloadType() == PT_CMD) {
 					var cmd = pack.GetPacketData().toString('ascii', pack
 						.GetHeaderLength());
 					var split = cmd.split('\"');
 					var id = split[1];
 					var value = split[3];
-					plugin_host.send_command(value);
+					plugin_host.send_command(value, socket);
 					if (options.debug >= 5) {
 						console.log("cmd got :" + cmd);
 					}
@@ -189,7 +190,8 @@ async
 					var value = cmd2upstream_list.shift();
 					var cmd = "<picam360:command id=\"" + rtcp_command_id
 						+ "\" value=\"" + value + "\" />";
-					var pack = rtcp.build_packet(new Buffer(cmd, 'ascii'), 101);
+					var pack = rtcp
+						.build_packet(new Buffer(cmd, 'ascii'), PT_CMD);
 					rtcp.sendpacket(pack, 9005, "127.0.0.1");
 
 					rtcp_command_id++;
@@ -341,7 +343,7 @@ async
 							+ '.jpeg';
 						var cmd = CAPTURE_DOMAIN + 'snap -0 -o /tmp/'
 							+ filename;
-						plugin_host.send_command(cmd);
+						plugin_host.send_command(cmd, socket);
 						console.log(cmd);
 						watchFile('/tmp/' + filename, function() {
 							console.log(filename + ' saved.');
@@ -359,7 +361,7 @@ async
 							return;
 						var cmd = CAPTURE_DOMAIN
 							+ 'start_record -0 -o /tmp/movie.h264';
-						plugin_host.send_command(cmd);
+						plugin_host.send_command(cmd, socket);
 						console.log(cmd);
 						// console.log("camera
 						// recording
@@ -375,7 +377,7 @@ async
 						.on("stop_record", function(callback) {
 							is_recording = false;
 							var cmd = CAPTURE_DOMAIN + 'stop_record -0';
-							plugin_host.send_command(cmd);
+							plugin_host.send_command(cmd, socket);
 							console.log(cmd);
 							var filename = moment().format('YYYYMMDD_hhmmss')
 								+ '.mp4';
@@ -394,7 +396,7 @@ async
 								+ '.jpeg';
 							var cmd = CAPTURE_DOMAIN
 								+ 'snap -E -W 3072 -H 1536 -o /tmp/' + filename;
-							plugin_host.send_command(cmd);
+							plugin_host.send_command(cmd, socket);
 							console.log(cmd);
 							watchFile('/tmp/' + filename, function() {
 								console.log(filename + ' saved.');
@@ -528,7 +530,8 @@ async
 						if (timeout) {
 							removeArray(rtp_rx_watcher, watcher);
 							clearInterval(timer);
-							console.log("p2p connection closed because timeout.");
+							console
+								.log("p2p connection closed because timeout.");
 						} else {
 							timeout = true;
 						}
@@ -581,13 +584,19 @@ async
 				});
 			}
 			// cmd handling
-			function command_handler(value) {
+			function command_handler(value, socket) {
 				var split = value.split(' ');
-				if (split[0] == "snap") {
+				if (split[0] == "get_file") {
+					filerequest_list.push({
+						filename : split[1],
+						key : split[2],
+						socket : socket
+					});
+				} else if (split[0] == "snap") {
 					var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
 					var filepath = 'userdata/' + filename;
 					var cmd = CAPTURE_DOMAIN + 'snap -0 -o /tmp/' + filename;
-					plugin_host.send_command(cmd);
+					plugin_host.send_command(cmd, socket);
 					console.log(cmd);
 					watchFile('/tmp/' + filename, function() {
 						console.log(filename + ' saved.');
@@ -615,7 +624,7 @@ async
 						return;
 					var cmd = CAPTURE_DOMAIN
 						+ 'start_record -0 -o /tmp/movie.h264';
-					plugin_host.send_command(cmd);
+					plugin_host.send_command(cmd, socket);
 					console.log(cmd);
 					is_recording = true;
 					frame_duration = duration;
@@ -623,7 +632,7 @@ async
 				} else if (split[0] == "stop_record") {
 					is_recording = false;
 					var cmd = CAPTURE_DOMAIN + 'stop_record -0';
-					plugin_host.send_command(cmd);
+					plugin_host.send_command(cmd, socket);
 					console.log(cmd);
 					var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
 					var filepath = 'userdata/' + filename;
@@ -646,18 +655,48 @@ async
 					request_call = split[1];
 				}
 			}
+			function filerequest_handler(filename, key, socket) {
+				fs.readFile("www/" + filename, function(err, data) {
+					var header_str;
+					if (err) {
+						var header_str = "<picam360:file name=\"" + filename
+							+ "\" key=\"" + key + "\" status=\"404\" />";
+						data = new Buffer(0);
+						console.log("unknown :" + filename + ":" + key);
+					} else {
+						var header_str = "<picam360:file name=\"" + filename
+							+ "\" key=\"" + key
+							+ "\" status=\"200\" seq=\"0\" eof=\"true\" />";
+					}
+					var header = new Buffer(header_str, 'ascii');
+					var len = 2 + header.length + data.length;
+					var buffer = new Buffer(len);
+					buffer.writeUInt16BE(header.length, 0);
+					header.copy(buffer, 2);
+					data.copy(buffer, 2 + header.length);
+					var pack = rtp.build_packet(buffer, PT_FILE);
+					rtp.sendpacket(socket, pack);
+				});
+			}
 			setInterval(function() {
 				if (cmd_list.length) {
-					var value = cmd_list.shift();
-					command_handler(value);
+					var cmd = cmd_list.shift();
+					command_handler(cmd.value, cmd.socket);
+				}
+				if (filerequest_list.length) {
+					var filerequest = filerequest_list.shift();
+					filerequest_handler(filerequest.filename, filerequest.key, filerequest.socket);
 				}
 			}, 20);
-			plugin_host.send_command = function(value) {
+			plugin_host.send_command = function(value, socket) {
 				if (value.startsWith(UPSTREAM_DOMAIN)) {
 					cmd2upstream_list
 						.push(value.substr(UPSTREAM_DOMAIN.length));
 				} else {
-					cmd_list.push(value);
+					cmd_list.push({
+						value : value,
+						socket : socket
+					});
 				}
 			};
 			plugin_host.add_watch = function(name, callback) {

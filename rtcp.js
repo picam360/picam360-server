@@ -67,7 +67,7 @@ function add_websocket(ws) {
 	}
 	ws.on("rtcp", function(buff) {
 		if (callback) {
-			callback(PacketHeader(buff));
+			callback(PacketHeader(buff), ws);
 		}
 	});
 }
@@ -78,7 +78,7 @@ function add_peerconnection(conn) {
 	}
 	conn.on('data', function(data) {
 		if (callback) {
-			callback(PacketHeader(new Buffer(data)));
+			callback(PacketHeader(new Buffer(data)), conn);
 		}
 	});
 }
