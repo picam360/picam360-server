@@ -61,24 +61,16 @@ function set_callback(_callback) {
 	callback = _callback;
 }
 
-function add_websocket(ws) {
+function add_connection(ws) {
 	if (!ws) {
 		return;
 	}
-	ws.on("rtcp", function(buff) {
+	ws.on("data", function(buff) {
 		if (callback) {
+			if (buff.constructor.name != "Buffer") {
+				buff = new Buffer(buff);
+			}
 			callback(PacketHeader(buff), ws);
-		}
-	});
-}
-
-function add_peerconnection(conn) {
-	if (!conn) {
-		return;
-	}
-	conn.on('data', function(data) {
-		if (callback) {
-			callback(PacketHeader(new Buffer(data)), conn);
 		}
 	});
 }
@@ -89,7 +81,6 @@ function sendpacket(pack, port, ip) {
 }
 
 exports.set_callback = set_callback;
-exports.add_websocket = add_websocket;
-exports.add_peerconnection = add_peerconnection;
+exports.add_connection = add_connection;
 exports.build_packet = build_packet;
 exports.sendpacket = sendpacket;
