@@ -657,11 +657,12 @@ async
 
 			plugin_host.add_status("p2p_num_of_members", function() {
 				var value = 0;
-				rtp_rx_watcher.forEach(function(watcher) {
+				for (var i = 0; i < rtp_rx_watcher.length; i++) {
+					var watcher = rtp_rx_watcher[i];
 					if (watcher.conn.peerConnection) { // webrtc
 						value++;
 					}
-				});
+				}
 				return {
 					succeeded : true,
 					value : value
