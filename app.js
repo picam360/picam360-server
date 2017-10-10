@@ -108,11 +108,11 @@ async
 
 			rtp.add_watcher = function(conn) {
 				var ip;
-				if (conn.constructor.name == "Socket") {
+				if (conn.peerConnection) { // webrtc
+					ip = " via webrtc";
+				} else {
 					ip = (conn.request.headers['x-forwarded-for'] || conn.request.connection.remoteAddress)
 						+ " via websocket";
-				} else {
-					ip = " via webrtc";
 				}
 				if (rtp_rx_watcher.length >= 2) {// exceed client
 					console.log("exceeded_num_of_clients : " + ip);
@@ -658,7 +658,7 @@ async
 			plugin_host.add_status("p2p_num_of_members", function() {
 				var value = 0;
 				rtp_rx_watcher.forEach(function(watcher) {
-					if (watcher.conn.constructor.name == "p2p") {// TODO
+					if (watcher.conn.peerConnection) { // webrtc
 						value++;
 					}
 				});
