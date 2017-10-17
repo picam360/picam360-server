@@ -139,12 +139,16 @@ async
 				rtp_rx_watcher.push(watcher);
 
 				plugin_host.send_command(UPSTREAM_DOMAIN
-					+ "create_frame -P -w 640 -h 640 -s h264 -f 10", conn);
+					+ "create_frame -P -w 640 -h 640 -s h264 -f 5", conn);
 
 				watcher.timer = setInterval(function() {
 					if (watcher.timeout) {
 						console.log("timeout");
-						rtp.remove_watcher(conn);
+						if (conn.peerConnection) { // webrtc
+							conn.close();
+						} else {
+							conn.disconnect(true);
+						}
 					} else {
 						watcher.timeout = true;
 					}
@@ -668,6 +672,9 @@ async
 					value : value
 				};
 			});
+
+			// delete all frame
+			plugin_host.send_command(UPSTREAM_DOMAIN + "delete_frame -i *");
 
 			callback(null);
 		}], function(err, result) {
