@@ -106,6 +106,18 @@ async
 			var num_of_frame = 0;
 			var fps = 0;
 
+			rtp.send_error = function(conn, err) {
+				setTimeout(function() {
+					var name = "error";
+					var value = err;
+					var status = "<picam360:status name=\"" + name
+						+ "\" value=\"" + value + "\" />";
+					var pack = rtp
+						.build_packet(new Buffer(status, 'ascii'), 100);
+					rtp.sendpacket(conn, pack);
+				}, 1000);
+			}
+
 			rtp.add_watcher = function(conn) {
 				var ip;
 				if (conn.peerConnection) { // webrtc
@@ -116,8 +128,7 @@ async
 				}
 				if (rtp_rx_watcher.length >= 2) {// exceed client
 					console.log("exceeded_num_of_clients : " + ip);
-					// TODO:need to send error
-					// conn.emit("custom_error", "exceeded_num_of_clients");
+					rtp.send_error(conn, "exceeded_num_of_clients");
 					return;
 				} else {
 					console.log("connection opend : " + ip);
@@ -149,6 +160,7 @@ async
 				watcher.timer = setInterval(function() {
 					if (watcher.timeout) {
 						console.log("timeout");
+						rtp.remove_watcher(conn);
 						if (conn.peerConnection) { // webrtc
 							conn.close();
 						} else {
@@ -252,15 +264,15 @@ async
 											target_fps = watcher.fps + 1;
 										}
 										target_fps = Math.min(Math
-											.max(target_fps, 1), 30);
+											.max(target_fps, 1), 10);
 										var cmd = UPSTREAM_DOMAIN
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
-//										console.log("fps:" + watcher.fps
-//											+ ",ttl:" + watcher.ttl
-//											+ ",min_ttl:" + watcher.min_ttl
-//											+ ",stack_fps:" + stack_fps
-//											+ ",target_fps:" + target_fps);
+										// console.log("fps:" + watcher.fps
+										// + ",ttl:" + watcher.ttl
+										// + ",min_ttl:" + watcher.min_ttl
+										// + ",stack_fps:" + stack_fps
+										// + ",target_fps:" + target_fps);
 										plugin_host
 											.send_command(cmd, watcher.conn);
 									}
