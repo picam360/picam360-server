@@ -145,7 +145,7 @@ async
 
 				plugin_host
 					.send_command(UPSTREAM_DOMAIN
-						+ "create_frame -P -w 640 -h 640 -s h264 -f 5 -k 800", conn);
+						+ "create_frame -P -w 640 -h 640 -s h264 -f 5", conn);
 
 				watcher.timer = setInterval(function() {
 					if (watcher.timeout) {
@@ -207,23 +207,12 @@ async
 				for (var i = rtp_rx_watcher.length - 1; i >= 0; i--) {
 					var watcher = rtp_rx_watcher[i];
 					if (watcher.conn === conn) {
-						// to minimize ttl
-						// and miximize fps
-						var target_fps = watcher.fps + 1;
-						var target_ttl = (watcher.ttl + watcher.min_ttl) / 2;
-						var limit = Math.ceil(target_fps * target_ttl);
-						if (watcher.frame_queue.length > limit) {
-							return false;
-						} else {
-							watcher.frame_queue.push({
-								server_key : server_key,
-								base_time : now
-							});
-							return true;
-						}
+						watcher.frame_queue.push({
+							server_key : server_key,
+							base_time : now
+						});
 					}
 				}
-				return false;
 			}
 
 			rtp.pop_frame_queue = function(server_key, conn) {
@@ -253,6 +242,14 @@ async
 											* 0.1;
 										watcher.tmp_num = watcher.frame_num;
 										watcher.tmp_time = now;
+
+										var target_fps = Math
+											.min(watcher.fps + 1, 30);
+										var cmd = UPSTREAM_DOMAIN
+											+ "set_fps -i " + watcher.frame_id
+											+ " -f " + target_fps;
+										plugin_host
+											.send_command(cmd, watcher.conn);
 									}
 								}
 								watcher.frame_queue = watcher.frame_queue
@@ -335,14 +332,12 @@ async
 									}
 								}
 								// image to downstream
-								var need_to_send = true;
 								if (server_key) {
 									need_to_send = rtp
 										.push_frame_queue(server_key, conn);
 								}
-								if (need_to_send) {
-									rtp._sendpacket(active_frame, conn);
-								}
+								rtp._sendpacket(active_frame, conn);
+
 								active_frame = null;
 								// console.log("active_frame");
 								num_of_frame++;
