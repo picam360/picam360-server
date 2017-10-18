@@ -143,9 +143,8 @@ async
 				rtcp.add_connection(conn);
 				rtp_rx_watcher.push(watcher);
 
-				plugin_host
-					.send_command(UPSTREAM_DOMAIN
-						+ "create_frame -P -w 640 -h 640 -s h264 -f 5", conn);
+				plugin_host.send_command(UPSTREAM_DOMAIN
+					+ "create_frame -P -w 640 -h 640 -s h264 -f 5", conn);
 
 				watcher.timer = setInterval(function() {
 					if (watcher.timeout) {
@@ -243,11 +242,25 @@ async
 										watcher.tmp_num = watcher.frame_num;
 										watcher.tmp_time = now;
 
-										var target_fps = Math
-											.min(watcher.fps + 1, 30);
+										var target_ttl = (watcher.ttl + watcher.min_ttl) / 2;
+										var stack_fps = (watcher.frame_queue.length - (j + 1))
+											/ target_ttl;
+										var target_fps;
+										if (stack_fps > watcher.fps) {
+											target_fps = watcher.fps - 1;
+										} else {
+											target_fps = watcher.fps + 1;
+										}
+										target_fps = Math.min(Math
+											.max(target_fps, 1), 30);
 										var cmd = UPSTREAM_DOMAIN
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
+//										console.log("fps:" + watcher.fps
+//											+ ",ttl:" + watcher.ttl
+//											+ ",min_ttl:" + watcher.min_ttl
+//											+ ",stack_fps:" + stack_fps
+//											+ ",target_fps:" + target_fps);
 										plugin_host
 											.send_command(cmd, watcher.conn);
 									}
