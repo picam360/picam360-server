@@ -239,7 +239,8 @@ async
 									watcher.ttl = watcher.ttl * 0.9 + value
 										* 0.1;
 									if (watcher.ttl < watcher.min_ttl) {
-										watcher.min_ttl = watcher.ttl;
+										watcher.min_ttl = watcher.min_ttl * 0.9
+											+ watcher.ttl * 0.1;
 									}
 								}
 								{// fps
