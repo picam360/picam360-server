@@ -126,8 +126,13 @@ async
 				var watcher = {
 					ip : ip,
 					conn : conn,
-					active_frame_count : 0,
-					skip_count : 0,
+					frame_queue : [],
+					fps : 5,
+					ttl : 1.0,
+					min_ttl : 1.0,
+					frame_num : 0,
+					tmp_num : 0,
+					tmp_time : 0,
 					frame_id : upstream_next_frame_id,
 					timeout : false
 				};
@@ -138,8 +143,9 @@ async
 				rtcp.add_connection(conn);
 				rtp_rx_watcher.push(watcher);
 
-				plugin_host.send_command(UPSTREAM_DOMAIN
-					+ "create_frame -P -w 640 -h 640 -s h264 -f 5", conn);
+				plugin_host
+					.send_command(UPSTREAM_DOMAIN
+						+ "create_frame -P -w 640 -h 640 -s h264 -f 5 -k 800", conn);
 
 				watcher.timer = setInterval(function() {
 					if (watcher.timeout) {
@@ -187,19 +193,75 @@ async
 			}
 
 			rtp._sendpacket = function(pack_list, conn) {
-				rtp_rx_watcher.forEach(function(watcher) {
+				for (var i = rtp_rx_watcher.length - 1; i >= 0; i--) {
+					var watcher = rtp_rx_watcher[i];
 					if (conn && conn != watcher.conn) {
-						return;
+						continue;
 					}
-					if (watcher.active_frame_count < 5) {
-						// watcher.skip_count = 0;
-						// watcher.active_frame_count++;
-						rtp.sendpacket(watcher.conn, pack_list);
-						// watcher.active_frame_count--;
-					} else {
-						watcher.skip_count++;
+					rtp.sendpacket(watcher.conn, pack_list);
+				}
+			}
+
+			rtp.push_frame_queue = function(server_key, conn) {
+				var now = new Date().getTime();
+				for (var i = rtp_rx_watcher.length - 1; i >= 0; i--) {
+					var watcher = rtp_rx_watcher[i];
+					if (watcher.conn === conn) {
+						// to minimize ttl
+						// and miximize fps
+						var target_fps = watcher.fps + 1;
+						var target_ttl = (watcher.ttl + watcher.min_ttl) / 2;
+						var limit = Math.ceil(target_fps * target_ttl);
+						if (watcher.frame_queue.length > limit) {
+							return false;
+						} else {
+							watcher.frame_queue.push({
+								server_key : server_key,
+								base_time : now
+							});
+							return true;
+						}
 					}
-				});
+				}
+				return false;
+			}
+
+			rtp.pop_frame_queue = function(server_key, conn) {
+				var now = new Date().getTime();
+				for (var i = rtp_rx_watcher.length - 1; i >= 0; i--) {
+					var watcher = rtp_rx_watcher[i];
+					if (watcher.conn === conn) {
+						for (var j = 0; j < watcher.frame_queue.length; j++) {
+							if (watcher.frame_queue[j].server_key == server_key) {
+								watcher.frame_num++;
+								{// ttl
+									var value = (now - watcher.frame_queue[j].base_time) / 1000.0;
+									watcher.ttl = watcher.ttl * 0.9 + value
+										* 0.1;
+									if (watcher.ttl < watcher.min_ttl) {
+										watcher.min_ttl = watcher.ttl;
+									}
+								}
+								{// fps
+									if (watcher.tmp_time == 0) {
+										watcher.tmp_time = now;
+									} else if (now - watcher.tmp_time > 200) {
+										var value = (watcher.frame_num - watcher.tmp_num)
+											* 1000 / (now - watcher.tmp_time);
+										watcher.fps = watcher.fps * 0.9 + value
+											* 0.1;
+										watcher.tmp_num = watcher.frame_num;
+										watcher.tmp_time = now;
+									}
+								}
+								watcher.frame_queue = watcher.frame_queue
+									.slice(j + 1);
+								break;
+							}
+						}
+					}
+				}
+				return false;
 			}
 
 			// image from upstream
@@ -251,6 +313,7 @@ async
 							if ((data[data_len - 2] == 0xFF && data[data_len - 1] == 0xD9)
 								|| (data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)) { // EOI
 								var conn;
+								var server_key;
 								if (data[data_len - 2] == 0x4C
 									&& data[data_len - 1] == 0x55) {
 									if ((active_frame[0][header_len + 2 + 4] & 0x1f) == 6) {// sei
@@ -262,15 +325,21 @@ async
 											var separator = (/[=,\"]/);
 											var _split = split[i]
 												.split(separator);
-											if (_split[0] == "frame_id") { // view
-												// quaternion
+											if (_split[0] == "frame_id") {
 												conn = rtp.get_conn(_split[2]);
+											} else if (_split[0] == "server_key") {
+												server_key = _split[2];
 											}
 										}
 									}
 								}
-								if (conn) {
-									// image to downstream
+								// image to downstream
+								var need_to_send = true;
+								if (server_key) {
+									need_to_send = rtp
+										.push_frame_queue(server_key, conn);
+								}
+								if (need_to_send) {
 									rtp._sendpacket(active_frame, conn);
 								}
 								active_frame = null;
@@ -521,6 +590,17 @@ async
 					if (id) {
 						var cmd = CAPTURE_DOMAIN + value + " id=" + id;
 						plugin_host.send_command(cmd, conn);
+
+						var server_key;
+						var split = value.split(' ');
+						for (var i = 0; i < split.length; i++) {
+							var separator = (/[=,\"]/);
+							var _split = split[i].split(separator);
+							if (_split[0] == "server_key") {
+								server_key = _split[1];
+								rtp.pop_frame_queue(server_key, conn);
+							}
+						}
 					}
 				} else if (split[0] == "snap") {
 					var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
