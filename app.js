@@ -143,6 +143,7 @@ async
 					min_ttl : 1.0,
 					frame_num : 0,
 					tmp_num : 0,
+					tmp_ttl : 0,
 					tmp_time : 0,
 					frame_id : upstream_next_frame_id,
 					timeout : false
@@ -154,8 +155,14 @@ async
 				rtcp.add_connection(conn);
 				rtp_rx_watcher.push(watcher);
 
-				plugin_host.send_command(UPSTREAM_DOMAIN
-					+ "create_frame -P -w 640 -h 640 -s h264 -f 5", conn);
+				var create_frame_cmd = sprintf("create_frame -P -w %d -h %d -s %s -f %d", options.frame_width || 640, options.frame_height || 640, options.frame_encode
+					|| "h264", options.frame_fps || 5);
+				if (options.frame_bitrate) {
+					create_frame_cmd += " -k " + options.frame_bitrate;
+				}
+				console.log(create_frame_cmd);
+				plugin_host
+					.send_command(UPSTREAM_DOMAIN + create_frame_cmd, conn);
 
 				watcher.timer = setInterval(function() {
 					if (watcher.timeout) {
@@ -236,35 +243,44 @@ async
 								watcher.frame_num++;
 								{// ttl
 									var value = (now - watcher.frame_queue[j].base_time) / 1000.0;
-									watcher.ttl = watcher.ttl * 0.9 + value
-										* 0.1;
-									if (watcher.ttl < watcher.min_ttl) {
-										watcher.min_ttl = watcher.min_ttl * 0.9
-											+ watcher.ttl * 0.1;
-									}
+									watcher.tmp_ttl += watcher.ttl;
 								}
 								{// fps
 									if (watcher.tmp_time == 0) {
 										watcher.tmp_time = now;
-									} else if (now - watcher.tmp_time > 200) {
-										var value = (watcher.frame_num - watcher.tmp_num)
-											* 1000 / (now - watcher.tmp_time);
-										watcher.fps = watcher.fps * 0.9 + value
+									} else if (watcher.frame_num
+										- watcher.tmp_num > 5) {
+										var frame_num = watcher.frame_num
+											- watcher.tmp_num;
+										var fps = frame_num * 1000
+											/ (now - watcher.tmp_time);
+										watcher.fps = watcher.fps * 0.9 + fps
 											* 0.1;
+										var ttl = watcher.tmp_ttl / frame_num;
+										watcher.ttl = watcher.ttl * 0.9 + value
+											* 0.1;
+										if (watcher.ttl < watcher.min_ttl) {
+											watcher.min_ttl = watcher.ttl;
+										}
 										watcher.tmp_num = watcher.frame_num;
+										watcher.tmp_ttl = 0;
 										watcher.tmp_time = now;
 
 										var target_ttl = (watcher.ttl + watcher.min_ttl) / 2;
 										var stack_fps = (watcher.frame_queue.length - (j + 1))
 											/ target_ttl;
 										var target_fps;
-										if (stack_fps > watcher.fps) {
-											target_fps = watcher.fps - 1;
+										var offset = 0.1;
+										if (stack_fps > watcher.fps
+											|| watcher.ttl > (watcher.min_ttl + offset) * 2) {
+											target_fps = watcher.fps
+												- (watcher.ttl - (watcher.min_ttl + offset))
+												/ (watcher.min_ttl + offset);
 										} else {
-											target_fps = watcher.fps + 1;
+											target_fps = watcher.fps + 0.25;
 										}
-										target_fps = Math.min(Math
-											.max(target_fps, 1), 10);
+										target_fps = Math
+											.min(Math.max(target_fps, 1), options.max_fps || 10);
 										var cmd = UPSTREAM_DOMAIN
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
