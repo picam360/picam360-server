@@ -67,8 +67,6 @@ var upstream_info = "";
 var upstream_menu = "";
 
 var is_recording = false;
-var frame_duration = 0;
-var last_frame_date = null;
 var memoryusage_start = 0;
 var GC_THRESH = 16 * 1024 * 1024;// 16MB
 var capture_if;
@@ -158,7 +156,8 @@ async
 				rtcp.add_connection(conn);
 				rtp_rx_watcher.push(watcher);
 
-				var create_frame_cmd = sprintf("create_frame -P -w %d -h %d -s %s -f %d", options.frame_width || 640, options.frame_height || 640, options.frame_encode
+				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
+					|| "WINDOW", options.frame_width || 640, options.frame_height || 640, options.frame_encode
 					|| "h264", options.frame_fps || 5);
 				if (options.frame_bitrate) {
 					create_frame_cmd += " -k " + options.frame_bitrate;
@@ -670,93 +669,134 @@ async
 						}
 					}
 				} else if (split[0] == "snap") {
-					var filename = moment().format('YYYYMMDD_hhmmss') + '.jpeg';
-					var filepath = 'userdata/' + filename;
-					var cmd = CAPTURE_DOMAIN + 'snap -0 -o /tmp/' + filename;
-					plugin_host.send_command(cmd, conn);
-					console.log(cmd);
-					watchFile('/tmp/' + filename, function() {
-						console.log(filename + ' saved.');
-						var rm_cmd = 'mv' + ' /tmp/' + filename + ' '
-							+ filepath;
-						var cmd = rm_cmd;
+					var id = rtp.get_frame_id(conn);
+					if (id) {
+						var key = split[1];
+						var filename = moment().format('YYYYMMDD_hhmmss')
+							+ '.jpeg';
+						var filepath = 'userdata/' + filename;
+						var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
+							+ ' -m WINDOW';
+						plugin_host.send_command(cmd, conn);
+						cmd = CAPTURE_DOMAIN + 'snap -i ' + id + ' -o /tmp/'
+							+ filename;
+						plugin_host.send_command(cmd, conn);
 						console.log(cmd);
-						child_process
-							.exec(cmd, function() {
+						watchFile('/tmp/' + filename, function() {
+							var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
+								+ ' -m ' + (options.frame_mode || "WINDOW");
+							plugin_host.send_command(cmd, conn);
+
+							console.log(filename + ' saved.');
+							var rm_cmd = 'mv' + ' /tmp/' + filename + ' '
+								+ filepath;
+							var cmd = rm_cmd;
+							console.log(cmd);
+							child_process.exec(cmd, function() {
 								// callback(filename);
-								fs
-									.readFile(filepath, function(err, data) {
-										if (err) {
-											console.log("not found :"
-												+ filepath);
-										} else {
-											rtp
-												._sendpacket(build_packet(data, PT_FILE), conn);
-											console.log("send :" + filepath);
-										}
-									});
-							});
-					});
-				} else if (split[0] == "start_record") {
-					if (is_recording)
-						return;
-					var cmd = CAPTURE_DOMAIN
-						+ 'start_record -0 -o /tmp/movie.h264';
-					plugin_host.send_command(cmd, conn);
-					console.log(cmd);
-					is_recording = true;
-					frame_duration = duration;
-					last_frame_date = null;
-				} else if (split[0] == "stop_record") {
-					is_recording = false;
-					var cmd = CAPTURE_DOMAIN + 'stop_record -0';
-					plugin_host.send_command(cmd, conn);
-					console.log(cmd);
-					var filename = moment().format('YYYYMMDD_hhmmss') + '.mp4';
-					var filepath = 'userdata/' + filename;
-					var ffmpeg_cmd = 'ffmpeg -y -r 10 -i /tmp/movie.h264 -c:v copy '
-						+ filepath;
-					var delh264_cmd = 'rm /tmp/movie.h264';
-					var cmd = ffmpeg_cmd + ' ; ' + delh264_cmd;
-					console.log(cmd);
-					child_process
-						.exec(cmd, function() {
-							fs
-								.readFile(filepath, function(err, data) {
+								fs.readFile(filepath, function(err, data) {
 									if (err) {
 										console.log("not found :" + filepath);
 									} else {
-										rtp
-											._sendpacket(build_packet(data, PT_FILE), conn);
+										send_file(filename, key, conn, data);
 										console.log("send :" + filepath);
 									}
 								});
+							});
 						});
+					}
+				} else if (split[0] == "start_record") {
+					if (is_recording)
+						return;
+					var id = rtp.get_frame_id(conn);
+					if (id) {
+						var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
+							+ ' -m WINDOW';
+						plugin_host.send_command(cmd, conn);
+
+						cmd = CAPTURE_DOMAIN + 'start_record -i ' + id
+							+ ' -o /tmp/movie.h264';
+						plugin_host.send_command(cmd, conn);
+						console.log(cmd);
+						is_recording = true;
+					}
+				} else if (split[0] == "stop_record") {
+					var id = rtp.get_frame_id(conn);
+					if (id) {
+						is_recording = false;
+
+						var key = split[1];
+						var cmd = CAPTURE_DOMAIN + 'stop_record -i ' + id;
+						plugin_host.send_command(cmd, conn);
+						console.log(cmd);
+						var filename = moment().format('YYYYMMDD_hhmmss')
+							+ '.mp4';
+						var filepath = 'userdata/' + filename;
+						var ffmpeg_cmd = 'ffmpeg -y -r 10 -i /tmp/movie.h264 -c:v copy '
+							+ filepath;
+						var delh264_cmd = 'rm /tmp/movie.h264';
+						var cmd = ffmpeg_cmd + ' ; ' + delh264_cmd;
+						console.log(cmd);
+						child_process.exec(cmd, function() {
+							var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
+								+ ' -m ' + (options.frame_mode || "WINDOW");
+							plugin_host.send_command(cmd, conn);
+							fs.readFile(filepath, function(err, data) {
+								if (err) {
+									console.log("not found :" + filepath);
+								} else {
+									send_file(filename, key, conn, data);
+									console.log("send :" + filepath);
+								}
+							});
+						});
+					}
 				} else if (split[0] == "request_call") {
 					m_request_call = split[1];
 				}
 			}
+
+			function send_file(filename, key, conn, data) {
+				var chunksize = 63 * 1024;
+				var length;
+				for (var i = 0, seq = 0; i < data.length; i += length, seq++) {
+					var eof;
+					if (i + chunksize >= data.length) {
+						eof = true;
+						length = data.length - i;
+					} else {
+						eof = false;
+						length = chunksize;
+					}
+					var header_str = sprintf("<picam360:file name=\"%s\" key=\"%s\" status=\"200\" seq=\"%d\" eof=\"%s\" />", filename, key, seq, eof
+						.toString());
+					var header = new Buffer(header_str, 'ascii');
+					var len = 2 + header.length + length;
+					var buffer = new Buffer(len);
+					buffer.writeUInt16BE(header.length, 0);
+					header.copy(buffer, 2);
+					data.copy(buffer, 2 + header.length, i, i + length);
+					var pack = rtp.build_packet(buffer, PT_FILE);
+					rtp.sendpacket(conn, pack);
+				}
+			}
 			function filerequest_handler(filename, key, conn) {
 				fs.readFile("www/" + filename, function(err, data) {
-					var header_str;
 					if (err) {
 						var header_str = "<picam360:file name=\"" + filename
 							+ "\" key=\"" + key + "\" status=\"404\" />";
 						data = new Buffer(0);
 						console.log("unknown :" + filename + ":" + key);
+						var header = new Buffer(header_str, 'ascii');
+						var len = 2 + header.length;
+						var buffer = new Buffer(len);
+						buffer.writeUInt16BE(header.length, 0);
+						header.copy(buffer, 2);
+						var pack = rtp.build_packet(buffer, PT_FILE);
+						rtp.sendpacket(conn, pack);
 					} else {
-						var header_str = "<picam360:file name=\"" + filename
-							+ "\" key=\"" + key
-							+ "\" status=\"200\" seq=\"0\" eof=\"true\" />";
+						send_file(ilename, key, conn, data);
 					}
-					var header = new Buffer(header_str, 'ascii');
-					var len = 2 + header.length + data.length;
-					var buffer = new Buffer(len);
-					buffer.writeUInt16BE(header.length, 0);
-					header.copy(buffer, 2);
-					data.copy(buffer, 2 + header.length);
-					var pack = rtp.build_packet(buffer, PT_FILE);
-					rtp.sendpacket(conn, pack);
 				});
 			}
 			setInterval(function() {
