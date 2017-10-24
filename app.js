@@ -63,6 +63,9 @@ var statuses = [];
 var filerequest_list = [];
 
 var upstream_next_frame_id = 0;
+var upstream_info = "";
+var upstream_menu = "";
+
 var is_recording = false;
 var frame_duration = 0;
 var last_frame_date = null;
@@ -333,16 +336,29 @@ async
 							} else if (data[j] == end_code) {
 								var str = String.fromCharCode.apply("", data
 									.subarray(start, j + 1), 0);
-								var split = str.split(' ');
 								var name;
 								var value;
-								for (var i = 0; i < split.length; i++) {
-									var separator = (/[=,\"]/);
-									var _split = split[i].split(separator);
-									if (_split[0] == "name") {
-										name = _split[2];
-									} else if (_split[0] == "value") {
-										value = _split[2];
+								var last_spece = -1;
+								var first_dq = -1;
+								for (var i = 0; i < str.length; i++) {
+									if (first_dq < 0 && str[i] == ' ') {
+										last_spece = i;
+									} else if (str[i] == '\"') {
+										if (first_dq < 0) {
+											first_dq = i;
+										} else {
+											var tag = str
+												.slice(last_spece + 1, first_dq - 1);
+											if (tag == "name") {
+												name = str
+													.slice(first_dq + 1, i);
+											} else if (tag == "value") {
+												value = str
+													.slice(first_dq + 1, i);
+											}
+											last_spece = -1;
+											first_dq = -1;
+										}
 									}
 								}
 								if (name && watches[name]) {
@@ -776,6 +792,14 @@ async
 				upstream_next_frame_id = value;
 			});
 
+			plugin_host.add_watch(UPSTREAM_DOMAIN + "info", function(value) {
+				upstream_info = value;
+			});
+
+			plugin_host.add_watch(UPSTREAM_DOMAIN + "menu", function(value) {
+				upstream_menu = value;
+			});
+
 			plugin_host.add_status("is_recording", function() {
 				return {
 					succeeded : true,
@@ -794,6 +818,20 @@ async
 				return {
 					succeeded : true,
 					value : rtp.p2p_num_of_members()
+				};
+			});
+
+			plugin_host.add_status("info", function() {
+				return {
+					succeeded : upstream_info != "",
+					value : upstream_info
+				};
+			});
+
+			plugin_host.add_status("menu", function() {
+				return {
+					succeeded : upstream_menu != "",
+					value : upstream_menu
 				};
 			});
 
