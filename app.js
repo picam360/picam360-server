@@ -70,7 +70,7 @@ var memoryusage_start = 0;
 var GC_THRESH = 16 * 1024 * 1024;// 16MB
 var capture_if;
 var capture_process;
-var request_call = "";
+var m_request_call = "";
 
 var http = null;
 
@@ -192,6 +192,9 @@ async
 						rtp_rx_watcher.splice(i, 1);
 					}
 				}
+				if (rtp.p2p_num_of_members() <= 1) { // reset request_call
+					m_request_call = "";
+				}
 			}
 
 			rtp.get_frame_id = function(conn) {
@@ -301,6 +304,17 @@ async
 					}
 				}
 				return false;
+			}
+
+			rtp.p2p_num_of_members = function() {
+				var value = 0;
+				for (var i = 0; i < rtp_rx_watcher.length; i++) {
+					var watcher = rtp_rx_watcher[i];
+					if (watcher.conn.peerConnection) { // webrtc
+						value++;
+					}
+				}
+				return value;
 			}
 
 			// image from upstream
@@ -703,7 +717,7 @@ async
 								});
 						});
 				} else if (split[0] == "request_call") {
-					request_call = split[1];
+					m_request_call = split[1];
 				}
 			}
 			function filerequest_handler(filename, key, conn) {
@@ -771,22 +785,15 @@ async
 
 			plugin_host.add_status("request_call", function() {
 				return {
-					succeeded : request_call != "",
-					value : request_call
+					succeeded : m_request_call != "",
+					value : m_request_call
 				};
 			});
 
 			plugin_host.add_status("p2p_num_of_members", function() {
-				var value = 0;
-				for (var i = 0; i < rtp_rx_watcher.length; i++) {
-					var watcher = rtp_rx_watcher[i];
-					if (watcher.conn.peerConnection) { // webrtc
-						value++;
-					}
-				}
 				return {
 					succeeded : true,
-					value : value
+					value : rtp.p2p_num_of_members()
 				};
 			});
 
