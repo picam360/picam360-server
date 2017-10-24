@@ -140,11 +140,11 @@ async
 					conn : conn,
 					frame_queue : [],
 					fps : 5,
-					ttl : 1.0,
-					min_ttl : 1.0,
+					rtt : 1.0,
+					min_rtt : 1.0,
 					frame_num : 0,
 					tmp_num : 0,
-					tmp_ttl : 0,
+					tmp_rtt : 0,
 					tmp_time : 0,
 					frame_id : upstream_next_frame_id,
 					timeout : false
@@ -246,9 +246,9 @@ async
 						for (var j = 0; j < watcher.frame_queue.length; j++) {
 							if (watcher.frame_queue[j].server_key == server_key) {
 								watcher.frame_num++;
-								{// ttl
+								{// rtt
 									var value = (now - watcher.frame_queue[j].base_time) / 1000.0;
-									watcher.tmp_ttl += watcher.ttl;
+									watcher.tmp_rtt += watcher.rtt;
 								}
 								{// fps
 									if (watcher.tmp_time == 0) {
@@ -261,26 +261,26 @@ async
 											/ (now - watcher.tmp_time);
 										watcher.fps = watcher.fps * 0.9 + fps
 											* 0.1;
-										var ttl = watcher.tmp_ttl / frame_num;
-										watcher.ttl = watcher.ttl * 0.9 + value
+										var rtt = watcher.tmp_rtt / frame_num;
+										watcher.rtt = watcher.rtt * 0.9 + value
 											* 0.1;
-										if (watcher.ttl < watcher.min_ttl) {
-											watcher.min_ttl = watcher.ttl;
+										if (watcher.rtt < watcher.min_rtt) {
+											watcher.min_rtt = watcher.rtt;
 										}
 										watcher.tmp_num = watcher.frame_num;
-										watcher.tmp_ttl = 0;
+										watcher.tmp_rtt = 0;
 										watcher.tmp_time = now;
 
-										var target_ttl = (watcher.ttl + watcher.min_ttl) / 2;
+										var target_rtt = (watcher.rtt + watcher.min_rtt) / 2;
 										var stack_fps = (watcher.frame_queue.length - (j + 1))
-											/ target_ttl;
+											/ target_rtt;
 										var target_fps;
 										var offset = 0.1;
 										if (stack_fps > watcher.fps
-											|| watcher.ttl > (watcher.min_ttl + offset) * 2) {
+											|| watcher.rtt > (watcher.min_rtt + offset) * 2) {
 											target_fps = watcher.fps
-												- (watcher.ttl - (watcher.min_ttl + offset))
-												/ (watcher.min_ttl + offset);
+												- (watcher.rtt - (watcher.min_rtt + offset))
+												/ (watcher.min_rtt + offset);
 										} else {
 											target_fps = watcher.fps + 0.25;
 										}
@@ -290,8 +290,8 @@ async
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
 										// console.log("fps:" + watcher.fps
-										// + ",ttl:" + watcher.ttl
-										// + ",min_ttl:" + watcher.min_ttl
+										// + ",rtt:" + watcher.rtt
+										// + ",min_rtt:" + watcher.min_rtt
 										// + ",stack_fps:" + stack_fps
 										// + ",target_fps:" + target_fps);
 										plugin_host
@@ -795,7 +795,7 @@ async
 						var pack = rtp.build_packet(buffer, PT_FILE);
 						rtp.sendpacket(conn, pack);
 					} else {
-						send_file(ilename, key, conn, data);
+						send_file(filename, key, conn, data);
 					}
 				});
 			}
