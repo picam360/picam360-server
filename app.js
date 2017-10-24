@@ -140,11 +140,11 @@ async
 					conn : conn,
 					frame_queue : [],
 					fps : 5,
-					rtt : 1.0,
-					min_rtt : 1.0,
+					latency : 1.0,
+					min_latency : 1.0,
 					frame_num : 0,
 					tmp_num : 0,
-					tmp_rtt : 0,
+					tmp_latency : 0,
 					tmp_time : 0,
 					frame_id : upstream_next_frame_id,
 					timeout : false
@@ -246,9 +246,9 @@ async
 						for (var j = 0; j < watcher.frame_queue.length; j++) {
 							if (watcher.frame_queue[j].server_key == server_key) {
 								watcher.frame_num++;
-								{// rtt
+								{// latency
 									var value = (now - watcher.frame_queue[j].base_time) / 1000.0;
-									watcher.tmp_rtt += watcher.rtt;
+									watcher.tmp_latency += watcher.latency;
 								}
 								{// fps
 									if (watcher.tmp_time == 0) {
@@ -261,26 +261,27 @@ async
 											/ (now - watcher.tmp_time);
 										watcher.fps = watcher.fps * 0.9 + fps
 											* 0.1;
-										var rtt = watcher.tmp_rtt / frame_num;
-										watcher.rtt = watcher.rtt * 0.9 + value
-											* 0.1;
-										if (watcher.rtt < watcher.min_rtt) {
-											watcher.min_rtt = watcher.rtt;
+										var latency = watcher.tmp_latency
+											/ frame_num;
+										watcher.latency = watcher.latency * 0.9
+											+ value * 0.1;
+										if (watcher.latency < watcher.min_latency) {
+											watcher.min_latency = watcher.latency;
 										}
 										watcher.tmp_num = watcher.frame_num;
-										watcher.tmp_rtt = 0;
+										watcher.tmp_latency = 0;
 										watcher.tmp_time = now;
 
-										var target_rtt = (watcher.rtt + watcher.min_rtt) / 2;
+										var target_latency = (watcher.latency + watcher.min_latency) / 2;
 										var stack_fps = (watcher.frame_queue.length - (j + 1))
-											/ target_rtt;
+											/ target_latency;
 										var target_fps;
 										var offset = 0.1;
 										if (stack_fps > watcher.fps
-											|| watcher.rtt > (watcher.min_rtt + offset) * 2) {
+											|| watcher.latency > (watcher.min_latency + offset) * 2) {
 											target_fps = watcher.fps
-												- (watcher.rtt - (watcher.min_rtt + offset))
-												/ (watcher.min_rtt + offset);
+												- (watcher.latency - (watcher.min_latency + offset))
+												/ (watcher.min_latency + offset);
 										} else {
 											target_fps = watcher.fps + 0.25;
 										}
@@ -290,8 +291,9 @@ async
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
 										// console.log("fps:" + watcher.fps
-										// + ",rtt:" + watcher.rtt
-										// + ",min_rtt:" + watcher.min_rtt
+										// + ",latency:" + watcher.latency
+										// + ",min_latency:" +
+										// watcher.min_latency
 										// + ",stack_fps:" + stack_fps
 										// + ",target_fps:" + target_fps);
 										plugin_host
