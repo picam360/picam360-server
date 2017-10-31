@@ -618,27 +618,36 @@ async
 				console.log("webrtc uuid : " + uuid);
 				console.log("\n\n\n");
 				var Peer = require("peerjs");
-				var peer = new Peer(uuid, {
-					host : SIGNALING_HOST,
-					port : SIGNALING_PORT,
-					secure : SIGNALING_SECURE,
-					key : P2P_API_KEY,
-					debug : options.debug || 0
-				});
-
-				peer.on('connection', function(conn) {
-					rtp.add_watcher(conn);
-					conn.on('close', function() {
-						rtp.remove_watcher(conn);
+				var connect = function() {
+					var peer = new Peer(uuid, {
+						host : SIGNALING_HOST,
+						port : SIGNALING_PORT,
+						secure : SIGNALING_SECURE,
+						key : P2P_API_KEY,
+						debug : options.debug || 0
 					});
-				});
-				peer.on('error', function(err) {
-					if (err.type == "network") {// disconnect
-						setTimeout(function() {
-							peer.reconnect();
-						}, 1000);
-					}
-				});
+
+					peer.on('connection', function(conn) {
+						rtp.add_watcher(conn);
+						conn.on('close', function() {
+							rtp.remove_watcher(conn);
+						});
+					});
+					
+					peer.on('error', function(err) {
+						if (err.type == "network") {// disconnect
+							setTimeout(function() {
+								peer.reconnect();
+							}, 1000);
+						} else if (err.type == "socket-error") {// internal socket
+																// error
+							setTimeout(function() {
+								connect();
+							}, 1000);
+						}
+					});
+				}
+				connect();
 			}
 			callback(null);
 		},
