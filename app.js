@@ -655,7 +655,7 @@ async
 		},
 		function(callback) {
 			// plugin host
-			var m_view_quaternion = "";
+			var m_view_quaternion = [0, 0, 0, 1.0];
 			// cmd handling
 			function command_handler(value, conn) {
 				var split = value.split(' ');
@@ -680,7 +680,10 @@ async
 								server_key = _split[1];
 								rtp.pop_frame_queue(server_key, conn);
 							} else if (_split[0] == "quat") {
-								m_view_quaternion = split[1];
+								m_view_quaternion = [parseFloat(_split[1]),
+									parseFloat(_split[2]),
+									parseFloat(_split[3]),
+									parseFloat(_split[4])];
 							}
 						}
 					}

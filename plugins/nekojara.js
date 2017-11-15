@@ -10,6 +10,7 @@ module.exports = {
 		var MODE = 27;
 		var step = 0;
 		var target_step = 0;
+		var ROUND_STEP = 47 * 4;
 
 		function export_pin(pin) {
 			if (fs.existsSync('/sys/class/gpio/gpio' + pin)) {
@@ -43,11 +44,11 @@ module.exports = {
 						+ '/direction', 'out');
 					callback(null);
 				},
-				function(callback) {// timer
+				function(callback) {// step timer
 					var phase = 0;
 					setInterval(function() {
 						var diff_step = target_step - step;
-						if (diff_step == 0) {
+						if (Math.abs(diff_step) < 1) {
 							return;
 						}
 						switch (phase) {
@@ -99,12 +100,37 @@ module.exports = {
 						}
 						if (phase < 0) {
 							phase = 3;
-							step++;
+							step--;
 						} else if (phase > 3) {
 							phase = 0;
-							step--;
+							step++;
 						}
 					}, 20);
+					callback(null);
+				}, function(callback) {// check view quaternion timer
+					function toEulerianAngle(q) {
+						var q2sqr = q[2] * q[2];
+						var t0 = -2.0 * (q2sqr + q[3] * q[3]) + 1.0;
+						var t1 = +2.0 * (q[1] * q[2] + q[0] * q[3]);
+						var t2 = -2.0 * (q[1] * q[3] - q[0] * q[2]);
+						var t3 = +2.0 * (q[2] * q[3] + q[0] * q[1]);
+						var t4 = -2.0 * (q[1] * q[1] + q2sqr) + 1.0;
+
+						t2 = t2 > 1.0 ? 1.0 : t2;
+						t2 = t2 < -1.0 ? -1.0 : t2;
+
+						return {
+							pitch : Math.asin(t2),
+							roll : Math.atan2(t3, t4),
+							yaw : Math.atan2(t1, t0)
+						};
+					}
+					setInterval(function() {
+						var q = plugin_host.get_view_quaternion();
+						var euler = toEulerianAngle(q);
+						var taget_yaw = euler.yaw;
+						target_step = taget_yaw / Math.PI * ROUND_STEP;
+					}, 100);
 					callback(null);
 				}], function(err, result) {
 			});
