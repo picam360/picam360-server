@@ -55,6 +55,7 @@ function clone(src) {
 }
 
 var plugin_host = {};
+var plugins = [];
 var rtp_rx_watcher = [];
 var cmd2upstream_list = [];
 var cmd_list = [];
@@ -633,14 +634,15 @@ async
 							rtp.remove_watcher(conn);
 						});
 					});
-					
+
 					peer.on('error', function(err) {
 						if (err.type == "network") {// disconnect
 							setTimeout(function() {
 								peer.reconnect();
 							}, 1000);
-						} else if (err.type == "socket-error") {// internal socket
-																// error
+						} else if (err.type == "socket-error") {// internal
+							// socket
+							// error
 							setTimeout(function() {
 								connect();
 							}, 1000);
@@ -653,6 +655,7 @@ async
 		},
 		function(callback) {
 			// plugin host
+			var m_view_quaternion = "";
 			// cmd handling
 			function command_handler(value, conn) {
 				var split = value.split(' ');
@@ -676,6 +679,8 @@ async
 							if (_split[0] == "server_key") {
 								server_key = _split[1];
 								rtp.pop_frame_queue(server_key, conn);
+							} else if (_split[0] == "quat") {
+								m_view_quaternion = split[1];
 							}
 						}
 					}
@@ -831,6 +836,9 @@ async
 					});
 				}
 			};
+			plugin_host.get_view_quaternion = function() {
+				return m_view_quaternion;
+			};
 			plugin_host.add_watch = function(name, callback) {
 				watches[name] = callback;
 			};
@@ -889,6 +897,19 @@ async
 			// delete all frame
 			plugin_host.send_command(UPSTREAM_DOMAIN + "delete_frame -i *");
 
+			callback(null);
+		},
+		function(callback) {
+			// load plugin
+			if (options["plugin_paths"]) {
+				for ( var k in options["plugin_paths"]) {
+					var plugin_path = options["plugin_paths"][k];
+					console.log("loading... " + plugin_path);
+					var plugin = require("./" + plugin_path)
+						.create_plugin(plugin_host);
+					plugins.push(plugin);
+				}
+			}
 			callback(null);
 		}], function(err, result) {
 	});

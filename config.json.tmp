@@ -1,4 +1,6 @@
 {
 	"wrtc_enabled" : false,
-	"wrtc_uuid" : ""
+	"wrtc_uuid" : "",
+    "plugin_paths": [
+    ]
 }
