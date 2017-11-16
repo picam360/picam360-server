@@ -11,6 +11,7 @@ module.exports = {
 		var step = 0;
 		var target_step = 0;
 		var ROUND_STEP = 47 * 4;
+		var NUM_OF_PHASE = 4;
 
 		function export_pin(pin) {
 			if (fs.existsSync('/sys/class/gpio/gpio' + pin)) {
@@ -42,14 +43,22 @@ module.exports = {
 						+ '/direction', 'out');
 					fs.writeFileSync('/sys/class/gpio/gpio' + MODE
 						+ '/direction', 'out');
+					fs
+						.writeFileSync('/sys/class/gpio/gpio' + MODE + '/value', 0);
 					callback(null);
 				},
 				function(callback) {// step timer
-					var phase = 0;
 					setInterval(function() {
-						var diff_step = target_step - step;
-						if (Math.abs(diff_step) < 1) {
+						if (target_step == step) {
 							return;
+						} else if (target_step > step) {
+							step++;
+						} else {
+							step--;
+						}
+						var phase = step % NUM_OF_PHASE;
+						if (phase < 0) {
+							phase += NUM_OF_PHASE;
 						}
 						switch (phase) {
 							case 0 :
@@ -93,43 +102,48 @@ module.exports = {
 									+ RED_B2 + '/value', 1);
 								break;
 						}
-						if (diff_step > 0) {
-							phase++;
-						} else {
-							phase--;
-						}
-						if (phase < 0) {
-							phase = 3;
-							step--;
-						} else if (phase > 3) {
-							phase = 0;
-							step++;
-						}
 					}, 20);
 					callback(null);
-				}, function(callback) {// check view quaternion timer
-					function toEulerianAngle(q) {
-						var q2sqr = q[2] * q[2];
-						var t0 = -2.0 * (q2sqr + q[3] * q[3]) + 1.0;
-						var t1 = +2.0 * (q[1] * q[2] + q[0] * q[3]);
-						var t2 = -2.0 * (q[1] * q[3] - q[0] * q[2]);
-						var t3 = +2.0 * (q[2] * q[3] + q[0] * q[1]);
-						var t4 = -2.0 * (q[1] * q[1] + q2sqr) + 1.0;
+				},
+				function(callback) {// check view quaternion timer
+					// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
+					function toEulerianAngle(q) {// q0:w,q1:x,q2:y,q3:z, XYZ
+						// euler
+						var cosx = -2.0 * (q[1] * q[1] + q[2] * q[2]) + 1.0;
+						var sinx = +2.0 * (q[2] * q[3] + q[0] * q[1]);
+						var siny = -2.0 * (q[1] * q[3] - q[0] * q[2]);
+						var cosz = -2.0 * (q[2] * q[2] + q[3] * q[3]) + 1.0;
+						var sinz = +2.0 * (q[1] * q[2] + q[0] * q[3]);
 
-						t2 = t2 > 1.0 ? 1.0 : t2;
-						t2 = t2 < -1.0 ? -1.0 : t2;
+						siny = siny > 1.0 ? 1.0 : siny;
+						siny = siny < -1.0 ? -1.0 : siny;
 
 						return {
-							pitch : Math.asin(t2),
-							roll : Math.atan2(t3, t4),
-							yaw : Math.atan2(t1, t0)
+							alpha : Math.atan2(sinx, cosx) * 180 / Math.PI,
+							beta : Math.asin(siny) * 180 / Math.PI,
+							ganma : Math.atan2(sinz, cosz) * 180 / Math.PI
 						};
 					}
 					setInterval(function() {
 						var q = plugin_host.get_view_quaternion();
-						var euler = toEulerianAngle(q);
-						var taget_yaw = euler.yaw;
-						target_step = taget_yaw / Math.PI * ROUND_STEP;
+						var euler = toEulerianAngle([q[3], q[1], q[0], q[2]]);
+						var next_taget_yaw = euler.alpha;
+						// console.log("alpha:" + euler.alpha + "beta:"
+						// + euler.beta + "ganma:" + euler.ganma)
+						var base_step = Math.round(target_step / ROUND_STEP)
+							* ROUND_STEP;
+						var taget_yaw = (target_step - base_step) / ROUND_STEP
+							* 360;
+						diff_yaw = next_taget_yaw - taget_yaw;
+						if (diff_yaw > 180) {
+							diff_yaw -= 360;
+						} else if (diff_yaw < -180) {
+							diff_yaw += 360;
+						}
+						target_step += Math.round(diff_yaw / 360 * ROUND_STEP);
+						//console.log("taget_yaw:" + taget_yaw
+						//	+ ",next_taget_yaw:" + next_taget_yaw
+						//	+ ".target_step:" + target_step);
 					}, 100);
 					callback(null);
 				}], function(err, result) {
