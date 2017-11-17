@@ -10,7 +10,8 @@ module.exports = {
 		var MODE = 27;
 		var step = 0;
 		var target_step = 0;
-		var ROUND_STEP = 47 * 4;
+		var GEAR_RATIO = 4;
+		var ROUND_STEP = 48 * GEAR_RATIO;
 		var NUM_OF_PHASE = 4;
 
 		function export_pin(pin) {
@@ -107,7 +108,11 @@ module.exports = {
 				},
 				function(callback) {// check view quaternion timer
 					// https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-					function toEulerianAngle(q) {// q0:w,q1:x,q2:y,q3:z, XYZ
+					function toEulerianAngle(quat, seq) {
+						var q;// q0:w,q1:x,q2:y,q3:z, XYZ
+						if (seq == "YXZ") {
+							q = [quat[3], quat[1], quat[0], quat[2]];
+						}
 						// euler
 						var cosx = -2.0 * (q[1] * q[1] + q[2] * q[2]) + 1.0;
 						var sinx = +2.0 * (q[2] * q[3] + q[0] * q[1]);
@@ -118,18 +123,22 @@ module.exports = {
 						siny = siny > 1.0 ? 1.0 : siny;
 						siny = siny < -1.0 ? -1.0 : siny;
 
-						return {
-							alpha : Math.atan2(sinx, cosx) * 180 / Math.PI,
-							beta : Math.asin(siny) * 180 / Math.PI,
-							ganma : Math.atan2(sinz, cosz) * 180 / Math.PI
-						};
+						if (seq == "YXZ") {
+							return {
+								y : Math.atan2(sinx, cosx) * 180 / Math.PI,
+								x : Math.asin(siny) * 180 / Math.PI,
+								z : Math.atan2(sinz, cosz) * 180 / Math.PI
+							};
+						}
 					}
 					setInterval(function() {
 						var q = plugin_host.get_view_quaternion();
-						var euler = toEulerianAngle([q[3], q[1], q[0], q[2]]);
-						var next_taget_yaw = euler.alpha;
-						// console.log("alpha:" + euler.alpha + "beta:"
-						// + euler.beta + "ganma:" + euler.ganma)
+						var euler = toEulerianAngle(q, "YXZ");
+						var next_taget_yaw = (Math.abs(euler.z) < 90)
+							? euler.y
+							: euler.y + 180;//TODO:horizon area is not stable
+						//console.log("y:" + euler.y + "x:" + euler.x + "z:"
+						//	+ euler.z)
 						var base_step = Math.round(target_step / ROUND_STEP)
 							* ROUND_STEP;
 						var taget_yaw = (target_step - base_step) / ROUND_STEP
@@ -141,9 +150,9 @@ module.exports = {
 							diff_yaw += 360;
 						}
 						target_step += Math.round(diff_yaw / 360 * ROUND_STEP);
-						//console.log("taget_yaw:" + taget_yaw
-						//	+ ",next_taget_yaw:" + next_taget_yaw
-						//	+ ".target_step:" + target_step);
+						// console.log("taget_yaw:" + taget_yaw
+						// + ",next_taget_yaw:" + next_taget_yaw
+						// + ".target_step:" + target_step);
 					}, 100);
 					callback(null);
 				}], function(err, result) {
