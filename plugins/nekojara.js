@@ -11,8 +11,8 @@ module.exports = {
 		var step = 0;
 		var target_step = 0;
 		var GEAR_RATIO = 4;
-		var ROUND_STEP = 48 * GEAR_RATIO;
 		var NUM_OF_PHASE = 4;
+		var ROUND_STEP = 12 * NUM_OF_PHASE * GEAR_RATIO;
 
 		function export_pin(pin) {
 			if (fs.existsSync('/sys/class/gpio/gpio' + pin)) {
@@ -49,6 +49,61 @@ module.exports = {
 					callback(null);
 				},
 				function(callback) {// step timer
+					// http://akizukidenshi.com/download/ds/sanyos/MDP-35A_a.pdf
+					function set_gpio(A1, B1, A2, B2) {
+						fs.writeFileSync('/sys/class/gpio/gpio' + BLUE_A1
+							+ '/value', A1);
+						fs.writeFileSync('/sys/class/gpio/gpio' + YELLOW_B1
+							+ '/value', B1);
+						fs.writeFileSync('/sys/class/gpio/gpio' + WHITE_A2
+							+ '/value', A2);
+						fs.writeFileSync('/sys/class/gpio/gpio' + RED_B2
+							+ '/value', B2);
+					}
+					function phase4(phase) {
+						switch (phase) {
+							case 0 :
+								set_gpio(1, 1, 0, 0);
+								break;
+							case 1 :
+								set_gpio(0, 1, 1, 0);
+								break;
+							case 2 :
+								set_gpio(0, 0, 1, 1);
+								break;
+							case 3 :
+								set_gpio(1, 0, 0, 1);
+								break;
+						}
+					}
+					function phase8(phase) {
+						switch (phase) {
+							case 0 :
+								set_gpio(1, 0, 0, 0);
+								break;
+							case 1 :
+								set_gpio(1, 1, 0, 0);
+								break;
+							case 2 :
+								set_gpio(0, 1, 0, 0);
+								break;
+							case 3 :
+								set_gpio(0, 1, 1, 0);
+								break;
+							case 4 :
+								set_gpio(0, 0, 1, 0);
+								break;
+							case 5 :
+								set_gpio(0, 0, 1, 1);
+								break;
+							case 6 :
+								set_gpio(0, 0, 0, 1);
+								break;
+							case 7 :
+								set_gpio(1, 0, 0, 1);
+								break;
+						}
+					}
 					setInterval(function() {
 						if (target_step == step) {
 							return;
@@ -61,49 +116,15 @@ module.exports = {
 						if (phase < 0) {
 							phase += NUM_OF_PHASE;
 						}
-						switch (phase) {
-							case 0 :
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ BLUE_A1 + '/value', 1);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ WHITE_A2 + '/value', 0);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ YELLOW_B1 + '/value', 0);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ RED_B2 + '/value', 1);
+						switch (NUM_OF_PHASE) {
+							case 4 :
+								phase4(phase);
 								break;
-							case 1 :
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ BLUE_A1 + '/value', 1);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ WHITE_A2 + '/value', 0);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ YELLOW_B1 + '/value', 1);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ RED_B2 + '/value', 0);
-								break;
-							case 2 :
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ BLUE_A1 + '/value', 0);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ WHITE_A2 + '/value', 1);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ YELLOW_B1 + '/value', 1);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ RED_B2 + '/value', 0);
-								break;
-							case 3 :
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ BLUE_A1 + '/value', 0);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ WHITE_A2 + '/value', 1);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ YELLOW_B1 + '/value', 0);
-								fs.writeFileSync('/sys/class/gpio/gpio'
-									+ RED_B2 + '/value', 1);
+							case 8 :
+								phase8(phase);
 								break;
 						}
-					}, 20);
+					}, 10);
 					callback(null);
 				},
 				function(callback) {// check view quaternion timer
@@ -212,12 +233,13 @@ module.exports = {
 						0, 0, 0, 1];
 						mat4 = mat4_multiply(trans_mat4, mat4);
 						var euler_xy = {
-							y : Math.atan2(-mat4[2], mat4[0]) * 180 / Math.PI,
+							// start from z axis, z axis direction is oposite
+							y : Math.atan2(-mat4[0], -mat4[2]) * 180 / Math.PI,
 							x : Math.asin(mat4[1]) * 180 / Math.PI,
 							z : 0
 						};
 						var euler_xyz = toEulerianAngle(q, "YXZ");
-						var next_taget_yaw = (Math.abs(euler_xy.x) > -80)
+						var next_taget_yaw = (euler_xy.x > -80)
 							? euler_xy.y
 							: euler_xyz.y;
 						var base_step = Math.round(target_step / ROUND_STEP)
@@ -234,7 +256,7 @@ module.exports = {
 						// console.log("taget_yaw:" + taget_yaw
 						// + ",next_taget_yaw:" + next_taget_yaw
 						// + ".target_step:" + target_step);
-					}, 100);
+					}, 50);
 					callback(null);
 				}], function(err, result) {
 			});
