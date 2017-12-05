@@ -53,6 +53,9 @@ function build_packet(data, pt) {
 	data.copy(pack, raw_header_len + header_len);
 
 	sequencenumber++;
+	if (sequencenumber >= (1 << 16)) {
+		sequencenumber = 0;
+	}
 
 	return pack;
 }
