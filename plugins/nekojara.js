@@ -3,126 +3,137 @@ module.exports = {
 		console.log("create nekojara plugin");
 		var async = require('async');
 		var fs = require("fs");
-		var BLUE_A1 = 17;
-		var WHITE_A2 = 18;
-		var YELLOW_B1 = 22;
-		var RED_B2 = 23;
-		var MODE = 27;
-		var step = 0;
-		var target_step = 0;
-		var GEAR_RATIO = 4;
+		var pins = [ //
+		[17, 18, 22, 23, 27], // motor driver 1
+		[24, 25, 20, 21, 16], // motor driver 2
+		[5, 6, 12, 13, 19] // motor driver 3
+		];
+		var BLUE_A1 = 0;
+		var WHITE_A2 = 1;
+		var YELLOW_B1 = 2;
+		var RED_B2 = 3;
+		var MODE = 4;
+		var step = [0, 0];
+		var target_step = [0, 0];
+		var direction = [-1, 1];
+		var GEAR_RATIO = 4.6;
 		var NUM_OF_PHASE = 4;
 		var ROUND_STEP = 12 * NUM_OF_PHASE * GEAR_RATIO;
+
+		var m_offset_yaw = 0;
+		var m_offset_pitch = 0;
 
 		function export_pin(pin) {
 			if (fs.existsSync('/sys/class/gpio/gpio' + pin)) {
 			} else {
-				fs.writeFileSync('/sys/class/gpio/export', pin);
+				try {
+					fs.writeFileSync('/sys/class/gpio/export', pin);
+				} catch (e) {
+					console.log("can not open gpio " + pin);
+				}
 			}
 		}
 
 		async
 			.waterfall([
 				function(callback) {// export
-					export_pin(BLUE_A1);
-					export_pin(WHITE_A2);
-					export_pin(YELLOW_B1);
-					export_pin(RED_B2);
-					export_pin(MODE);
+					for (var i = 0; i < pins.length; i++) {
+						for (var j = 0; j < pins[i].length; j++) {
+							export_pin(pins[i][j]);
+						}
+					}
 					setTimeout(function() {
 						callback(null);
 					}, 1000);
 				},
 				function(callback) {// direction
-					fs.writeFileSync('/sys/class/gpio/gpio' + BLUE_A1
-						+ '/direction', 'out');
-					fs.writeFileSync('/sys/class/gpio/gpio' + WHITE_A2
-						+ '/direction', 'out');
-					fs.writeFileSync('/sys/class/gpio/gpio' + YELLOW_B1
-						+ '/direction', 'out');
-					fs.writeFileSync('/sys/class/gpio/gpio' + RED_B2
-						+ '/direction', 'out');
-					fs.writeFileSync('/sys/class/gpio/gpio' + MODE
-						+ '/direction', 'out');
-					fs
-						.writeFileSync('/sys/class/gpio/gpio' + MODE + '/value', 0);
+					for (var i = 0; i < pins.length; i++) {
+						for (var j = 0; j < pins[i].length; j++) {
+							fs.writeFileSync('/sys/class/gpio/gpio'
+								+ pins[i][j] + '/direction', 'out');
+						}
+						fs.writeFileSync('/sys/class/gpio/gpio' + pins[i][MODE]
+							+ '/value', 0);
+					}
 					callback(null);
 				},
 				function(callback) {// step timer
 					// http://akizukidenshi.com/download/ds/sanyos/MDP-35A_a.pdf
-					function set_gpio(A1, B1, A2, B2) {
-						fs.writeFileSync('/sys/class/gpio/gpio' + BLUE_A1
-							+ '/value', A1);
-						fs.writeFileSync('/sys/class/gpio/gpio' + YELLOW_B1
-							+ '/value', B1);
-						fs.writeFileSync('/sys/class/gpio/gpio' + WHITE_A2
-							+ '/value', A2);
-						fs.writeFileSync('/sys/class/gpio/gpio' + RED_B2
-							+ '/value', B2);
+					function set_gpio(md_id, A1, B1, A2, B2) {
+						fs.writeFileSync('/sys/class/gpio/gpio'
+							+ pins[md_id][BLUE_A1] + '/value', A1);
+						fs.writeFileSync('/sys/class/gpio/gpio'
+							+ pins[md_id][YELLOW_B1] + '/value', B1);
+						fs.writeFileSync('/sys/class/gpio/gpio'
+							+ pins[md_id][WHITE_A2] + '/value', A2);
+						fs.writeFileSync('/sys/class/gpio/gpio'
+							+ pins[md_id][RED_B2] + '/value', B2);
 					}
-					function phase4(phase) {
+					function phase4(md_id, phase) {
 						switch (phase) {
 							case 0 :
-								set_gpio(1, 1, 0, 0);
+								set_gpio(md_id, 1, 1, 0, 0);
 								break;
 							case 1 :
-								set_gpio(0, 1, 1, 0);
+								set_gpio(md_id, 0, 1, 1, 0);
 								break;
 							case 2 :
-								set_gpio(0, 0, 1, 1);
+								set_gpio(md_id, 0, 0, 1, 1);
 								break;
 							case 3 :
-								set_gpio(1, 0, 0, 1);
+								set_gpio(md_id, 1, 0, 0, 1);
 								break;
 						}
 					}
-					function phase8(phase) {
+					function phase8(md_id, phase) {
 						switch (phase) {
 							case 0 :
-								set_gpio(1, 0, 0, 0);
+								set_gpio(md_id, 1, 0, 0, 0);
 								break;
 							case 1 :
-								set_gpio(1, 1, 0, 0);
+								set_gpio(md_id, 1, 1, 0, 0);
 								break;
 							case 2 :
-								set_gpio(0, 1, 0, 0);
+								set_gpio(md_id, 0, 1, 0, 0);
 								break;
 							case 3 :
-								set_gpio(0, 1, 1, 0);
+								set_gpio(md_id, 0, 1, 1, 0);
 								break;
 							case 4 :
-								set_gpio(0, 0, 1, 0);
+								set_gpio(md_id, 0, 0, 1, 0);
 								break;
 							case 5 :
-								set_gpio(0, 0, 1, 1);
+								set_gpio(md_id, 0, 0, 1, 1);
 								break;
 							case 6 :
-								set_gpio(0, 0, 0, 1);
+								set_gpio(md_id, 0, 0, 0, 1);
 								break;
 							case 7 :
-								set_gpio(1, 0, 0, 1);
+								set_gpio(md_id, 1, 0, 0, 1);
 								break;
 						}
 					}
 					setInterval(function() {
-						if (target_step == step) {
-							return;
-						} else if (target_step > step) {
-							step++;
-						} else {
-							step--;
-						}
-						var phase = step % NUM_OF_PHASE;
-						if (phase < 0) {
-							phase += NUM_OF_PHASE;
-						}
-						switch (NUM_OF_PHASE) {
-							case 4 :
-								phase4(phase);
-								break;
-							case 8 :
-								phase8(phase);
-								break;
+						for (var i = 0; i < step.length; i++) {
+							if (target_step[i] == step[i]) {
+								continue;
+							} else if (target_step[i] > step[i]) {
+								step[i]++;
+							} else {
+								step[i]--;
+							}
+							var phase = step[i] % NUM_OF_PHASE;
+							if (phase < 0) {
+								phase += NUM_OF_PHASE;
+							}
+							switch (NUM_OF_PHASE) {
+								case 4 :
+									phase4(i, phase);
+									break;
+								case 8 :
+									phase8(i, phase);
+									break;
+							}
 						}
 					}, 10);
 					callback(null);
@@ -242,17 +253,39 @@ module.exports = {
 						var next_taget_yaw = (euler_xy.x > -80)
 							? euler_xy.y
 							: euler_xyz.y;
-						var base_step = Math.round(target_step / ROUND_STEP)
+						var base_step_yaw = Math.round(target_step[0]
+							/ ROUND_STEP)
 							* ROUND_STEP;
-						var taget_yaw = (target_step - base_step) / ROUND_STEP
+						var taget_yaw = direction[0]
+							* (target_step[0] - base_step_yaw) / ROUND_STEP
 							* 360;
-						diff_yaw = next_taget_yaw - taget_yaw;
-						if (diff_yaw > 180) {
-							diff_yaw -= 360;
-						} else if (diff_yaw < -180) {
-							diff_yaw += 360;
+						var diff_yaw = (next_taget_yaw + m_offset_yaw)
+							- taget_yaw;
+						while (true) {
+							if (diff_yaw > 180) {
+								diff_yaw -= 360;
+							} else if (diff_yaw < -180) {
+								diff_yaw += 360;
+							} else {
+								break;
+							}
 						}
-						target_step += Math.round(diff_yaw / 360 * ROUND_STEP);
+
+						var diff_step_yaw = direction[0]
+							* Math.round(diff_yaw / 360 * ROUND_STEP);
+						if (Math.abs(diff_step_yaw) > 100) {
+							debugger;
+						}
+
+						var taget_pitch = direction[1]
+							* (target_step[1] - target_step[0]) / ROUND_STEP
+							* 360;
+						var diff_pitch = m_offset_pitch - taget_pitch;
+						var diff_step_pitch = direction[1]
+							* Math.round(diff_pitch / 360 * ROUND_STEP);
+
+						target_step[0] += diff_step_yaw;
+						target_step[1] += diff_step_yaw + diff_step_pitch;
 						// console.log("taget_yaw:" + taget_yaw
 						// + ",next_taget_yaw:" + next_taget_yaw
 						// + ".target_step:" + target_step);
@@ -262,7 +295,19 @@ module.exports = {
 			});
 
 		var plugin = {
-
+			name : "nekojara",
+			command_handler : function(cmd) {
+				var split = cmd.split(' ');
+				cmd = split[0].split('.')[1];
+				switch (cmd) {
+					case "increment_yaw" :
+						m_offset_yaw += parseFloat(split[1]);
+						break;
+					case "increment_pitch" :
+						m_offset_pitch += parseFloat(split[1]);
+						break;
+				}
+			}
 		};
 		return plugin;
 	}

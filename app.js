@@ -659,6 +659,19 @@ async
 			// cmd handling
 			function command_handler(value, conn) {
 				var split = value.split(' ');
+				var domain = split[0].split('.');
+				if (domain.length != 1 && domain[0] != "picam360_server") {
+					//delegate to plugin
+					for (var i = 0; i < plugins.length; i++) {
+						if (plugins[i].name && plugins[i].name == domain[0]) {
+							if (plugins[i].command_handler) {
+								plugins[i].command_handler(value);
+								break;
+							}
+						}
+					}
+					return;
+				}
 				if (split[0] == "get_file") {
 					filerequest_list.push({
 						filename : split[1],
