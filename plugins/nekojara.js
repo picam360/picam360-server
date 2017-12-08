@@ -273,9 +273,6 @@ module.exports = {
 
 						var diff_step_yaw = direction[0]
 							* Math.round(diff_yaw / 360 * ROUND_STEP);
-						if (Math.abs(diff_step_yaw) > 100) {
-							debugger;
-						}
 
 						var taget_pitch = direction[1]
 							* (target_step[1] - target_step[0]) / ROUND_STEP
