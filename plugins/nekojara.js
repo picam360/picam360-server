@@ -270,14 +270,17 @@ module.exports = {
 								break;
 							}
 						}
-
 						var diff_step_yaw = direction[0]
 							* Math.round(diff_yaw / 360 * ROUND_STEP);
 
+						var next_taget_pitch = (euler_xy.x > -80)
+							? euler_xy.x
+							: euler_xyz.x;
 						var taget_pitch = direction[1]
 							* (target_step[1] - target_step[0]) / ROUND_STEP
 							* 360;
-						var diff_pitch = m_offset_pitch - taget_pitch;
+						var diff_pitch = (next_taget_pitch + m_offset_pitch)
+							- taget_pitch;
 						var diff_step_pitch = direction[1]
 							* Math.round(diff_pitch / 360 * ROUND_STEP);
 
