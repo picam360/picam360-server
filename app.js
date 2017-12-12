@@ -158,7 +158,7 @@ async
 				rtp_rx_watcher.push(watcher);
 
 				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
-					|| "WINDOW", options.frame_width || 640, options.frame_height || 640, options.frame_encode
+					|| "PICAM360MAP", options.frame_width || 640, options.frame_height || 640, options.frame_encode
 					|| "h264", options.frame_fps || 5);
 				if (options.frame_bitrate) {
 					create_frame_cmd += " -k " + options.frame_bitrate;
@@ -771,7 +771,7 @@ async
 						console.log(cmd);
 						child_process.exec(cmd, function() {
 							var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
-								+ ' -m ' + (options.frame_mode || "WINDOW");
+								+ ' -m ' + (options.frame_mode || "PICAM360MAP");
 							plugin_host.send_command(cmd, conn);
 							fs.readFile(filepath, function(err, data) {
 								if (err) {
