@@ -287,7 +287,7 @@ async
 											target_fps = watcher.fps + 0.25;
 										}
 										target_fps = Math
-											.min(Math.max(target_fps, 1), options.max_fps || 10);
+											.min(Math.max(target_fps, 1), options.max_fps || 15);
 										var cmd = UPSTREAM_DOMAIN
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
