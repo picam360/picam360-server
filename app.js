@@ -158,7 +158,7 @@ async
 				rtp_rx_watcher.push(watcher);
 
 				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
-					|| "PICAM360MAP", options.frame_width || 640, options.frame_height || 640, options.frame_encode
+					|| "PICAM360MAP", options.frame_width || 512, options.frame_height || 512, options.frame_encode
 					|| "h264", options.frame_fps || 10);
 				if (options.frame_bitrate) {
 					create_frame_cmd += " -k " + options.frame_bitrate;
@@ -277,14 +277,16 @@ async
 										var stack_fps = (watcher.frame_queue.length - (j + 1))
 											/ target_latency;
 										var target_fps;
-										var offset = 0.1;
-										if (stack_fps > watcher.fps
-											|| watcher.latency > (watcher.min_latency + offset) * 2) {
-											target_fps = watcher.fps
-												- (watcher.latency - (watcher.min_latency + offset))
-												/ (watcher.min_latency + offset);
+										var offset = (options.latency_offset_msec || 200) / 1000;
+										var step = options.fps_step || 1;
+										if (watcher.latency > (watcher.min_latency + offset)
+											* (1 + offset)) {
+											target_fps = watcher.fps - step;
+										} else if (stack_fps > watcher.fps
+											* (1 + offset)) {
+											target_fps = watcher.fps - step;
 										} else {
-											target_fps = watcher.fps + 0.25;
+											target_fps = watcher.fps + step;
 										}
 										target_fps = Math
 											.min(Math.max(target_fps, 1), options.max_fps || 15);
@@ -661,7 +663,7 @@ async
 				var split = value.split(' ');
 				var domain = split[0].split('.');
 				if (domain.length != 1 && domain[0] != "picam360_server") {
-					//delegate to plugin
+					// delegate to plugin
 					for (var i = 0; i < plugins.length; i++) {
 						if (plugins[i].name && plugins[i].name == domain[0]) {
 							if (plugins[i].command_handler) {
@@ -771,7 +773,8 @@ async
 						console.log(cmd);
 						child_process.exec(cmd, function() {
 							var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
-								+ ' -m ' + (options.frame_mode || "PICAM360MAP");
+								+ ' -m '
+								+ (options.frame_mode || "PICAM360MAP");
 							plugin_host.send_command(cmd, conn);
 							fs.readFile(filepath, function(err, data) {
 								if (err) {
