@@ -16,14 +16,14 @@ echo "rm history files"
 sudo rm /home/pi/.*_history
 sudo rm /home/pi/.gitconfig
 sudo rm /home/pi/.xsession-errors*
-sudo rm /home/pi/picam360-capture/.picam360_history
-sudo rm /home/pi/picam360-driver/.picam360_history
+sudo rm /home/pi/picam360/picam360-capture/.picam360_history
+sudo rm /home/pi/picam360/picam360-driver/.picam360_history
 
 echo "reset rc.local"
-sudo cp /home/pi/picam360-capture/setup/rc.local /etc/rc.local
+sudo cp /home/pi/picam360/picam360-capture/setup/rc.local /etc/rc.local
 
 echo "reset interfaces"
-sudo cp /home/pi/picam360-capture/setup/interfaces /etc/network/interfaces
+sudo cp /home/pi/picam360/picam360-capture/setup/interfaces /etc/network/interfaces
 
 #need to be last because wifi connection will be disable
 echo "disable wpa? [y/N]"
