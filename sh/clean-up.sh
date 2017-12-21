@@ -20,7 +20,7 @@ sudo rm /home/pi/picam360-capture/.picam360_history
 sudo rm /home/pi/picam360-driver/.picam360_history
 
 echo "reset rc.local"
-sudo cp /etc/rc.local.server /etc/rc.local
+sudo cp /home/pi/picam360-capture/setup/rc.local /etc/rc.local
 
 #need to be last because wifi connection will be disable
 echo "disable wpa? [y/N]"
