@@ -3,5 +3,5 @@
 	"wrtc_uuid" : "",
 	"plugin_paths" : [
 	],
-	debug : 0
+	"debug" : 0
 }
