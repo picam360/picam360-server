@@ -1,11 +1,7 @@
 {
 	"wrtc_enabled" : false,
 	"wrtc_uuid" : "",
-	"frame_width" : 640,
-	"frame_height" : 640,
-	"frame_fps" : 5,
-	"max_fps" : 15,
-    "plugin_paths" : [
-    ],
-    debug : 0
+	"plugin_paths" : [
+	],
+	debug : 0
 }

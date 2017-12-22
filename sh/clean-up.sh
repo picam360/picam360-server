@@ -25,6 +25,12 @@ sudo cp /home/pi/picam360/picam360-capture/setup/rc.local /etc/rc.local
 echo "reset interfaces"
 sudo cp /home/pi/picam360/picam360-capture/setup/interfaces /etc/network/interfaces
 
+echo "reset config.json"
+cp /home/pi/picam360/picam360-capture/config.json.tmp /home/pi/picam360/picam360-capture/config.json
+cp /home/pi/picam360/picam360-driver/config.json.tmp /home/pi/picam360/picam360-driver/config.json
+cp /home/pi/picam360/picam360-server/config.json.tmp /home/pi/picam360/picam360-server/config.json
+cp /home/pi/picam360/picam360-server/www/config.json.tmp /home/pi/picam360/picam360-server/www/config.json
+
 #need to be last because wifi connection will be disable
 echo "disable wpa? [y/N]"
 read WPA

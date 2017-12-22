@@ -159,7 +159,7 @@ async
 
 				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
 					|| "PICAM360MAP", options.frame_width || 512, options.frame_height || 512, options.frame_encode
-					|| "h264", options.frame_fps || 10);
+					|| "h264", options.frame_fps || 5);
 				if (options.frame_bitrate) {
 					create_frame_cmd += " -k " + options.frame_bitrate;
 				}
