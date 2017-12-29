@@ -474,7 +474,7 @@ async
 				if (pack_list.length > 0) {
 					rtp._sendpacket(pack_list);
 				}
-			}, 1000);
+			}, 200);
 			callback(null);
 		},
 		function(callback) {// gc
