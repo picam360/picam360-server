@@ -6,13 +6,18 @@ module.exports = {
 		var pins = [ //
 		[17, 18, 22, 23, 27], // motor driver 1
 		[24, 25, 20, 21, 16], // motor driver 2
-		[5, 6, 12, 13, 19] // motor driver 3
+		[5, 6, 12, 13, 19], // motor driver 3
+		[26] // tool
 		];
 		var BLUE_A1 = 0;
 		var WHITE_A2 = 1;
 		var YELLOW_B1 = 2;
 		var RED_B2 = 3;
 		var MODE = 4;
+		var MD1 = 0;
+		var MD2 = 1;
+		var MD3 = 2;
+		var TOOL = 3;
 		var step = [0, 0];
 		var target_step = [0, 0];
 		var direction = [-1, 1];
@@ -22,6 +27,8 @@ module.exports = {
 
 		var m_offset_yaw = 0;
 		var m_offset_pitch = 0;
+		var m_fire_required = false;
+		var m_firing = false;
 
 		function export_pin(pin) {
 			if (fs.existsSync('/sys/class/gpio/gpio' + pin)) {
@@ -52,9 +59,15 @@ module.exports = {
 							fs.writeFileSync('/sys/class/gpio/gpio'
 								+ pins[i][j] + '/direction', 'out');
 						}
-						fs.writeFileSync('/sys/class/gpio/gpio' + pins[i][MODE]
-							+ '/value', 0);
 					}
+					fs.writeFileSync('/sys/class/gpio/gpio' + pins[MD1][MODE]
+						+ '/value', 0);
+					fs.writeFileSync('/sys/class/gpio/gpio' + pins[MD2][MODE]
+						+ '/value', 0);
+					fs.writeFileSync('/sys/class/gpio/gpio' + pins[MD3][MODE]
+						+ '/value', 0);
+					fs.writeFileSync('/sys/class/gpio/gpio' + pins[TOOL][0]
+						+ '/value', 0);
 					callback(null);
 				},
 				function(callback) {// step timer
@@ -133,6 +146,21 @@ module.exports = {
 								case 8 :
 									phase8(i, phase);
 									break;
+							}
+						}
+						if (m_fire_required) {
+							m_fire_required = false;
+							if (!m_firing) {
+								m_firing = true;
+								fs.writeFileSync('/sys/class/gpio/gpio'
+									+ pins[TOOL][0] + '/value', 1);
+								setTimeout(function() {
+									fs.writeFileSync('/sys/class/gpio/gpio'
+										+ pins[TOOL][0] + '/value', 0);
+									setTimeout(function() {
+										m_firing = false;
+									}, 250);
+								}, 250);
 							}
 						}
 					}, 10);
@@ -300,6 +328,9 @@ module.exports = {
 				var split = cmd.split(' ');
 				cmd = split[0].split('.')[1];
 				switch (cmd) {
+					case "fire" :
+						m_fire_required = true;
+						break;
 					case "increment_yaw" :
 						m_offset_yaw += parseFloat(split[1]);
 						break;
