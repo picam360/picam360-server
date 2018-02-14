@@ -10,6 +10,7 @@ var sprintf = require('sprintf-js').sprintf;
 var rtp = require("./rtp.js");
 var rtcp = require("./rtcp.js");
 var uuidv1 = require('uuid/v1');
+var xmlhttprequest = require('xmlhttprequest');
 
 var UPSTREAM_DOMAIN = "upstream.";
 var SERVER_DOMAIN = "";
@@ -20,8 +21,8 @@ var PT_CMD = 101;
 var PT_FILE = 102;
 var PT_CAM_BASE = 110;
 
-// var SIGNALING_HOST = "peer.picam360.com";
-var SIGNALING_HOST = "test-peer-server.herokuapp.com";
+var SIGNALING_HOST = "peer.picam360.com";
+//var SIGNALING_HOST = "test-peer-server.herokuapp.com";
 var SIGNALING_PORT = 443;
 var SIGNALING_SECURE = true;
 
@@ -642,9 +643,9 @@ async
 					});
 
 					peer.on('open', function(id){// connected to server
-					  var http = new XMLHttpRequest();
+					  var http = new xmlhttprequest.XMLHttpRequest();
 					  var protocol = SIGNALING_SECURE ? 'https://' : 'http://';
-					  var url = protocol + SIGNALING_HOST + ':' + SIGNALING_PORT +
+					  var url = protocol + SIGNALING_HOST + ':' + SIGNALING_PORT
 						    + '/' + P2P_API_KEY +'/data_host';
 
 							console.log("IN getDataHost");
@@ -667,7 +668,7 @@ async
 
 								var _pingToDataHost = function(){
 									if(data_host){
-										var http = new XMLHttpRequest();
+										var http = new xmlhttprequest.XMLHttpRequest();
 									  var protocol = SIGNALING_SECURE ? 'https://' : 'http://';
 									  var url = protocol + data_host;
 
@@ -694,12 +695,12 @@ async
 										console.log(data);
 										http.send( data );
 									}
-
-									_pingToDataHost();//do ping once first
-									setInterval(function() {
-										_pingToDataHost();
-								  }, PING_TO_DATA_HOST_INTERVAL);
 								}
+
+								_pingToDataHost();//do ping once first
+								setInterval(function() {
+									_pingToDataHost();
+								}, PING_TO_DATA_HOST_INTERVAL);
 						  };
 						  http.send(null);
 					});
