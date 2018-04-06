@@ -160,7 +160,7 @@ module.exports = {
 		}
 
 		var plugin = {
-			name : "omini_wheel",
+			name : "omni_wheel",
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
 				cmd = split[0].split('.')[1];
