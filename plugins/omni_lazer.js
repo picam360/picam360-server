@@ -3,13 +3,14 @@ module.exports = {
 		console.log("create nekojara plugin");
 		var async = require('async');
 		var fs = require("fs");
+		var sprintf = require('sprintf-js').sprintf;
 		var phase_pins = [17, 22, 24, 20];
 		var enable_pins = [18, 23, 25, 21];
+		var directions = [1, 1, 1, 1];
 		var tool_pins = [4];
-		var MD0_A = 0;
-		var MD0_B = 1;
-		var MD1_A = 2;
-		var MD1_B = 3;
+		var COIL_A = 0;
+		var COIL_B = 1;
+		var NUM_OF_COIL = 2;
 		var FIRE = 0;
 		var step = [0, 0];
 		var target_step = [0, 0];
@@ -18,6 +19,7 @@ module.exports = {
 		var NUM_OF_PHASE = 4;
 		var ROUND_STEP = 12 * NUM_OF_PHASE * GEAR_RATIO;
 
+		var m_duty = 50;// %
 		var m_offset_yaw = 0;
 		var m_offset_pitch = 0;
 		var m_fire_required = false;
@@ -53,8 +55,10 @@ module.exports = {
 							need_to_close = false;
 						}
 						if (v != 0) {
-							setPwm(enable_pins[idx], 0.5, fd);
-							setPwm(phase_pins[idx], (v > 0) ? 1 : -1, fd);
+							setPwm(enable_pins[idx], m_duty / 100, fd);
+							setPwm(phase_pins[idx], (v * directions[idx] > 0)
+								? 1
+								: 0, fd);
 						} else {
 							setPwm(enable_pins[idx], 0, fd);
 						}
@@ -65,16 +69,16 @@ module.exports = {
 					function phase4(md_id, phase) {
 						switch (phase) {
 							case 0 :
-								setPhase(MD0_A, 1);
+								setPhase(md_id * NUM_OF_COIL + COIL_A, 1);
 								break;
 							case 1 :
-								setPhase(MD0_B, 1);
+								setPhase(md_id * NUM_OF_COIL + COIL_B, 1);
 								break;
 							case 2 :
-								setPhase(MD0_A, -1);
+								setPhase(md_id * NUM_OF_COIL + COIL_A, -1);
 								break;
 							case 3 :
-								setPhase(MD0_B, -1);
+								setPhase(md_id * NUM_OF_COIL + COIL_B, -1);
 								break;
 						}
 					}
