@@ -301,7 +301,7 @@ module.exports = {
 			});
 
 		var plugin = {
-			name : "nekojara",
+			name : "omni_lazer",
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
 				cmd = split[0].split('.')[1];
