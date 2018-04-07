@@ -3,21 +3,14 @@ module.exports = {
 		console.log("create nekojara plugin");
 		var async = require('async');
 		var fs = require("fs");
-		var pins = [ //
-		[], // motor driver 1
-		[], // motor driver 2
-		[], // motor driver 3
-		[4] // tool
-		];
-		var BLUE_A1 = 0;
-		var WHITE_A2 = 1;
-		var YELLOW_B1 = 2;
-		var RED_B2 = 3;
-		var MODE = 4;
-		var MD1 = 0;
-		var MD2 = 1;
-		var MD3 = 2;
-		var TOOL = 3;
+		var phase_pins = [17, 22, 24, 20];
+		var enable_pins = [18, 23, 25, 21];
+		var tool_pins = [4];
+		var MD0_A = 0;
+		var MD0_B = 1;
+		var MD1_A = 2;
+		var MD1_B = 3;
+		var FIRE = 0;
 		var step = [0, 0];
 		var target_step = [0, 0];
 		var direction = [-1, 1];
@@ -30,99 +23,86 @@ module.exports = {
 		var m_fire_required = false;
 		var m_firing = false;
 
-		function export_pin(pin) {
-			if (fs.existsSync('/sys/class/gpio/gpio' + pin)) {
-			} else {
-				try {
-					fs.writeFileSync('/sys/class/gpio/export', pin);
-				} catch (e) {
-					console.log("can not open gpio " + pin);
-				}
-			}
-		}
-
 		async
 			.waterfall([
-//				function(callback) {// export
-//					for (var i = 0; i < pins.length; i++) {
-//						for (var j = 0; j < pins[i].length; j++) {
-//							export_pin(pins[i][j]);
-//						}
-//					}
-//					setTimeout(function() {
-//						callback(null);
-//					}, 1000);
-//				},
-//				function(callback) {// direction
-//					for (var i = 0; i < pins.length; i++) {
-//						for (var j = 0; j < pins[i].length; j++) {
-//							fs.writeFileSync('/sys/class/gpio/gpio'
-//								+ pins[i][j] + '/direction', 'out');
-//						}
-//					}
-//					fs.writeFileSync('/sys/class/gpio/gpio' + pins[MD1][MODE]
-//						+ '/value', 0);
-//					fs.writeFileSync('/sys/class/gpio/gpio' + pins[MD2][MODE]
-//						+ '/value', 0);
-//					fs.writeFileSync('/sys/class/gpio/gpio' + pins[MD3][MODE]
-//						+ '/value', 0);
-//					fs.writeFileSync('/sys/class/gpio/gpio' + pins[TOOL][0]
-//						+ '/value', 0);
-//					callback(null);
-//				},
 				function(callback) {// step timer
 					// http://akizukidenshi.com/download/ds/sanyos/MDP-35A_a.pdf
-					function set_gpio(md_id, A1, B1, A2, B2) {
-//						fs.writeFileSync('/sys/class/gpio/gpio'
-//							+ pins[md_id][BLUE_A1] + '/value', A1);
-//						fs.writeFileSync('/sys/class/gpio/gpio'
-//							+ pins[md_id][YELLOW_B1] + '/value', B1);
-//						fs.writeFileSync('/sys/class/gpio/gpio'
-//							+ pins[md_id][WHITE_A2] + '/value', A2);
-//						fs.writeFileSync('/sys/class/gpio/gpio'
-//							+ pins[md_id][RED_B2] + '/value', B2);
+					function setPwm(pin, duty, _fd) {
+						var need_to_close;
+						var fd;
+						if (_fd == null) {
+							fd = fs.openSync("/dev/pi-blaster", 'w');
+							need_to_close = true;
+						} else {
+							fd = _fd;
+							need_to_close = false;
+						}
+						fs.writeSync(fd, sprintf("%d=%.3f\n", pin, duty));
+						if (need_to_close) {
+							fs.closeSync(fd);
+						}
+					}
+					function setPhase(idx, v, _fd) {
+						var need_to_close;
+						var fd;
+						if (_fd == null) {
+							fd = fs.openSync("/dev/pi-blaster", 'w');
+							need_to_close = true;
+						} else {
+							fd = _fd;
+							need_to_close = false;
+						}
+						if (v != 0) {
+							setPwm(enable_pins[idx], 0.5, fd);
+							setPwm(phase_pins[idx], (v > 0) ? 1 : -1, fd);
+						} else {
+							setPwm(enable_pins[idx], 0, fd);
+						}
+						if (need_to_close) {
+							fs.closeSync(fd);
+						}
 					}
 					function phase4(md_id, phase) {
 						switch (phase) {
 							case 0 :
-								set_gpio(md_id, 1, 1, 0, 0);
+								setPhase(MD0_A, 1);
 								break;
 							case 1 :
-								set_gpio(md_id, 0, 1, 1, 0);
+								setPhase(MD0_B, 1);
 								break;
 							case 2 :
-								set_gpio(md_id, 0, 0, 1, 1);
+								setPhase(MD0_A, -1);
 								break;
 							case 3 :
-								set_gpio(md_id, 1, 0, 0, 1);
+								setPhase(MD0_B, -1);
 								break;
 						}
 					}
 					function phase8(md_id, phase) {
 						switch (phase) {
 							case 0 :
-								set_gpio(md_id, 1, 0, 0, 0);
+								setPhase(MD0_A, 0);
 								break;
 							case 1 :
-								set_gpio(md_id, 1, 1, 0, 0);
+								setPhase(MD0_A, 1);
 								break;
 							case 2 :
-								set_gpio(md_id, 0, 1, 0, 0);
+								setPhase(MD0_B, 0);
 								break;
 							case 3 :
-								set_gpio(md_id, 0, 1, 1, 0);
+								setPhase(MD0_B, 1);
 								break;
 							case 4 :
-								set_gpio(md_id, 0, 0, 1, 0);
+								setPhase(MD0_A, 0);
 								break;
 							case 5 :
-								set_gpio(md_id, 0, 0, 1, 1);
+								setPhase(MD0_A, -1);
 								break;
 							case 6 :
-								set_gpio(md_id, 0, 0, 0, 1);
+								setPhase(MD0_B, 0);
 								break;
 							case 7 :
-								set_gpio(md_id, 1, 0, 0, 1);
+								setPhase(MD0_B, -1);
 								break;
 						}
 					}
@@ -152,11 +132,9 @@ module.exports = {
 							m_fire_required = false;
 							if (!m_firing) {
 								m_firing = true;
-//								fs.writeFileSync('/sys/class/gpio/gpio'
-//									+ pins[TOOL][0] + '/value', 1);
+								setPwm(tool_pins[FIRE], 0.5);
 								setTimeout(function() {
-//									fs.writeFileSync('/sys/class/gpio/gpio'
-//										+ pins[TOOL][0] + '/value', 0);
+									setPwm(tool_pins[FIRE], 0);
 									setTimeout(function() {
 										m_firing = false;
 									}, 250);
