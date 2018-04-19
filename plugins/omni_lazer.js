@@ -23,6 +23,7 @@ module.exports = {
 		var m_offset_yaw = 0;
 		var m_offset_pitch = 0;
 		var m_fire_required = false;
+		var m_fire_off_required = false;
 		var m_firing = false;
 
 		async
@@ -65,6 +66,10 @@ module.exports = {
 						if (need_to_close) {
 							fs.closeSync(fd);
 						}
+					}
+					function brake(md_id, phase) {
+						setPhase(md_id * NUM_OF_COIL + COIL_A, 0);
+						setPhase(md_id * NUM_OF_COIL + COIL_B, 0);
 					}
 					function phase4(md_id, phase) {
 						switch (phase) {
@@ -113,6 +118,7 @@ module.exports = {
 					setInterval(function() {
 						for (var i = 0; i < step.length; i++) {
 							if (target_step[i] == step[i]) {
+								brake(i);
 								continue;
 							} else if (target_step[i] > step[i]) {
 								step[i]++;
@@ -134,18 +140,15 @@ module.exports = {
 						}
 						if (m_fire_required) {
 							m_fire_required = false;
-							if (!m_firing) {
-								m_firing = true;
-								setPwm(tool_pins[FIRE], 0.5);
-								setTimeout(function() {
-									setPwm(tool_pins[FIRE], 0);
-									setTimeout(function() {
-										m_firing = false;
-									}, 250);
-								}, 250);
-							}
+							m_firing = true;
+							setPwm(tool_pins[FIRE], 1);
 						}
-					}, 10);
+						if (m_fire_off_required) {
+							m_fire_off_required = false;
+							m_firing = false;
+							setPwm(tool_pins[FIRE], 0);
+						}
+					}, 20);
 					callback(null);
 				},
 				function(callback) {// check view quaternion timer
@@ -312,6 +315,9 @@ module.exports = {
 				switch (cmd) {
 					case "fire" :
 						m_fire_required = true;
+						break;
+					case "fire_off" :
+						m_fire_off_required = true;
 						break;
 					case "increment_yaw" :
 						m_offset_yaw += parseFloat(split[1]);
