@@ -22,7 +22,7 @@ var PT_FILE = 102;
 var PT_CAM_BASE = 110;
 
 var SIGNALING_HOST = "peer.picam360.com";
-//var SIGNALING_HOST = "test-peer-server.herokuapp.com";
+// var SIGNALING_HOST = "test-peer-server.herokuapp.com";
 var SIGNALING_PORT = 443;
 var SIGNALING_SECURE = true;
 
@@ -642,68 +642,86 @@ async
 						});
 					});
 
-					peer.on('open', function(id){// connected to server
-					  var http = new xmlhttprequest.XMLHttpRequest();
-					  var protocol = SIGNALING_SECURE ? 'https://' : 'http://';
-					  var url = protocol + SIGNALING_HOST + ':' + SIGNALING_PORT
-						    + '/' + P2P_API_KEY +'/data_host';
+					peer
+						.on('open', function(id) {// connected to server
+							if (peer.ping_started) {
+								return;
+							}
+							peer.ping_started = true;
+							
+							var http = new xmlhttprequest.XMLHttpRequest();
+							var protocol = SIGNALING_SECURE
+								? 'https://'
+								: 'http://';
+							var url = protocol + SIGNALING_HOST + ':'
+								+ SIGNALING_PORT + '/' + P2P_API_KEY
+								+ '/data_host';
 
 							console.log("IN getDataHost");
 
 							http.open('get', url, true);
-						  http.onerror = function(e) {
-						    util.error('Error getDataHost', e);
-						  };
-						  http.onreadystatechange = function() {
-						    if (http.readyState !== 4) {
-						      return;
-						    }
-						    if (http.status !== 200) {
-						      http.onerror();
-						      return;
-						    }
+							http.onerror = function(e) {
+								util.error('Error getDataHost', e);
+							};
+							http.onreadystatechange = function() {
+								if (http.readyState !== 4) {
+									return;
+								}
+								if (http.status !== 200) {
+									http.onerror();
+									return;
+								}
 
-								console.log("SUCCESS getDataHost %s",http.responseText);
+								console
+									.log("SUCCESS getDataHost %s", http.responseText);
 								data_host = http.responseText;
 
-								var _pingToDataHost = function(){
-									if(data_host){
+								var _pingToDataHost = function() {
+									if (data_host) {
 										var http = new xmlhttprequest.XMLHttpRequest();
-									  var protocol = SIGNALING_SECURE ? 'https://' : 'http://';
-									  var url = protocol + data_host;
+										var protocol = SIGNALING_SECURE
+											? 'https://'
+											: 'http://';
+										var url = protocol + data_host;
 
-										http.open( 'POST', url, true );
-										http.setRequestHeader( 'Content-Type', 'application/json' );
-										http.setRequestHeader( 'Authorization', 'Token token=mzi9vncbbo' );
+										http.open('POST', url, true);
+										http
+											.setRequestHeader('Content-Type', 'application/json');
+										http
+											.setRequestHeader('Authorization', 'Token token=mzi9vncbbo');
 
 										http.onerror = function(e) {
-									    util.error('Error _ping', e);
-									  };
-									  http.onreadystatechange = function() {
-									    if (http.readyState !== 4) {
-									      return;
-									    }
-									    if (http.status !== 200) {
-									      http.onerror();
-									      return;
-									    }
+											util.error('Error _ping', e);
+										};
+										http.onreadystatechange = function() {
+											if (http.readyState !== 4) {
+												return;
+											}
+											if (http.status !== 200) {
+												http.onerror();
+												return;
+											}
 
-											console.log("RESPONSE _ping %s",http.responseText);
-									  };
+											console
+												.log("RESPONSE _ping %s", http.responseText);
+										};
 
-										var data = JSON.stringify({ method: "ping", app_key: uuid });
+										var data = JSON.stringify({
+											method : "ping",
+											app_key : uuid
+										});
 										console.log(data);
-										http.send( data );
+										http.send(data);
 									}
 								}
 
-								_pingToDataHost();//do ping once first
-								setInterval(function() {
+								_pingToDataHost();// do ping once first
+								peer.ping_timer = setInterval(function() {
 									_pingToDataHost();
 								}, PING_TO_DATA_HOST_INTERVAL);
-						  };
-						  http.send(null);
-					});
+							};
+							http.send(null);
+						});
 
 					peer.on('error', function(err) {
 						if (err.type == "network") {// disconnect
