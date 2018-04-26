@@ -7,6 +7,7 @@ module.exports = {
 		var phase_pins = [5, 12, 26, 16];
 		var enable_pins = [6, 13, 27, 19];
 		var directions = [1, 1, 1, 1];
+		var inversions = [0, 0, 1, 1];
 		var MD0 = 0;
 		var MD1 = 1;
 		var MD2 = 2;
@@ -22,7 +23,10 @@ module.exports = {
 		var m_remaining_steps = [0, 0];// float count of m_move_step
 		var m_last_dir = 0;// -1 == g0, 0 == not designated, 1 == g1 dir
 
-		function setPwm(pin, duty, _fd) {
+		for (var i = 0; i < 4; i++) {
+			invertPwm(i, inversions[i]);
+		}
+		function invertPwm(idx, invert, _fd) {
 			var need_to_close;
 			var fd;
 			if (_fd == null) {
@@ -32,7 +36,23 @@ module.exports = {
 				fd = _fd;
 				need_to_close = false;
 			}
-			fs.writeSync(fd, sprintf("%d=%.3f\n", pin, duty));
+			fs.writeSync(fd, sprintf("invert %d=%d\n", enable_pins[idx], invert));
+			if (need_to_close) {
+				fs.closeSync(fd);
+			}
+		}
+		function setPwm(idx, _duty, _fd) {
+			var need_to_close;
+			var fd;
+			var duty = inversions[idx] ? (1.0 - _duty) : _duty;
+			if (_fd == null) {
+				fd = fs.openSync("/dev/pi-blaster", 'w');
+				need_to_close = true;
+			} else {
+				fd = _fd;
+				need_to_close = false;
+			}
+			fs.writeSync(fd, sprintf("%d=%.3f\n", enable_pins[idx], duty));
 			if (need_to_close) {
 				fs.closeSync(fd);
 			}
@@ -40,6 +60,7 @@ module.exports = {
 		function setPhase(idx, v, _fd) {
 			var need_to_close;
 			var fd;
+			var phase = (v * directions[idx] > 0) ? 1 : 0;
 			if (_fd == null) {
 				fd = fs.openSync("/dev/pi-blaster", 'w');
 				need_to_close = true;
@@ -48,10 +69,10 @@ module.exports = {
 				need_to_close = false;
 			}
 			if (v != 0) {
-				setPwm(enable_pins[idx], m_duty/100, fd);
-				setPwm(phase_pins[idx], (v * directions[idx] > 0) ? 1 : 0, fd);
+				setPwm(idx, m_duty / 100, fd);
+				fs.writeSync(fd, sprintf("%d=%.3f\n", phase_pins[idx], phase));
 			} else {
-				setPwm(enable_pins[idx], 0, fd);
+				setPwm(idx, 0, fd);
 			}
 			if (need_to_close) {
 				fs.closeSync(fd);
@@ -84,9 +105,7 @@ module.exports = {
 				z : 0
 			};
 			var euler_xyz = toEulerianAngle(q, "YXZ");
-			var view_yaw = (euler_xy.x > -80)
-				? euler_xy.y
-				: euler_xyz.y;
+			var view_yaw = (euler_xy.x > -80) ? euler_xy.y : euler_xyz.y;
 
 			var g0 = Math.sin(view_yaw * Math.PI / 180);
 			var g1 = Math.cos(view_yaw * Math.PI / 180);
@@ -153,12 +172,11 @@ module.exports = {
 
 		function mat4_fromQuat(q) {
 			var out = [];
-			var x = q[0], y = q[1], z = q[2], w = q[3], x2 = x + x, y2 = y
-				+ y, z2 = z + z,
+			var x = q[0], y = q[1], z = q[2], w = q[3], x2 = x + x, y2 = y + y, z2 = z
+				+ z,
 
-			xx = x * x2, yx = y * x2, yy = y * y2, zx = z * x2, zy = z
-				* y2, zz = z * z2, wx = w * x2, wy = w * y2, wz = w
-				* z2;
+			xx = x * x2, yx = y * x2, yy = y * y2, zx = z * x2, zy = z * y2, zz = z
+				* z2, wx = w * x2, wy = w * y2, wz = w * z2;
 
 			out[0] = 1 - yy - zz;
 			out[1] = yx + wz;
