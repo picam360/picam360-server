@@ -17,6 +17,7 @@ module.exports = {
 		// 3 - 2
 
 		var m_duty = 25;// %
+		var m_view_yaw_offset = 0;
 		var m_move_time = 0;
 		var m_move_speed = 10;// %
 		var m_move_step = 20;// ms
@@ -36,7 +37,8 @@ module.exports = {
 				fd = _fd;
 				need_to_close = false;
 			}
-			fs.writeSync(fd, sprintf("invert %d=%d\n", enable_pins[idx], invert));
+			fs
+				.writeSync(fd, sprintf("invert %d=%d\n", enable_pins[idx], invert));
 			if (need_to_close) {
 				fs.closeSync(fd);
 			}
@@ -106,6 +108,7 @@ module.exports = {
 			};
 			var euler_xyz = toEulerianAngle(q, "YXZ");
 			var view_yaw = (euler_xy.x > -80) ? euler_xy.y : euler_xyz.y;
+			view_yaw += m_view_yaw_offset;
 
 			var g0 = Math.sin(view_yaw * Math.PI / 180);
 			var g1 = Math.cos(view_yaw * Math.PI / 180);
@@ -278,6 +281,15 @@ module.exports = {
 						m_move_time = parseFloat(split[1]);
 						m_move_speed = parseFloat(split[2]);
 						break;
+				}
+			},
+			init_options : function(options) {
+				if (options[plugin.name + ".duty"]) {
+					m_duty = options[plugin.name + ".duty"];
+				}
+				if (options[plugin.name + ".view_yaw_offset"]) {
+					m_view_yaw_offset = options[plugin.name
+						+ ".view_yaw_offset"];
 				}
 			}
 		};

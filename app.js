@@ -648,7 +648,7 @@ async
 								return;
 							}
 							peer.ping_started = true;
-							
+
 							var http = new xmlhttprequest.XMLHttpRequest();
 							var protocol = SIGNALING_SECURE
 								? 'https://'
@@ -1013,6 +1013,11 @@ async
 					var plugin = require("./" + plugin_path)
 						.create_plugin(plugin_host);
 					plugins.push(plugin);
+				}
+				for (var i = 0; i < plugins.length; i++) {
+					if (plugins[i].init_options) {
+						plugins[i].init_options(options);
+					}
 				}
 			}
 			callback(null);
