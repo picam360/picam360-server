@@ -16,13 +16,24 @@ module.exports = {
 		// | |
 		// 3 - 2
 
+		var MD_PAIR_NA = -1;
+		var MD_PAIR_0 = 0;
+		var MD_PAIR_1 = 1;
+
+		var DIR_NA = -1;
+		var DIR0 = 0;
+		var DIR1 = 1;
+		var DIR2 = 2;
+		var DIR3 = 3;
+
 		var m_duty = 25;// %
 		var m_view_yaw_offset = 0;
 		var m_move_time = 0;
 		var m_move_speed = 10;// %
 		var m_move_step = 20;// ms
 		var m_remaining_steps = [0, 0];// float count of m_move_step
-		var m_last_dir = 0;// -1 == g0, 0 == not designated, 1 == g1 dir
+		var m_max_step = Math.sin(Math.PI / 4) * 2;
+		var m_last_dir = DIR_NA;
 
 		for (var i = 0; i < 4; i++) {
 			invertPwm(i, inversions[i]);
@@ -80,15 +91,36 @@ module.exports = {
 				fs.closeSync(fd);
 			}
 		}
-		setInterval(function() {
-			if (m_move_time <= 0) {
-				m_remaining_steps[0] = 0;
-				m_remaining_steps[1] = 0;
-				m_last_dir = 0;
+		function move(dir_idx) {
+			if (dir_idx == DIR0) {
+				setPhase(MD0, 1);
+				setPhase(MD2, -1);
+			} else if (dir_idx == DIR1) {
+				setPhase(MD0, -1);
+				setPhase(MD2, 1);
+			} else if (dir_idx == DIR2) {
+				setPhase(MD1, 1);
+				setPhase(MD3, -1);
+			} else if (dir_idx == DIR3) {
+				setPhase(MD1, -1);
+				setPhase(MD3, 1);
+			} else {
 				setPhase(MD0, 0);
 				setPhase(MD1, 0);
 				setPhase(MD2, 0);
 				setPhase(MD3, 0);
+			}
+		}
+		function stop() {
+			move(DIR_NA);
+		}
+
+		setInterval(function() {
+			if (m_move_time <= 0) {
+				m_remaining_steps[MD_PAIR_0] = 0;
+				m_remaining_steps[MD_PAIR_1] = 0;
+				m_last_dir = DIR_NA;
+				stop();
 				return;
 			}
 
@@ -112,62 +144,105 @@ module.exports = {
 
 			var g0 = Math.sin(view_yaw * Math.PI / 180);
 			var g1 = Math.cos(view_yaw * Math.PI / 180);
+			var step_ratio = (Math.abs(g0) + Math.abs(g1)) / m_max_step;
+			g0 *= step_ratio;
+			g1 *= step_ratio;
 
-			m_remaining_steps[0] += g0;
-			m_remaining_steps[1] += g1;
+			if (m_remaining_steps[MD_PAIR_0] * g0 < 0)
+				m_remaining_steps[MD_PAIR_0] = 0;
+			if (m_remaining_steps[MD_PAIR_1] * g1 < 0)
+				m_remaining_steps[MD_PAIR_1] = 0;
+			m_remaining_steps[MD_PAIR_0] += g0;
+			m_remaining_steps[MD_PAIR_1] += g1;
 
-			var dir = 0;// 0 == not designated
-			if (1 <= Math.abs(m_remaining_steps[0])
-				&& 1 <= Math.abs(m_remaining_steps[1])) {
-				dir = m_last_dir * -1;
-				if (dir == 0)
-					dir = -1;
+			var next_md_pair = MD_PAIR_NA;
+			if (1 <= Math.abs(m_remaining_steps[MD_PAIR_0])
+				&& 1 <= Math.abs(m_remaining_steps[MD_PAIR_1])) {
+				if (m_last_dir == DIR0 || m_last_dir == DIR1)
+					next_md_pair = MD_PAIR_1;
+				else if (m_last_dir == DIR2 || m_last_dir == DIR3)
+					next_md_pair = MD_PAIR_0;
+				else
+					next_md_pair = MD_PAIR_0;
 			}
 
-			if ((dir == 0 || dir == -1) && 1 <= m_remaining_steps[0]) {
-				setPhase(MD1, 0);
-				setPhase(MD3, 0);
+			stop();
 
-				setPhase(MD0, 1);
-				setPhase(MD2, -1);
-
-				m_remaining_steps[0] -= 1;
-				m_last_dir = -1;
-			} else if ((dir == 0 || dir == -1) && m_remaining_steps[0] <= -1) {
-				setPhase(MD1, 0);
-				setPhase(MD3, 0);
-
-				setPhase(MD0, -1);
-				setPhase(MD2, 1);
-
-				m_remaining_steps[0] += 1;
-				m_last_dir = -1;
-			} else {
-				setPhase(MD0, 0);
-				setPhase(MD2, 0);
+			function movedir0() {
+				if (1 <= m_remaining_steps[MD_PAIR_0] && m_last_dir != DIR0) {
+					console
+						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR0));
+					move(DIR0);
+					m_last_dir = DIR0;
+					m_remaining_steps[MD_PAIR_0] = 0;
+					return true;
+				}
+				return false;
+			}
+			function movedir1() {
+				if (m_remaining_steps[MD_PAIR_0] <= -1 && m_last_dir != DIR1) {
+					console
+						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR1));
+					move(DIR1);
+					m_last_dir = DIR1;
+					m_remaining_steps[MD_PAIR_0] = 0;
+					return true;
+				}
+				return false;
+			}
+			function movedir2() {
+				if (1 <= m_remaining_steps[MD_PAIR_1] && m_last_dir != DIR2) {
+					console
+						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR2));
+					move(DIR2);
+					m_last_dir = DIR2;
+					m_remaining_steps[MD_PAIR_1] = 0;
+					return true;
+				}
+				return false;
+			}
+			function movedir3() {
+				if (m_remaining_steps[MD_PAIR_1] <= -1 && m_last_dir != DIR3) {
+					console
+						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR3));
+					move(DIR3);
+					m_last_dir = DIR3;
+					m_remaining_steps[MD_PAIR_1] = 0;
+					return true;
+				}
+				return false;
 			}
 
-			if ((dir == 0 || dir == 1) && 1 <= m_remaining_steps[1]) {
-				setPhase(MD0, 0);
-				setPhase(MD2, 0);
-
-				setPhase(MD1, 1);
-				setPhase(MD3, -1);
-
-				m_remaining_steps[1] -= 1;
-				m_last_dir = 1;
-			} else if ((dir == 0 || dir == 1) && m_remaining_steps[1] <= -1) {
-				setPhase(MD0, 0);
-				setPhase(MD2, 0);
-
-				setPhase(MD1, -1);
-				setPhase(MD3, 1);
-
-				m_remaining_steps[1] += 1;
-				m_last_dir = 1;
+			var moved = false;
+			if (next_md_pair == MD_PAIR_0) {
+				if (!moved)
+					moved = movedir2();
+				if (!moved)
+					moved = movedir3();
+				if (!moved)
+					moved = movedir0();
+				if (!moved)
+					moved = movedir1();
 			} else {
-				setPhase(MD1, 0);
-				setPhase(MD3, 0);
+				if (!moved)
+					moved = movedir0();
+				if (!moved)
+					moved = movedir1();
+				if (!moved)
+					moved = movedir2();
+				if (!moved)
+					moved = movedir3();
+			}
+
+			if (!moved) {
+				console.log("no move");
+				m_last_dir = DIR_NA;
+				if (1 <= Math.abs(m_remaining_steps[MD_PAIR_0])) {
+					m_remaining_steps[MD_PAIR_0] = 0;
+				}
+				if (1 <= Math.abs(m_remaining_steps[MD_PAIR_1])) {
+					m_remaining_steps[MD_PAIR_1] = 0;
+				}
 			}
 
 			m_move_time -= m_move_step;
