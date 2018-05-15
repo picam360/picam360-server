@@ -15,10 +15,10 @@ module.exports = {
 		// 0 - 1
 		// | |
 		// 3 - 2
-
+		
 		var MD_PAIR_NA = -1;
-		var MD_PAIR_0 = 0;
-		var MD_PAIR_1 = 1;
+		var MD_PAIR_0 = 0;// MD0 and MD2
+		var MD_PAIR_1 = 1;// MD1 and MD3
 
 		var DIR_NA = -1;
 		var DIR0 = 0;
@@ -28,12 +28,16 @@ module.exports = {
 
 		var m_duty = 25;// %
 		var m_view_yaw_offset = 0;
+		var m_low_duty_ratio = 65;// %
+		var m_low_duty_thresh_time = 40;// ms
 		var m_move_time = 0;
-		var m_move_speed = 10;// %
+		var m_move_speed = 10;// % (Not being used)
 		var m_move_step = 20;// ms
-		var m_remaining_steps = [0, 0];// float count of m_move_step
-		var m_max_step = Math.sin(Math.PI / 4) * 2;
 		var m_last_dir = DIR_NA;
+		var m_last_dir_cnt = 0;// last dir continuous count
+		var m_moved_step_counts = [0, 0];
+		var m_step_ramains = [0, 0];
+		var m_last_step_ratios = [0, 0];
 
 		for (var i = 0; i < 4; i++) {
 			invertPwm(i, inversions[i]);
@@ -70,7 +74,7 @@ module.exports = {
 				fs.closeSync(fd);
 			}
 		}
-		function setPhase(idx, v, _fd) {
+		function setPhase(idx, v, duty_ratio, _fd) {
 			var need_to_close;
 			var fd;
 			var phase = (v * directions[idx] > 0) ? 1 : 0;
@@ -82,7 +86,7 @@ module.exports = {
 				need_to_close = false;
 			}
 			if (v != 0) {
-				setPwm(idx, m_duty / 100, fd);
+				setPwm(idx, m_duty / 100 * duty_ratio / 100, fd);
 				fs.writeSync(fd, sprintf("%d=%.3f\n", phase_pins[idx], phase));
 			} else {
 				setPwm(idx, 0, fd);
@@ -91,35 +95,50 @@ module.exports = {
 				fs.closeSync(fd);
 			}
 		}
-		function move(dir_idx) {
-			if (dir_idx == DIR0) {
-				setPhase(MD0, 1);
-				setPhase(MD2, -1);
-			} else if (dir_idx == DIR1) {
-				setPhase(MD0, -1);
-				setPhase(MD2, 1);
-			} else if (dir_idx == DIR2) {
-				setPhase(MD1, 1);
-				setPhase(MD3, -1);
-			} else if (dir_idx == DIR3) {
-				setPhase(MD1, -1);
-				setPhase(MD3, 1);
+		function stop(pair_idx = DIR_NA) {
+			if (pair_idx == MD_PAIR_0) {
+				setPhase(MD0, 0, 100);
+				setPhase(MD2, 0, 100);
+			} else if (pair_idx == MD_PAIR_1) {
+				setPhase(MD1, 0, 100);
+				setPhase(MD3, 0, 100);
 			} else {
-				setPhase(MD0, 0);
-				setPhase(MD1, 0);
-				setPhase(MD2, 0);
-				setPhase(MD3, 0);
+				setPhase(MD0, 0, 100);
+				setPhase(MD1, 0, 100);
+				setPhase(MD2, 0, 100);
+				setPhase(MD3, 0, 100);
 			}
 		}
-		function stop() {
-			move(DIR_NA);
+		function move(dir_idx, ratio = 100) {
+			if (dir_idx == DIR0) {
+				stop(MD_PAIR_1);			
+				setPhase(MD0, 1, ratio);
+				setPhase(MD2, -1, ratio);
+			} else if (dir_idx == DIR1) {
+				stop(MD_PAIR_1);
+				setPhase(MD0, -1, ratio);
+				setPhase(MD2, 1, ratio);
+			} else if (dir_idx == DIR2) {
+				stop(MD_PAIR_0);
+				setPhase(MD1, 1, ratio);
+				setPhase(MD3, -1, ratio);
+			} else if (dir_idx == DIR3) {
+				stop(MD_PAIR_0);
+				setPhase(MD1, -1, ratio);
+				setPhase(MD3, 1, ratio);
+			} 
 		}
-
+		
 		setInterval(function() {
 			if (m_move_time <= 0) {
-				m_remaining_steps[MD_PAIR_0] = 0;
-				m_remaining_steps[MD_PAIR_1] = 0;
 				m_last_dir = DIR_NA;
+				m_last_dir_cnt = 0;
+				m_moved_step_counts[MD_PAIR_0] = 0;
+				m_moved_step_counts[MD_PAIR_1] = 0;
+				m_last_step_ratios[MD_PAIR_0] = 0;
+				m_last_step_ratios[MD_PAIR_1] = 0;
+				m_step_ramains[MD_PAIR_0] = 0;
+				m_step_ramains[MD_PAIR_1] = 0;
 				stop();
 				return;
 			}
@@ -142,109 +161,93 @@ module.exports = {
 			var view_yaw = (euler_xy.x > -80) ? euler_xy.y : euler_xyz.y;
 			view_yaw += m_view_yaw_offset;
 
-			var g0 = Math.sin(view_yaw * Math.PI / 180);
-			var g1 = Math.cos(view_yaw * Math.PI / 180);
-			var step_ratio = (Math.abs(g0) + Math.abs(g1)) / m_max_step;
-			g0 *= step_ratio;
-			g1 *= step_ratio;
-
-			if (m_remaining_steps[MD_PAIR_0] * g0 < 0)
-				m_remaining_steps[MD_PAIR_0] = 0;
-			if (m_remaining_steps[MD_PAIR_1] * g1 < 0)
-				m_remaining_steps[MD_PAIR_1] = 0;
-			m_remaining_steps[MD_PAIR_0] += g0;
-			m_remaining_steps[MD_PAIR_1] += g1;
-
-			var next_md_pair = MD_PAIR_NA;
-			if (1 <= Math.abs(m_remaining_steps[MD_PAIR_0])
-				&& 1 <= Math.abs(m_remaining_steps[MD_PAIR_1])) {
-				if (m_last_dir == DIR0 || m_last_dir == DIR1)
-					next_md_pair = MD_PAIR_1;
-				else if (m_last_dir == DIR2 || m_last_dir == DIR3)
-					next_md_pair = MD_PAIR_0;
-				else
-					next_md_pair = MD_PAIR_0;
+			var step_ratios = [0, 0];
+			step_ratios[MD_PAIR_0] = Math.sin(view_yaw * Math.PI / 180);
+			step_ratios[MD_PAIR_1] = Math.cos(view_yaw * Math.PI / 180);
+			var absMax = Math.max(Math.abs(step_ratios[MD_PAIR_0]), Math.abs(step_ratios[MD_PAIR_1]));
+			step_ratios[MD_PAIR_0] /= absMax;
+			step_ratios[MD_PAIR_1] /= absMax;
+			
+			// Reset when direction reversed.
+			if(Math.abs(m_last_step_ratios[MD_PAIR_0] * step_ratios[MD_PAIR_0]) < 0){
+				m_moved_step_counts[MD_PAIR_0] = 0;
+				m_step_ramains[MD_PAIR_0] = 0;
 			}
-
-			stop();
-
-			function movedir0() {
-				if (1 <= m_remaining_steps[MD_PAIR_0] && m_last_dir != DIR0) {
-					console
-						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR0));
-					move(DIR0);
-					m_last_dir = DIR0;
-					m_remaining_steps[MD_PAIR_0] = 0;
-					return true;
-				}
-				return false;
+			if(Math.abs(m_last_step_ratios[MD_PAIR_1] * step_ratios[MD_PAIR_1]) < 0){
+				m_moved_step_counts[MD_PAIR_1] = 0;
+				m_step_ramains[MD_PAIR_1] = 0;
 			}
-			function movedir1() {
-				if (m_remaining_steps[MD_PAIR_0] <= -1 && m_last_dir != DIR1) {
-					console
-						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR1));
-					move(DIR1);
-					m_last_dir = DIR1;
-					m_remaining_steps[MD_PAIR_0] = 0;
-					return true;
-				}
-				return false;
-			}
-			function movedir2() {
-				if (1 <= m_remaining_steps[MD_PAIR_1] && m_last_dir != DIR2) {
-					console
-						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR2));
-					move(DIR2);
-					m_last_dir = DIR2;
-					m_remaining_steps[MD_PAIR_1] = 0;
-					return true;
-				}
-				return false;
-			}
-			function movedir3() {
-				if (m_remaining_steps[MD_PAIR_1] <= -1 && m_last_dir != DIR3) {
-					console
-						.log(sprintf("last_and_now: %d - %d", m_last_dir, DIR3));
-					move(DIR3);
-					m_last_dir = DIR3;
-					m_remaining_steps[MD_PAIR_1] = 0;
-					return true;
-				}
-				return false;
-			}
-
-			var moved = false;
-			if (next_md_pair == MD_PAIR_0) {
-				if (!moved)
-					moved = movedir2();
-				if (!moved)
-					moved = movedir3();
-				if (!moved)
-					moved = movedir0();
-				if (!moved)
-					moved = movedir1();
-			} else {
-				if (!moved)
-					moved = movedir0();
-				if (!moved)
-					moved = movedir1();
-				if (!moved)
-					moved = movedir2();
-				if (!moved)
-					moved = movedir3();
-			}
-
-			if (!moved) {
-				console.log("no move");
-				m_last_dir = DIR_NA;
-				if (1 <= Math.abs(m_remaining_steps[MD_PAIR_0])) {
-					m_remaining_steps[MD_PAIR_0] = 0;
-				}
-				if (1 <= Math.abs(m_remaining_steps[MD_PAIR_1])) {
-					m_remaining_steps[MD_PAIR_1] = 0;
+			m_last_step_ratios[MD_PAIR_0] = step_ratios[MD_PAIR_0];
+			m_last_step_ratios[MD_PAIR_1] = step_ratios[MD_PAIR_1];
+			
+			var next_dir = DIR_NA;
+			function SetNextDirFromPair0() {
+				var v = Math.abs(step_ratios[MD_PAIR_0]) * m_moved_step_counts[MD_PAIR_1] + m_step_ramains[MD_PAIR_0];
+				if(v >= 1){
+					if(step_ratios[MD_PAIR_0] >= 0){
+						next_dir = DIR0;
+					}else{
+						next_dir = DIR1;
+					}	
+					m_step_ramains[MD_PAIR_0] = (v-1);
+					m_moved_step_counts[MD_PAIR_0] = 1;
+					m_moved_step_counts[MD_PAIR_1] = 0;
 				}
 			}
-
+			function SetNextDirFromPair1() {
+				var v = Math.abs(step_ratios[MD_PAIR_1]) * m_moved_step_counts[MD_PAIR_0] + m_step_ramains[MD_PAIR_1];
+				if(v >= 1){
+					if(step_ratios[MD_PAIR_1] >= 0){
+						next_dir = DIR2;
+					}else{
+						next_dir = DIR3;
+					}
+					m_step_ramains[MD_PAIR_1] = (v-1);
+					m_moved_step_counts[MD_PAIR_0] = 0;
+					m_moved_step_counts[MD_PAIR_1] = 1;
+				}
+			}
+			
+			// Get next dir.
+			if(m_last_dir == DIR0 || m_last_dir == DIR1){
+				if(next_dir == DIR_NA) SetNextDirFromPair1();
+				if(next_dir == DIR_NA) SetNextDirFromPair0();
+				
+			}else if(m_last_dir == DIR2 || m_last_dir == DIR3){
+				if(next_dir == DIR_NA) SetNextDirFromPair0();
+				if(next_dir == DIR_NA) SetNextDirFromPair1();
+			}
+			if(next_dir == DIR_NA){
+				if(Math.abs(step_ratios[MD_PAIR_0]) >= Math.abs(step_ratios[MD_PAIR_1])){
+					if(step_ratios[MD_PAIR_0] >= 0){
+						next_dir = DIR0;
+					}else{
+						next_dir = DIR1;
+					}
+					m_moved_step_counts[MD_PAIR_0] += 1;
+				}else{
+					if(step_ratios[MD_PAIR_1] >= 0){
+						next_dir = DIR2;
+					}else{
+						next_dir = DIR3;
+					}
+					m_moved_step_counts[MD_PAIR_1] += 1;
+				}
+			}
+			
+			// Move.
+			if(m_last_dir == next_dir && m_low_duty_thresh_time <= m_move_step * m_last_dir_cnt){
+				move(next_dir, m_low_duty_ratio);
+			}else{
+				move(next_dir);
+			}
+			if(m_last_dir == next_dir){
+				m_last_dir_cnt++;
+			}else{
+				m_last_dir_cnt = 1;
+			}	
+			m_last_dir = next_dir;
+			
 			m_move_time -= m_move_step;
 		}, m_move_step);
 
