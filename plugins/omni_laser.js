@@ -308,7 +308,7 @@ module.exports = {
 			});
 
 		var plugin = {
-			name : "omni_lazer",
+			name : "omni_laser",
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
 				cmd = split[0].split('.')[1];
