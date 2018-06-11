@@ -1,4 +1,6 @@
 #include <avr/pgmspace.h>
+#include <limits.h>
+#include <EEPROM.h>
 #include <Wire.h>
 //#include <HMC58X3.h>
 #include <LSM303.h>
@@ -14,15 +16,20 @@ Servo servo;
 #define BT_DUMP
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //uno
-SoftwareSerial Serial3(15, 14);// RX, TX
+SoftwareSerial Serial3(12, 13);// RX, TX
 #endif
 
-#define MAP_NUM  2     //1:実験用コース3,2:琵琶湖環境科学研究センター,3:マキノサニービーチ(大会コース),4:実験用コース1,5:実験用コース2
-#define START_WAY_POINT_NUM 0      //0を最初のウェイポイント番号とする
-#define RITS_WAY_POINT_NUM 48                  //ウェイポイントの数
+#define SOFTWARE_VERSION "0.1"
+#define MAX_WAY_POINT_NUM 64
+typedef struct __attribute__ ((packed)) _EEPROM_DATA
+{
+  uint16_t max_way_point_num;
+  uint32_t North_way_point[MAX_WAY_POINT_NUM];
+  uint32_t East_way_point[MAX_WAY_POINT_NUM];
+  uint16_t allowable_error_dis[MAX_WAY_POINT_NUM];  
+}EEPROM_DATA;
 
-#define MAKINO_WAY_POINT_NUM 50
-#define MAX_WAY_POINT_NUM 51        //ウェイポイントの登録最大数    こを変更する場合way_pointの数も変更する
+
 #define MAX_PULSE 2200        //入力パルスの上限(曇り:2100/晴れ:1750)
 #define MIN_PULSE 1000          //入力パルスの下限(曇り:850/晴れ:1100)
 #define MID_PULSE 1600      //中間の入力パルス
@@ -74,334 +81,6 @@ double alpha2;
 double beta;      //ボートの方位角[rad]
 double d_direction;      //目的地までの角度[rad]
 double p_d_direction = 0;    //1ループ前の目的地までの角度[rad]
-
-//GPS用変数
-//大会用のwaypoint
-
-//GPS用変数
-
-//立命館大学のウェイポイント
-PROGMEM const uint32_t rits_North_way_point[RITS_WAY_POINT_NUM] = {        //北緯のウェイポイントデータ[1/10000 min]
-		35453018,    // 0 (A地点)
-				35450500,    // 1
-				35448000,    // 2
-				35445500,    // 3
-				35443000,    // 4
-				35440500,    // 5
-				35438000,    // 6
-				35436000,   // 7 (B地点)
-				35436000,   // 8
-				35436000,   // 9
-				35436000,   // 10
-				35436000,   // 11
-				35436000,   // 12
-				35436000,   // 13
-				35436000,   // 14
-				35436000,   // 15
-				35436000,   // 16
-				35436000,   // 17
-				35436000,   // 18
-				35436000,   // 19
-				35436000,   // 20
-				35436000,   // 21
-				35433505,   // 22
-				35436000,   // 23 (C地点)
-				35438495,   // 24
-				35436000,   // 25
-				35436000,   // 26
-				35436000,   // 27
-				35436000,   // 28
-				35436000,   // 29
-				35436000,   // 30
-				35436000,     // 31
-				35436000,   // 32
-				35436000,   // 33
-				35436000,   // 34
-				35436000,   // 35
-				35436000,   // 36
-				35436000,   // 37
-				35436000,   // 38
-				35436000,   // 39 (B地点)
-				35438000,   // 40 
-				35440500,   // 41
-				35443000,   // 42
-				35445500,           // 43
-				35448000,           // 44
-				35450500,           // 45
-				35453018,   // 46 (A地点)
-				35455997    // 47 (ゴール地点)
-
-		};
-PROGMEM const uint32_t rits_East_way_point[RITS_WAY_POINT_NUM] = {        //東経のウェイポイントデータ[1/10000 min]
-
-		136064675,    // 0 (A地点)
-				136066800,    // 1
-				136068900,    // 2
-				136071100,    // 3
-				136073300,    // 4
-				136075500,    // 5
-				136077750,    // 6
-				136080000,    // 7 (B地点)
-				136084200,    // 8
-				136088400,    // 9
-				136092600,    // 10
-				136096800,    // 11
-				136101000,    // 12
-				136105200,    // 13
-				136109400,    // 14
-				136113600,    // 15
-				136117800,    // 16
-				136122000,    // 17
-				136126200,    // 18
-				136130400,    // 19
-				136134600,    // 20
-				136138800,    // 21
-				136143000,    // 22
-				136150000,    // 23 (C地点)
-				136143000,    // 24
-				136138800,    // 25
-				136134600,    // 26
-				136130400,    // 27
-				136126200,    // 28
-				136122000,    // 29
-				136117800,    // 30
-				136113600,    // 31
-				136109400,    // 32
-				136105200,    // 33
-				136101000,    // 34
-				136096800,    // 35
-				136092600,    // 36
-				136088400,    // 37
-				136084200,    // 38
-				136080000,    // 39 (B地点)
-				136077750,    // 40
-				136075500,    // 41
-				136073300,    // 42
-				136071100,    // 43
-				136068900,    // 44
-				136066800,    // 45
-				136064675,    // 46 (A地点)
-				136061992   // 47 (ゴール地点)
-
-		};
-PROGMEM const uint32_t rits_allowable_error_dis[RITS_WAY_POINT_NUM] = {        //許容誤差距離[m]    ウェイポイントまでの残り距離がこの値になるとウェイポイントを次に切り替える
-		30,    // 0 (A地点)
-				150,    // 1
-				150,    // 2
-				150,    // 3
-				150,    // 4
-				150,    // 5
-				150,    // 6
-				30,    // 7(B地点)
-				150,    // 8
-				150,    // 9
-				150,    // 10
-				150,    // 11
-				150,    // 12
-				150,    // 13
-				150,    // 14
-				150,    // 15
-				150,    // 16
-				150,    // 17
-				150,    // 18
-				150,    // 19
-				150,    // 20
-				150,    // 21
-				150,    // 22
-				30,    // 23(C地点)
-				150,    // 24
-				150,    // 25
-				150,    // 26
-				150,    // 27
-				150,    // 28
-				150,    // 29
-				150,    // 30
-				150,    // 31
-				150,    // 32
-				150,    // 33
-				150,    // 34
-				150,    // 35
-				150,    // 36
-				150,    // 37
-				150,    // 38
-				30,    // 39 (B地点)
-				150,    // 40
-				150,    // 41
-				150,    // 42
-				150,    // 43
-				150,    // 44
-				150,    // 45
-				30,    // 46 (A地点)
-				30    //  47 (ゴール地点)
-		};
-
-/*
-
- 
- long long int rits_North_way_point[RITS_WAY_POINT_NUM] = {
- 35453018,    // 0 (A地点) 35.436758
- 35450500,           // 1
- 35448000,           // 2
- 35445500,           // 3
- 35443000,           // 4
- 35440500,           // 5
- 35438000,           // 6
- 35436000,   // 7 (B地点)
- 35436000,   // 8
- 35436000,   // 9
- 35436000,   // 10
- 35436000,   // 11
- 35436000,   // 12
- 35436000,   // 13
- 35436000,   // 14
- 35436000,   // 15
- 35436000,   // 16
- 35436000,   // 17
- 35436000,   // 18
- 35436000,   // 19
- 35436000,   // 20
- 35436000,   // 21
- 35436000,   // 22
- 35436000,   // 23
- 35436000,   // 24 (C地点)
- 35436000,   // 25
- 35436000,   // 26
- 35436000,   // 27
- 35436000,   // 28
- 35436000,   // 29
- 35436000,   // 30
- 35436000,   // 31
- 35436000,   // 32
- 35436000,     // 33
- 35436000,   // 34
- 35436000,   // 35
- 35436000,   // 36
- 35436000,   // 37
- 35436000,   // 38
- 35436000,   // 39
- 35436000,   // 40
- 35436000,   // 41 (B地点)
- 35438000,   // 42 
- 35440500,   // 43
- 35443000,   // 44
- 35445500,           // 45
- 35448000,           // 46
- 35450500,           // 47
- 35453018,   // 48 (A地点)
- 35455997    // 49 (ゴール地点)
-
- };
- 
- long long int rits_East_way_point[RITS_WAY_POINT_NUM] = { 
- 136064675,    // 0 (A地点)
- 136066800,    // 1
- 136068900,    // 2
- 136071100,    // 3
- 136073300,    // 4
- 136075500,    // 5
- 136077750,    // 6
- 136080000,    // 7 (B地点)
- 136084200,    // 8
- 136088400,    // 9
- 136092600,    // 10
- 136096800,    // 11
- 136101000,    // 12
- 136105200,    // 13
- 136109400,    // 14
- 136113600,    // 15
- 136117800,    // 16
- 136122000,    // 17
- 136126200,    // 18
- 136130400,    // 19
- 136134600,    // 20
- 136138800,    // 21
- 136143000,    // 22
- 136147000,    // 23
- 136150000,    // 24 (C地点)
- 136147000,    // 25
- 136143000,    // 26
- 136138800,    // 27
- 136134600,    // 28
- 136130400,    // 29
- 136126200,    // 30
- 136122000,    // 31
- 136117800,    // 32
- 136113600,    // 33
- 136109400,    // 34
- 136105200,    // 35
- 136101000,    // 36
- 136096800,    // 37
- 136092600,    // 38
- 136088400,    // 39
- 136084200,    // 40
- 136080000,    // 41 (B地点)
- 136077750,    // 42
- 136075500,    // 43
- 136073300,    // 44
- 136071100,    // 45
- 136068900,    // 46
- 136066800,    // 47
- 136064675,    // 48 (A地点)
- 136061992   // 49 (ゴール地点)
- };
- int rits_allowable_error_dis[RITS_WAY_POINT_NUM] = {        //許容誤差距離[m]    ウェイポイントまでの残り距離がこの値になるとウェイポイントを次に切り替える
- 30,    // 0 (A地点)
- 150,    // 1
- 150,    // 2
- 150,    // 3
- 150,    // 4
- 150,    // 5
- 150,    // 6
- 30,    // 7(B地点)
- 150,    // 8
- 150,    // 9
- 150,    // 10
- 150,    // 11
- 150,    // 12
- 150,    // 13
- 150,    // 14
- 150,    // 15
- 150,    // 16
- 150,    // 17
- 150,    // 18
- 150,    // 19
- 150,    // 20
- 150,    // 21
- 150,    // 22
- 150,    // 23
- 30,    // 24(C地点)
- 150,    // 25
- 150,    // 26
- 150,    // 27
- 150,    // 28
- 150,    // 29
- 150,    // 30
- 150,    // 31
- 150,    // 32
- 150,    // 33
- 150,    // 34
- 150,    // 35
- 150,    // 36
- 150,    // 37
- 150,    // 38
- 150,    // 39
- 150,    // 40
- 30,    // 41 (B地点)
- 150,    // 42
- 150,    // 43
- 150,    // 44
- 150,    // 45
- 150,    // 46
- 150,    // 47
- 30,    // 48 (A地点)
- 30    //  49 (ゴール地点)
- };
- */
- 
-//北緯は8桁、東経は9桁に桁を合わせる
-uint32_t *North_way_point;
-uint32_t *East_way_point;
-uint32_t *allowable_error_dis;
 
 int j;
 int max_way_point_num = 0;
@@ -470,12 +149,15 @@ char boat_rad[3] = { 0, 0 };    //bluetooth送信用データ（1.042[rad]→{10
 
 int signal_cnt = 0;
 
+#define STRNCMP(cmd, target) strncmp(cmd, target, strlen(target))
+#define offsetof_in_array(data, param, cur) offsetof(data, param) + cur*sizeof(*data::param)
+
 //---------------------
 //セットアップ
 //---------------------
 void setup() {
   Serial.begin(9600);
-  Serial.println("setup");
+  Serial.println("setup started");
 
 	pinMode(2, OUTPUT);
 	pinMode(3, OUTPUT);
@@ -505,34 +187,97 @@ void setup() {
 	InitLPF_heading(SAMPLE_TIME, CUTOFF_FREQ_HEADING, ZETA_HEADING);  //LPF初期設定
 	InitLPF_pulse(SAMPLE_TIME, CUTOFF_FREQ_PULSE, ZETA_PULSE);  //LPF初期設定
 
-	way_point_cnt = START_WAY_POINT_NUM;      //最初のウェイポイントの番号を設定
+	way_point_cnt = 0;      //最初のウェイポイントの番号を設定
+  max_way_point_num = EEPROM_readint(offsetof(EEPROM_DATA, max_way_point_num));
+  if(max_way_point_num > MAX_WAY_POINT_NUM){
+    max_way_point_num = MAX_WAY_POINT_NUM;
+  }
 
-	if (MAP_NUM == 2) {
-		max_way_point_num = RITS_WAY_POINT_NUM;
-		East_way_point = (uint32_t *)rits_East_way_point;
-		North_way_point = (uint32_t *)rits_North_way_point;
-		allowable_error_dis = (uint32_t *)rits_allowable_error_dis;
-	}
-  //dump
+  //dump way point
   for(i=0;i<max_way_point_num;i++){
     Serial.print(i, DEC);
     Serial.print("=");
-    Serial.print((uint32_t)pgm_read_dword_near(North_way_point + i), DEC);
+    Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i)), DEC);
     Serial.print(",");
-    Serial.print((uint32_t)pgm_read_dword_near(East_way_point + i), DEC);
+    Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i)), DEC);
+    Serial.print(" ");
+    Serial.print((uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, i)), DEC);
     Serial.print("\r\n");
   }
+  Serial.println("setup completed");
 }
 
 //---------------------
 //main
 //---------------------
-
+char cmd[256];
+uint8_t cmd_cur;
 void loop() {
 	int i;
 
-	//   Serial.print("ccc");
-
+  if (Serial.available() > 0) {
+    // read the incoming byte:
+    int c = Serial.read();
+    if(c == '\r' || c == '\n'){
+      if(cmd_cur != 0){
+        cmd[cmd_cur] = '\0';
+        cmd_cur = 0;
+        if(STRNCMP(cmd, "set_way_point") == 0){
+          uint32_t cur, north, west, aed=INT_MAX;
+          sscanf(cmd, "set_way_point %ld %ld,%ld %ld", &cur, &north, &west, &aed);
+          if(cur >= max_way_point_num){
+             Serial.println("error");
+          }else{
+            EEPROM_writelong(offsetof_in_array(EEPROM_DATA, North_way_point, cur), north);
+            EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_way_point, cur), west);
+            if(aed < INT_MAX){
+              EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
+            }
+            Serial.println("done");
+          }
+        }
+        else if(STRNCMP(cmd, "set_aed") == 0){
+          uint32_t cur, aed=1;
+          sscanf(cmd, "set_aed %ld %ld", &cur, &aed);
+          if(cur >= max_way_point_num){
+             Serial.println("error");
+          }else{
+            EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
+            Serial.println("done");
+          }
+        }
+        else if(STRNCMP(cmd, "set_max_way_point_num") == 0){
+          sscanf(cmd, "set_max_way_point_num %d", &max_way_point_num);
+          if(max_way_point_num > MAX_WAY_POINT_NUM){
+            max_way_point_num = MAX_WAY_POINT_NUM;
+          }
+          EEPROM_writeint(offsetof(EEPROM_DATA, max_way_point_num), (uint16_t)max_way_point_num);
+          Serial.println("done");
+        }
+        else if(STRNCMP(cmd, "get_way_point") == 0){
+          uint32_t cur;
+          sscanf(cmd, "get_way_point %ld", &cur);
+          if(cur >= max_way_point_num){
+             Serial.println("error");
+          }
+          else{
+            Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, cur)), DEC);
+            Serial.print(",");
+            Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, cur)), DEC);
+            Serial.print(" ");
+            Serial.print((uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur)), DEC);
+            Serial.print("\r\n");
+          }
+        }
+        else if(STRNCMP(cmd, "get_max_way_point_num") == 0){
+          Serial.println(max_way_point_num);
+        }
+      }
+    }else{
+      cmd[cmd_cur++] = c;
+    }                
+  }
+  
 	if (Serial3.available()) {
 		c = Serial3.read();
 		//Serial.print(c);
@@ -609,8 +354,8 @@ void loop() {
 		delay(20);
 		get_GPS_flag = 0;
 
-		d_North = (uint32_t)pgm_read_dword_near(North_way_point + way_point_cnt) - North;
-		d_East = (uint32_t)pgm_read_dword_near(East_way_point + way_point_cnt) - East;
+		d_North = (uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i)) - North;
+		d_East = (uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i)) - East;
 
 		d_North_dis = (double) d_North * 111 / 1000;
 		d_East_dis = (double) d_East * 91 / 1000;
@@ -637,7 +382,7 @@ void loop() {
 
 		Serial.print(way_point_cnt);
 
-		if (distance < (uint32_t)pgm_read_dword_near(allowable_error_dis + way_point_cnt)) {
+		if (distance < (uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, way_point_cnt))) {
 
 			way_point_cnt++;
 			if (way_point_cnt == max_way_point_num) {
@@ -963,3 +708,45 @@ void double_char_conv(double x, char data[], int data_num, int floating_point_nu
 	}
 }
 
+//
+//EEPROM HELPER START
+//
+// read double word from EEPROM, give starting address
+unsigned long EEPROM_readlong(int address)
+{
+ //use word read function for reading upper part
+ unsigned long dword = EEPROM_readint(address);
+ //shift read word up
+ dword = dword << 16;
+ // read lower word from EEPROM and OR it into double word
+ dword = dword | EEPROM_readint(address+2);
+ return dword;
+}
+
+//write word to EEPROM
+ void EEPROM_writeint(int address, int value) 
+{
+ EEPROM.write(address,highByte(value));
+ EEPROM.write(address+1 ,lowByte(value));
+}
+ 
+ //write long integer into EEPROM
+ void EEPROM_writelong(int address, unsigned long value) 
+{
+ //truncate upper part and write lower part into EEPROM
+ EEPROM_writeint(address+2, word(value));
+ //shift upper part down
+ value = value >> 16;
+ //truncate and write
+ EEPROM_writeint(address, word(value));
+}
+
+unsigned int EEPROM_readint(int address) 
+{
+ unsigned int word = word(EEPROM.read(address), EEPROM.read(address+1));
+ return word;
+}
+
+//
+//EEPROM HELPER END
+//
