@@ -15,6 +15,7 @@
   "uuid": "*",
   "wrtc": "https://github.com/picam360/node-webrtc.git",
   "peerjs": "https://github.com/picam360/peerjs.git",
-  "xmlhttprequest": "^1.8.0"
+  "xmlhttprequest": "^1.8.0",
+  "serialport": "^6.2.0"  
  }
 }

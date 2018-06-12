@@ -157,7 +157,7 @@ int signal_cnt = 0;
 //---------------------
 void setup() {
   Serial.begin(9600);
-  Serial.println("setup started");
+  Serial.println("INFO:setup started");
 
 	pinMode(2, OUTPUT);
 	pinMode(3, OUTPUT);
@@ -195,6 +195,7 @@ void setup() {
 
   //dump way point
   for(i=0;i<max_way_point_num;i++){
+    Serial.print("INFO:");
     Serial.print(i, DEC);
     Serial.print("=");
     Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i)), DEC);
@@ -204,7 +205,7 @@ void setup() {
     Serial.print((uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, i)), DEC);
     Serial.print("\r\n");
   }
-  Serial.println("setup completed");
+  Serial.println("INFO:setup completed");
 }
 
 //---------------------
