@@ -4,15 +4,15 @@ module.exports = {
 		var async = require('async');
 		var fs = require("fs");
 		var sprintf = require('sprintf-js').sprintf;
-
 		var SerialPort = require('serialport');
 
+		var PLUGIN_NAME = "usvc";
 		var COM_PORT = "/dev/ttyACM0";
 		var DELIMITER = '\r\n';
 		var TIMEOUT_MS = 5000;
 
 		var sp = null;
-		var max_way_point_num = 0;
+		var way_points = [];
 
 		async.waterfall([function(callback) {
 			var sp_callback = null;
@@ -49,11 +49,13 @@ module.exports = {
 			sp.on("open", function() {
 				setInterval(function() {
 					sp_send("get_max_way_point_num", function(ret) {
-						console.log("get_max_way_point_num:" + ret);
-						max_way_point_num = ret;
-						for (var i = 0; i < max_way_point_num; i++) {
+						var new_way_points = new Array(parseInt(ret));
+						for (var i = 0; i < new_way_points.length; i++) {
 							sp_send("get_way_point " + i, function(ret, idx) {
-								console.log("get_way_point " + idx + ":" + ret);
+								new_way_points[idx] = ret;
+								if (idx == new_way_points.length - 1) {
+									way_points = new_way_points;
+								}
 							}, i);
 						};
 					});
@@ -71,12 +73,19 @@ module.exports = {
 			});
 			callback(null);
 		}, function(callback) {
+			plugin_host.add_status(PLUGIN_NAME + ".way_points", function() {
+				var str = JSON.stringify(way_points);
+				return {
+					succeeded : true,
+					value : str
+				};
+			});
 			callback(null);
 		}], function(err, result) {
 		});
 
 		var plugin = {
-			name : "usvc",
+			name : PLUGIN_NAME,
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
 				cmd = split[0].split('.')[1];

@@ -468,7 +468,7 @@ async
 						if (!ret.succeeded) {
 							continue;
 						}
-						var value = ret.value;
+						var value = encodeURIComponent(ret.value);
 						var status = "<picam360:status name=\"" + name
 							+ "\" value=\"" + value + "\" />";
 						var pack = rtp
