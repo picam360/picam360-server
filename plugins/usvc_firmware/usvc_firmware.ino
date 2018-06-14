@@ -26,6 +26,7 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	uint32_t North_way_point[MAX_WAY_POINT_NUM]; //%3.6f fixed frew[deg]
 	uint32_t East_way_point[MAX_WAY_POINT_NUM]; //%3.6f fixed frew[deg]
 	uint16_t allowable_error_dis[MAX_WAY_POINT_NUM]; //[m]
+	uint32_t gps_baudrate;
 } EEPROM_DATA;
 
 #define MAX_PULSE 2200        //入力パルスの上限(曇り:2100/晴れ:1750)
@@ -157,7 +158,14 @@ void setup() {
 	pinMode(5, OUTPUT);
 	int i = 0;
 	//int j = 0;
-	auto_detect_baud_rate (&Serial3);
+	uint32_t gps_baudrate = (uint32_t) EEPROM_readlong(offsetof(EEPROM_DATA, gps_baudrate));
+	if (gps_baudrate >= 9600 && gps_baudrate <= 115200) {
+		Serial.print("INFO:connect gps ");
+		Serial.println(gps_baudrate);
+		Serial3.begin(gps_baudrate);
+	} else {
+		auto_detect_baud_rate (&Serial3);
+	}
 #ifdef BT_DUMP
 	Serial2.begin(115200);
 #endif
@@ -210,7 +218,7 @@ void setup() {
 void auto_detect_baud_rate(SoftwareSerial *serial) {
 	const unsigned int bauds[] = { 57600, 38400, 28800, 14400, 9600, 4800 };
 
-	Serial.print("auto detect... ");
+	Serial.print("INFO:auto detect... ");
 
 	for (int i = 0; i < (sizeof(bauds) / sizeof(bauds[0])); i++) {
 		int p = 0;
@@ -281,6 +289,11 @@ void loop() {
 						}
 						Serial.println("done");
 					}
+				} else if (STRNCMP(cmd, "set_gps_baudrate") == 0) {
+					uint32_t gps_baudrate = 9600;
+					sscanf(cmd, "set_gps_baudrate %ld", &gps_baudrate);
+					EEPROM_writelong(offsetof(EEPROM_DATA, gps_baudrate), gps_baudrate);
+					Serial.println("done");
 				} else if (STRNCMP(cmd, "set_aed") == 0) {
 					uint32_t cur, aed = 1;
 					sscanf(cmd, "set_aed %ld %ld", &cur, &aed);

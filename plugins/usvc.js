@@ -13,6 +13,7 @@ module.exports = {
 
 		var sp = null;
 		var way_points = [];
+		var gps_point = [];
 
 		async.waterfall([function(callback) {
 			var sp_callback = null;
@@ -52,12 +53,25 @@ module.exports = {
 						var new_way_points = new Array(parseInt(ret));
 						for (var i = 0; i < new_way_points.length; i++) {
 							sp_send("get_way_point " + i, function(ret, idx) {
-								new_way_points[idx] = ret;
+								var ary = ret.split(" ");
+								var fary = [];
+								for (var i = 0; i < ary.length; i++) {
+									fary[i] = parseFloat(ary[i]);
+								}
+								new_way_points[idx] = fary;
 								if (idx == new_way_points.length - 1) {
 									way_points = new_way_points;
 								}
 							}, i);
 						};
+					});
+					sp_send("get_gps_point", function(ret) {
+						var ary = ret.split(" ");
+						var fary = [];
+						for (var i = 0; i < ary.length; i++) {
+							fary[i] = parseFloat(ary[i]);
+						}
+						gps_point = fary;
 					});
 				}, 5000);
 			});
@@ -73,11 +87,14 @@ module.exports = {
 			});
 			callback(null);
 		}, function(callback) {
-			plugin_host.add_status(PLUGIN_NAME + ".way_points", function() {
-				var str = JSON.stringify(way_points);
+			plugin_host.add_status(PLUGIN_NAME + ".info", function() {
+				var info = {
+					way_points : way_points,
+					gps_point : gps_point
+				};
 				return {
 					succeeded : true,
-					value : str
+					value : JSON.stringify(info)
 				};
 			});
 			callback(null);
