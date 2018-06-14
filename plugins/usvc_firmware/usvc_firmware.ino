@@ -21,14 +21,12 @@ SoftwareSerial Serial3(12, 13);// RX, TX
 
 #define SOFTWARE_VERSION "0.1"
 #define MAX_WAY_POINT_NUM 64
-typedef struct __attribute__ ((packed)) _EEPROM_DATA
-{
-  uint16_t max_way_point_num;
-  uint32_t North_way_point[MAX_WAY_POINT_NUM];
-  uint32_t East_way_point[MAX_WAY_POINT_NUM];
-  uint16_t allowable_error_dis[MAX_WAY_POINT_NUM];  
-}EEPROM_DATA;
-
+typedef struct __attribute__ ((packed)) _EEPROM_DATA {
+	uint16_t max_way_point_num;
+	uint32_t North_way_point[MAX_WAY_POINT_NUM]; //%3.6f fixed frew[deg]
+	uint32_t East_way_point[MAX_WAY_POINT_NUM]; //%3.6f fixed frew[deg]
+	uint16_t allowable_error_dis[MAX_WAY_POINT_NUM]; //[m]
+} EEPROM_DATA;
 
 #define MAX_PULSE 2200        //入力パルスの上限(曇り:2100/晴れ:1750)
 #define MIN_PULSE 1000          //入力パルスの下限(曇り:850/晴れ:1100)
@@ -73,9 +71,6 @@ void double_char_conv(double x, char data[], int data_num, int floating_point_nu
 
 //コンパス用変数
 
-double Northes;    //地図上での目標角度[rad]
-double Eastes;      //ボートの方位角[rad]
-
 double alpha;    //地図上での目標角度[rad]
 double alpha2;
 double beta;      //ボートの方位角[rad]
@@ -104,14 +99,11 @@ char East_char2[10];
 long North_long;
 long East_long;
 
-long long int North;        //GPSから取得した北緯のlong long int型の変数
-long long int East;          //GPSから取得した東経のlong long int型の変数
+long long int North;        //GPSから取得した北緯のlong long int型の変数[deg]
+long long int East;          //GPSから取得した東経のlong long int型の変数[deg]
 
-long long int way_point_North_mini;      //次のウェイポイントの北緯を分に変換した変数
-long long int way_point_East_mini;        //次のウェイポイントの東経を分に変換した変数
-
-long int d_North;        //目的地までの北緯方向の距離[min]
-long int d_East;          //目的地までの東経方向の距離[min]
+long int d_North;        //目的地までの北緯方向の距離[deg]
+long int d_East;          //目的地までの東経方向の距離[deg]
 
 double d_North_dis;        //目的地までの北緯方向の距離[m]
 double d_East_dis;         //目的地までの東経の距離[m]
@@ -156,8 +148,8 @@ int signal_cnt = 0;
 //セットアップ
 //---------------------
 void setup() {
-  Serial.begin(9600);
-  Serial.println("INFO:setup started");
+	Serial.begin(9600);
+	Serial.println("INFO:setup started");
 
 	pinMode(2, OUTPUT);
 	pinMode(3, OUTPUT);
@@ -165,7 +157,7 @@ void setup() {
 	pinMode(5, OUTPUT);
 	int i = 0;
 	//int j = 0;
-	Serial3.begin(9600);
+	auto_detect_baud_rate (&Serial3);
 #ifdef BT_DUMP
 	Serial2.begin(115200);
 #endif
@@ -177,7 +169,7 @@ void setup() {
 	compass.m_max = (LSM303::vector<int16_t> ) { +32767, +32767, +32767 };
 
 	// no delay needed as we have already a delay(5) in HMC5843::init()
-	compass.init(); // Dont set mode yet, we'll do that later on.
+	compass.init(compass.device_D, compass.sa0_low); // Dont set mode yet, we'll do that later on.
 	// Calibrate HMC using self test, not recommended to change the gain after calibration.
 	//compass.calibrate(1); // Use gain 1=default, valid 0-7, 7 not recommended.
 	// Single mode conversion was used in calibration, now set continuous mode
@@ -188,24 +180,74 @@ void setup() {
 	InitLPF_pulse(SAMPLE_TIME, CUTOFF_FREQ_PULSE, ZETA_PULSE);  //LPF初期設定
 
 	way_point_cnt = 0;      //最初のウェイポイントの番号を設定
-  max_way_point_num = EEPROM_readint(offsetof(EEPROM_DATA, max_way_point_num));
-  if(max_way_point_num > MAX_WAY_POINT_NUM){
-    max_way_point_num = MAX_WAY_POINT_NUM;
-  }
+	max_way_point_num = EEPROM_readint(offsetof(EEPROM_DATA, max_way_point_num));
+	if (max_way_point_num > MAX_WAY_POINT_NUM) {
+		max_way_point_num = MAX_WAY_POINT_NUM;
+	}
 
-  //dump way point
-  for(i=0;i<max_way_point_num;i++){
-    Serial.print("INFO:");
-    Serial.print(i, DEC);
-    Serial.print("=");
-    Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i)), DEC);
-    Serial.print(",");
-    Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i)), DEC);
-    Serial.print(" ");
-    Serial.print((uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, i)), DEC);
-    Serial.print("\r\n");
-  }
-  Serial.println("INFO:setup completed");
+	//dump way point
+	for (i = 0; i < max_way_point_num; i++) {
+		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i));
+		uint32_t west = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i));
+		uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, i));
+		Serial.print("INFO:");
+		Serial.print(i);
+		Serial.print(" ");
+		Serial.print((uint32_t) north / (uint32_t) 1E6);
+		Serial.print(".");
+		Serial.print((uint32_t) north % (uint32_t) 1E6);
+		Serial.print(" ");
+		Serial.print((uint32_t) west / (uint32_t) 1E6);
+		Serial.print(".");
+		Serial.print((uint32_t) west % (uint32_t) 1E6);
+		Serial.print(" ");
+		Serial.print(aed);
+		Serial.print("\r\n");
+	}
+	Serial.println("INFO:setup completed");
+}
+
+void auto_detect_baud_rate(SoftwareSerial *serial) {
+	const unsigned int bauds[] = { 57600, 38400, 28800, 14400, 9600, 4800 };
+
+	Serial.print("auto detect... ");
+
+	for (int i = 0; i < (sizeof(bauds) / sizeof(bauds[0])); i++) {
+		int p = 0;
+		int r = 0;
+		serial->begin(bauds[i]);
+		serial->flush();
+		do {
+			if (serial->available()) {
+				if (isprint(serial->read())) {
+					p++;
+				}
+				r++;
+			}
+		} while (r < 20);
+		if (p > 15) {
+			Serial.print(bauds[i]);
+			Serial.println(" ok");
+			return;
+		}
+		delay(100);
+	}
+
+	Serial.println("fail auto_detect_baud_rate");
+	while (1)
+		;
+}
+
+uint32_t cal_fixed_few(char *str, int k) {
+	uint32_t ret = 0;
+	for (int i = 0; str[i] != '\0'; i++) {
+		uint32_t v = str[i] - '0';
+		for (int j = 1; j < k - i; j++) {
+			v *= 10;
+		}
+		ret += v;
+	}
+	return ret;
 }
 
 //---------------------
@@ -216,69 +258,83 @@ uint8_t cmd_cur;
 void loop() {
 	int i;
 
-  if (Serial.available() > 0) {
-    // read the incoming byte:
-    int c = Serial.read();
-    if(c == '\r' || c == '\n'){
-      if(cmd_cur != 0){
-        cmd[cmd_cur] = '\0';
-        cmd_cur = 0;
-        if(STRNCMP(cmd, "set_way_point") == 0){
-          uint32_t cur, north, west, aed=INT_MAX;
-          sscanf(cmd, "set_way_point %ld %ld,%ld %ld", &cur, &north, &west, &aed);
-          if(cur >= max_way_point_num){
-             Serial.println("error");
-          }else{
-            EEPROM_writelong(offsetof_in_array(EEPROM_DATA, North_way_point, cur), north);
-            EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_way_point, cur), west);
-            if(aed < INT_MAX){
-              EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
-            }
-            Serial.println("done");
-          }
-        }
-        else if(STRNCMP(cmd, "set_aed") == 0){
-          uint32_t cur, aed=1;
-          sscanf(cmd, "set_aed %ld %ld", &cur, &aed);
-          if(cur >= max_way_point_num){
-             Serial.println("error");
-          }else{
-            EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
-            Serial.println("done");
-          }
-        }
-        else if(STRNCMP(cmd, "set_max_way_point_num") == 0){
-          sscanf(cmd, "set_max_way_point_num %d", &max_way_point_num);
-          if(max_way_point_num > MAX_WAY_POINT_NUM){
-            max_way_point_num = MAX_WAY_POINT_NUM;
-          }
-          EEPROM_writeint(offsetof(EEPROM_DATA, max_way_point_num), (uint16_t)max_way_point_num);
-          Serial.println("done");
-        }
-        else if(STRNCMP(cmd, "get_way_point") == 0){
-          uint32_t cur;
-          sscanf(cmd, "get_way_point %ld", &cur);
-          if(cur >= max_way_point_num){
-             Serial.println("error");
-          }
-          else{
-            Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, cur)), DEC);
-            Serial.print(",");
-            Serial.print((uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, cur)), DEC);
-            Serial.print(" ");
-            Serial.print((uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur)), DEC);
-            Serial.print("\r\n");
-          }
-        }
-        else if(STRNCMP(cmd, "get_max_way_point_num") == 0){
-          Serial.println(max_way_point_num);
-        }
-      }
-    }else{
-      cmd[cmd_cur++] = c;
-    }                
-  }
-  
+	if (Serial.available() > 0) {
+		// read the incoming byte:
+		int c = Serial.read();
+		if (c == '\r' || c == '\n') {
+			if (cmd_cur != 0) {
+				cmd[cmd_cur] = '\0';
+				cmd_cur = 0;
+				if (STRNCMP(cmd, "set_way_point") == 0) {
+					uint32_t cur = 0, north = 0, west = 0, aed = INT_MAX;
+					char north_sub[7], west_sub[7];
+					sscanf(cmd, "set_way_point %d %d.%6s %d.%6s %d", &cur, &north, &north_sub, &west, &west_sub, &aed);
+					north = north * (uint32_t) 1E6 + cal_fixed_few(north_sub, 6);
+					west = west * (uint32_t) 1E6 + cal_fixed_few(west_sub, 6);
+					if (cur >= max_way_point_num) {
+						Serial.println("error");
+					} else {
+						EEPROM_writelong(offsetof_in_array(EEPROM_DATA, North_way_point, cur), north);
+						EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_way_point, cur), west);
+						if (aed < INT_MAX) {
+							EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
+						}
+						Serial.println("done");
+					}
+				} else if (STRNCMP(cmd, "set_aed") == 0) {
+					uint32_t cur, aed = 1;
+					sscanf(cmd, "set_aed %ld %ld", &cur, &aed);
+					if (cur >= max_way_point_num) {
+						Serial.println("error");
+					} else {
+						EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
+						Serial.println("done");
+					}
+				} else if (STRNCMP(cmd, "set_max_way_point_num") == 0) {
+					sscanf(cmd, "set_max_way_point_num %d", &max_way_point_num);
+					if (max_way_point_num > MAX_WAY_POINT_NUM) {
+						max_way_point_num = MAX_WAY_POINT_NUM;
+					}
+					EEPROM_writeint(offsetof(EEPROM_DATA, max_way_point_num), (uint16_t) max_way_point_num);
+					Serial.println("done");
+				} else if (STRNCMP(cmd, "get_way_point") == 0) {
+					uint32_t cur;
+					sscanf(cmd, "get_way_point %ld", &cur);
+					if (cur >= max_way_point_num) {
+						Serial.println("error");
+					} else {
+						uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, cur));
+						uint32_t west = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, cur));
+						uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur));
+						Serial.print((uint32_t) north / (uint32_t) 1E6);
+						Serial.print(".");
+						Serial.print((uint32_t) north % (uint32_t) 1E6);
+						Serial.print(" ");
+						Serial.print((uint32_t) west / (uint32_t) 1E6);
+						Serial.print(".");
+						Serial.print((uint32_t) west % (uint32_t) 1E6);
+						Serial.print(" ");
+						Serial.print(aed);
+						Serial.print("\r\n");
+					}
+				} else if (STRNCMP(cmd, "get_max_way_point_num") == 0) {
+					Serial.println(max_way_point_num);
+				} else if (STRNCMP(cmd, "get_gps_point") == 0) {
+					Serial.print((uint32_t) North / (uint32_t) 1E6);
+					Serial.print(".");
+					Serial.print((uint32_t) North % (uint32_t) 1E6);
+					Serial.print(" ");
+					Serial.print((uint32_t) East / (uint32_t) 1E6);
+					Serial.print(".");
+					Serial.print((uint32_t) East % (uint32_t) 1E6);
+					Serial.println();
+				}
+			}
+		} else {
+			cmd[cmd_cur++] = c;
+		}
+	}
+
 	if (Serial3.available()) {
 		c = Serial3.read();
 		//Serial.print(c);
@@ -289,7 +345,7 @@ void loop() {
 		}
 
 		if (doll_cnt == 5) {
-			if (GPS[0] == 71 && GPS[1] == 80 && GPS[2] == 71 && GPS[3] == 71 && GPS[4] == 65) {         //ASCIIコードでG=71,P=80,A=65
+			if (GPS[0] == 'G' && GPS[1] == 'P' && GPS[2] == 'G' && GPS[3] == 'G' && GPS[4] == 'A') {         //ASCIIコードでG=71,P=80,A=65
 				flag_GPS_start = 1;
 			}
 			flag_doll = 0;
@@ -300,7 +356,7 @@ void loop() {
 			if (GPS_cnt >= 13 && GPS_cnt <= 22) {
 				North_char1[GPS_cnt - 13] = c;
 
-				if (c != 46) {
+				if (c != '.') {
 					North_char2[north_cnt] = c;
 					north_cnt++;
 				}
@@ -355,35 +411,15 @@ void loop() {
 		delay(20);
 		get_GPS_flag = 0;
 
-		d_North = (uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i)) - North;
-		d_East = (uint32_t)EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i)) - East;
+		d_North = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i)) - North;
+		d_East = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i)) - East;
 
 		d_North_dis = (double) d_North * 111 / 1000;
 		d_East_dis = (double) d_East * 91 / 1000;
 
-		Northes = (double) North;
-		Eastes = (double) East;
-
-		Serial.print("  N=");
-
-		Serial.print(Northes);
-		Serial.print("E=");
-
-		Serial.print(Eastes);
-
 		distance = sqrt((long double) d_North_dis * (long double) d_North_dis + (long double) d_East_dis * (long double) d_East_dis);
-		Serial.print("d=");
 
-		Serial.print(distance);
-//     Serial.print("d  ");
-
-		Serial.print("  ");
-
-		Serial.print("cnt= ");
-
-		Serial.print(way_point_cnt);
-
-		if (distance < (uint16_t)EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, way_point_cnt))) {
+		if (distance < (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, way_point_cnt))) {
 
 			way_point_cnt++;
 			if (way_point_cnt == max_way_point_num) {
@@ -403,22 +439,12 @@ void loop() {
 
 		beta -= COMPASS_OFFSET * PI / 180;
 
-		Serial.print("  al=");
-		Serial.print(alpha * 180 / PI);
-
-		//Serial.print("  al2=");
-		//Serial.print(alpha2 *180/PI);
-
-		Serial.print("  be=");
-
 		if (beta < -PI) {
 			beta += 2 * PI;
 		}
 		if (beta > PI) {
 			beta -= 2 * PI;
 		}
-
-		Serial.print(beta * 180 / PI);
 
 		d_direction = alpha - beta;
 		//   d_direction = alpha + beta;
@@ -430,8 +456,6 @@ void loop() {
 		if (d_direction > PI) {
 			d_direction -= 2 * PI;
 		}
-
-		Serial.print("  dir=");
 
 		/*  if(d_direction < (-1) * PI)
 		 {
@@ -453,19 +477,10 @@ void loop() {
 		 d_direction -= 2 * PI; 
 		 }*/
 
-		Serial.println(d_direction * 180 / PI);
-
 		if (d_direction < LOW_GAIN_DEG * PI / 180 && d_direction > LOW_GAIN_DEG * PI / 180 * (-1)) {
 			input_pulse = LOW_GAIN_KP * d_direction - LOW_GAIN_KV * (d_direction - p_d_direction) / SAMPLE_TIME + MID_PULSE;
-			Serial.print("IP1=");
-			Serial.print(input_pulse);
-			Serial.print(" ");
-
 		} else {
 			input_pulse = KP * d_direction - KV * (d_direction - p_d_direction) / SAMPLE_TIME + MID_PULSE;
-			Serial.print("IP2=");
-			Serial.print(input_pulse);
-			Serial.print(" ");
 		}
 
 		if (PULSE_LPF != 0) {
@@ -482,11 +497,43 @@ void loop() {
 
 		p_d_direction = d_direction;
 
-		Serial.print("IP=");
-		Serial.print(input_pulse);
-		Serial.print(" ");
-
 		servo.writeMicroseconds(input_pulse);
+
+#ifdef POLING_DUMP
+		Serial.print("INFO:");
+		Serial.print("  N=");
+		Serial.print((uint32_t)North/(uint32_t)1E6);
+		Serial.print(".");
+		Serial.print((uint32_t)North%(uint32_t)1E6);
+
+		Serial.print(" E=");
+		Serial.print((uint32_t)East/(uint32_t)1E6);
+		Serial.print(".");
+		Serial.print((uint32_t)East%(uint32_t)1E6);
+
+		Serial.print(" d=");
+		Serial.print(distance);
+
+		Serial.print(" cnt= ");
+		Serial.print(way_point_cnt);
+
+		Serial.print("  al=");
+		Serial.print(alpha * 180 / PI);
+
+		Serial.print("  be=");
+		Serial.print(beta * 180 / PI);
+
+		//Serial.print("  al2=");
+		//Serial.print(alpha2 *180/PI);
+
+		Serial.print("  dir=");
+		Serial.print(d_direction * 180 / PI);
+
+		Serial.print(" IP=");
+		Serial.print(input_pulse);
+
+		Serial.println("");
+#endif
 
 #ifdef BT_DUMP
 		if (signal_cnt >= SIGNAL_CNT_NUM)    //SIGNAL_CNT_NUM回に1度bluetoothにてデータを送信する
@@ -527,8 +574,6 @@ double Get_Compass(void) {
 	float headingd = compass.heading();
 	float heading = headingd * PI / 180;
 
-	Serial.print("  h=");
-	Serial.print(heading * 180 / PI);
 	delay(100);
 
 //  int ix,iy,iz;
@@ -713,39 +758,35 @@ void double_char_conv(double x, char data[], int data_num, int floating_point_nu
 //EEPROM HELPER START
 //
 // read double word from EEPROM, give starting address
-unsigned long EEPROM_readlong(int address)
-{
- //use word read function for reading upper part
- unsigned long dword = EEPROM_readint(address);
- //shift read word up
- dword = dword << 16;
- // read lower word from EEPROM and OR it into double word
- dword = dword | EEPROM_readint(address+2);
- return dword;
+unsigned long EEPROM_readlong(int address) {
+	//use word read function for reading upper part
+	unsigned long dword = EEPROM_readint(address);
+	//shift read word up
+	dword = dword << 16;
+	// read lower word from EEPROM and OR it into double word
+	dword = dword | EEPROM_readint(address + 2);
+	return dword;
 }
 
 //write word to EEPROM
- void EEPROM_writeint(int address, int value) 
-{
- EEPROM.write(address,highByte(value));
- EEPROM.write(address+1 ,lowByte(value));
-}
- 
- //write long integer into EEPROM
- void EEPROM_writelong(int address, unsigned long value) 
-{
- //truncate upper part and write lower part into EEPROM
- EEPROM_writeint(address+2, word(value));
- //shift upper part down
- value = value >> 16;
- //truncate and write
- EEPROM_writeint(address, word(value));
+void EEPROM_writeint(int address, int value) {
+	EEPROM.write(address, highByte(value));
+	EEPROM.write(address + 1, lowByte(value));
 }
 
-unsigned int EEPROM_readint(int address) 
-{
- unsigned int word = word(EEPROM.read(address), EEPROM.read(address+1));
- return word;
+//write long integer into EEPROM
+void EEPROM_writelong(int address, unsigned long value) {
+	//truncate upper part and write lower part into EEPROM
+	EEPROM_writeint(address + 2, word(value));
+	//shift upper part down
+	value = value >> 16;
+	//truncate and write
+	EEPROM_writeint(address, word(value));
+}
+
+unsigned int EEPROM_readint(int address) {
+	unsigned int word = word(EEPROM.read(address), EEPROM.read(address + 1));
+	return word;
 }
 
 //
