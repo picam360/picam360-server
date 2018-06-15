@@ -11,6 +11,7 @@ Servo servo;
 
 //#define PI 3.14159265
 
+//#define POLING_DUMP
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
 //mega
 #define BT_DUMP
@@ -145,6 +146,62 @@ int signal_cnt = 0;
 #define STRNCMP(cmd, target) strncmp(cmd, target, strlen(target))
 #define offsetof_in_array(data, param, cur) offsetof(data, param) + cur*sizeof(*data::param)
 
+void auto_detect_baud_rate(SoftwareSerial *serial) {
+	const unsigned int bauds[] = { 57600, 38400, 28800, 14400, 9600, 4800 };
+
+	Serial.print("INFO:auto detect... ");
+
+	for (int i = 0; i < (sizeof(bauds) / sizeof(bauds[0])); i++) {
+		int p = 0;
+		int r = 0;
+		serial->begin(bauds[i]);
+		serial->flush();
+		do {
+			if (serial->available()) {
+				if (isprint(serial->read())) {
+					p++;
+				}
+				r++;
+			}
+		} while (r < 20);
+		if (p > 15) {
+			Serial.print(bauds[i]);
+			Serial.println(" ok");
+			return;
+		}
+		delay(100);
+	}
+
+	Serial.println("fail auto_detect_baud_rate");
+	while (1)
+		;
+}
+
+void print_fixed_few_6(uint32_t v) {
+	char msg[64];
+	sprintf(msg, "%ld.%06ld", (uint32_t) v / (uint32_t) 1E6, (uint32_t) v % (uint32_t) 1E6);
+	Serial.print(msg);
+}
+
+uint32_t parse_fixed_few_6(char *str) {
+	uint32_t d = 0;
+	uint32_t f = 0;
+	char *d_str = strtok(str, ".");
+	if (d_str != NULL) {
+		d = atol(d_str) * (uint32_t) 1E6;
+
+		char *f_str = strtok(NULL, ".");
+		if (f_str != NULL) {
+			int keta = strlen(f_str);
+			f = atol(f_str);
+			for (int i = keta; i < 6; i++) {
+				f *= 10;
+			}
+		}
+	}
+	return d + f;
+}
+
 //---------------------
 //セットアップ
 //---------------------
@@ -177,7 +234,7 @@ void setup() {
 	compass.m_max = (LSM303::vector<int16_t> ) { +32767, +32767, +32767 };
 
 	// no delay needed as we have already a delay(5) in HMC5843::init()
-	compass.init(compass.device_D, compass.sa0_low); // Dont set mode yet, we'll do that later on.
+	compass.init(); // Dont set mode yet, we'll do that later on.
 	// Calibrate HMC using self test, not recommended to change the gain after calibration.
 	//compass.calibrate(1); // Use gain 1=default, valid 0-7, 7 not recommended.
 	// Single mode conversion was used in calibration, now set continuous mode
@@ -196,66 +253,19 @@ void setup() {
 	//dump way point
 	for (i = 0; i < max_way_point_num; i++) {
 		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i));
-		uint32_t west = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i));
+		uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i));
 		uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, i));
 		Serial.print("INFO:");
 		Serial.print(i);
 		Serial.print(" ");
-		Serial.print((uint32_t) north / (uint32_t) 1E6);
-		Serial.print(".");
-		Serial.print((uint32_t) north % (uint32_t) 1E6);
+		print_fixed_few_6(north);
 		Serial.print(" ");
-		Serial.print((uint32_t) west / (uint32_t) 1E6);
-		Serial.print(".");
-		Serial.print((uint32_t) west % (uint32_t) 1E6);
+		print_fixed_few_6(east);
 		Serial.print(" ");
 		Serial.print(aed);
 		Serial.print("\r\n");
 	}
 	Serial.println("INFO:setup completed");
-}
-
-void auto_detect_baud_rate(SoftwareSerial *serial) {
-	const unsigned int bauds[] = { 57600, 38400, 28800, 14400, 9600, 4800 };
-
-	Serial.print("INFO:auto detect... ");
-
-	for (int i = 0; i < (sizeof(bauds) / sizeof(bauds[0])); i++) {
-		int p = 0;
-		int r = 0;
-		serial->begin(bauds[i]);
-		serial->flush();
-		do {
-			if (serial->available()) {
-				if (isprint(serial->read())) {
-					p++;
-				}
-				r++;
-			}
-		} while (r < 20);
-		if (p > 15) {
-			Serial.print(bauds[i]);
-			Serial.println(" ok");
-			return;
-		}
-		delay(100);
-	}
-
-	Serial.println("fail auto_detect_baud_rate");
-	while (1)
-		;
-}
-
-uint32_t cal_fixed_few(char *str, int k) {
-	uint32_t ret = 0;
-	for (int i = 0; str[i] != '\0'; i++) {
-		uint32_t v = str[i] - '0';
-		for (int j = 1; j < k - i; j++) {
-			v *= 10;
-		}
-		ret += v;
-	}
-	return ret;
 }
 
 //---------------------
@@ -274,16 +284,16 @@ void loop() {
 				cmd[cmd_cur] = '\0';
 				cmd_cur = 0;
 				if (STRNCMP(cmd, "set_way_point") == 0) {
-					uint32_t cur = 0, north = 0, west = 0, aed = INT_MAX;
-					char north_sub[7], west_sub[7];
-					sscanf(cmd, "set_way_point %d %d.%6s %d.%6s %d", &cur, &north, &north_sub, &west, &west_sub, &aed);
-					north = north * (uint32_t) 1E6 + cal_fixed_few(north_sub, 6);
-					west = west * (uint32_t) 1E6 + cal_fixed_few(west_sub, 6);
+					uint32_t cur = 0, north = 0, east = 0, aed = INT_MAX;
+					char north_str[16], east_str[16];
+					sscanf(cmd, "set_way_point %d %16s %16s %d", &cur, &north_str, &east_str, &aed);
+					north = parse_fixed_few_6(north_str);
+					east = parse_fixed_few_6(east_str);
 					if (cur >= max_way_point_num) {
 						Serial.println("error");
 					} else {
 						EEPROM_writelong(offsetof_in_array(EEPROM_DATA, North_way_point, cur), north);
-						EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_way_point, cur), west);
+						EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_way_point, cur), east);
 						if (aed < INT_MAX) {
 							EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
 						}
@@ -317,15 +327,11 @@ void loop() {
 						Serial.println("error");
 					} else {
 						uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, cur));
-						uint32_t west = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, cur));
+						uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, cur));
 						uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur));
-						Serial.print((uint32_t) north / (uint32_t) 1E6);
-						Serial.print(".");
-						Serial.print((uint32_t) north % (uint32_t) 1E6);
+						print_fixed_few_6(north);
 						Serial.print(" ");
-						Serial.print((uint32_t) west / (uint32_t) 1E6);
-						Serial.print(".");
-						Serial.print((uint32_t) west % (uint32_t) 1E6);
+						print_fixed_few_6(east);
 						Serial.print(" ");
 						Serial.print(aed);
 						Serial.print("\r\n");
@@ -333,13 +339,9 @@ void loop() {
 				} else if (STRNCMP(cmd, "get_max_way_point_num") == 0) {
 					Serial.println(max_way_point_num);
 				} else if (STRNCMP(cmd, "get_gps_point") == 0) {
-					Serial.print((uint32_t) North / (uint32_t) 1E6);
-					Serial.print(".");
-					Serial.print((uint32_t) North % (uint32_t) 1E6);
+					print_fixed_few_6(North);
 					Serial.print(" ");
-					Serial.print((uint32_t) East / (uint32_t) 1E6);
-					Serial.print(".");
-					Serial.print((uint32_t) East % (uint32_t) 1E6);
+					print_fixed_few_6(East);
 					Serial.println();
 				}
 			}
@@ -377,10 +379,9 @@ void loop() {
 				if (GPS_cnt == 22) {
 					North_long = atol(North_char2);
 
-					//       Serial.print("N_L="); //////////
-					//   Serial.print(North_long);////////
-
 					North = (int) (North_long / 1000000) * 1000000;
+					//Serial.print(North_long % 1000000);////////
+
 					North = North + (North_long - North) * 100 / 60;
 
 					GPS_temp = North / 100000;
@@ -515,14 +516,10 @@ void loop() {
 #ifdef POLING_DUMP
 		Serial.print("INFO:");
 		Serial.print("  N=");
-		Serial.print((uint32_t)North/(uint32_t)1E6);
-		Serial.print(".");
-		Serial.print((uint32_t)North%(uint32_t)1E6);
+		print_fixed_few_6(North);
 
 		Serial.print(" E=");
-		Serial.print((uint32_t)East/(uint32_t)1E6);
-		Serial.print(".");
-		Serial.print((uint32_t)East%(uint32_t)1E6);
+		print_fixed_few_6(East);
 
 		Serial.print(" d=");
 		Serial.print(distance);
