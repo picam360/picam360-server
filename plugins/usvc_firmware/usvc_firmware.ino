@@ -13,7 +13,16 @@
 #include <SoftwareSerial.h>
 #endif
 LSM303 compass;
-Servo servo;
+Servo pwm_ch1;
+Servo pwm_ch2;
+
+#define CH1_OUT_PIN 2
+#define CH2_OUT_PIN 4
+#define CH3_OUT_PIN 6
+#define CH1_IN_LP_PIN A0
+#define CH2_IN_LP_PIN A1
+#define CH3_IN_LP_PIN A2
+#define INT_MODE_PIN 9
 
 //#define PI 3.14159265
 
@@ -43,12 +52,14 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	int16_t rudder_pwm_offset;
 	bool rudder_pwm_inv;
 	uint8_t rudder_mode;
+	int16_t skrew_pwm_offset;
+	bool skrew_pwm_inv;
+	uint8_t skrew_mode;
 } EEPROM_DATA;
 
 #define MAX_PULSE 2000        //入力パルスの上限(曇り:2100/晴れ:1750)
 #define MIN_PULSE 1000          //入力パルスの下限(曇り:850/晴れ:1100)
 #define MID_PULSE 1500      //中間の入力パルス
-#define SERVO_PIN_NUM 2    //サーボモータに使用しているピン番号
 #define LOOP_CNT 100
 #define SAMPLE_TIME 0.030//サンプリングタイム[sec]
 #define KP -1200          //舵制御用Kpゲイン
@@ -126,6 +137,9 @@ double distance;        //目的地までの距離[m]
 int rudder_pwm = MID_PULSE;
 int rudder_pwm_offset = 0;
 bool rudder_pwm_inv = 0;
+int skrew_pwm = MID_PULSE;
+int skrew_pwm_offset = 0;
+bool skrew_pwm_inv = 0;
 #define RUDDER_MODE_MANUAL 0
 #define RUDDER_MODE_AUTO 1
 #define RUDDER_MODE_AUX 2
@@ -213,7 +227,7 @@ void print_NMEA(const char *cmd) {
 //---------------------
 void setup() {
 	int i = 0;
-	
+
 	Serial.begin(9600);
 	Serial.println("$INFO,setup started*");
 
@@ -223,19 +237,28 @@ void setup() {
 	Serial.println("*");
 	Serial3.begin(gps_baudrate);
 
+	//rudder
 	rudder_pwm_offset = EEPROM_readint(offsetof(EEPROM_DATA, rudder_pwm_offset));
 	Serial.print("$INFO,rudder pwm offset ");
 	Serial.print(rudder_pwm_offset);
 	Serial.println("*");
-
 	rudder_pwm_inv = EEPROM.read(offsetof(EEPROM_DATA, rudder_pwm_inv));
 	Serial.print("$INFO,rudder pwm invert ");
 	Serial.print(rudder_pwm_inv);
 	Serial.println("*");
-
 	rudder_mode = EEPROM.read(offsetof(EEPROM_DATA, rudder_mode));
 	Serial.print("$INFO,rudder mode ");
 	Serial.print(rudder_mode);
+	Serial.println("*");
+
+	//skrew
+	skrew_pwm_offset = EEPROM_readint(offsetof(EEPROM_DATA, skrew_pwm_offset));
+	Serial.print("$INFO,skrew pwm offset ");
+	Serial.print(skrew_pwm_offset);
+	Serial.println("*");
+	skrew_pwm_inv = EEPROM.read(offsetof(EEPROM_DATA, skrew_pwm_inv));
+	Serial.print("$INFO,skrew pwm invert ");
+	Serial.print(skrew_pwm_inv);
 	Serial.println("*");
 
 #ifdef BT_DUMP
@@ -243,7 +266,10 @@ void setup() {
 #endif
 	Wire.begin();
 
-	servo.attach(SERVO_PIN_NUM);
+	//pin setup
+	pwm_ch1.attach(CH1_OUT_PIN);
+	pwm_ch2.attach(CH2_OUT_PIN);
+	pinMode(INT_MODE_PIN, INPUT);
 
 	compass.m_min = (LSM303::vector<int16_t> ) { -32767, -32767, -32767 };
 	compass.m_max = (LSM303::vector<int16_t> ) { +32767, +32767, +32767 };
@@ -290,14 +316,42 @@ void loop() {
 	int i;
 	char c;
 
-	{
+	{      //rudder
 		int16_t pwm = 0;
 		if (rudder_pwm_inv) {
 			pwm = -(rudder_pwm + rudder_pwm_offset - MID_PULSE) + MID_PULSE;
 		} else {
 			pwm = rudder_pwm + rudder_pwm_offset;
 		}
-		servo.writeMicroseconds(pwm);
+		pwm_ch1.writeMicroseconds(pwm);
+	}
+	{      //skrew
+		int16_t pwm = 0;
+		if (skrew_pwm_inv) {
+			pwm = -(skrew_pwm + skrew_pwm_offset - MID_PULSE) + MID_PULSE;
+		} else {
+			pwm = skrew_pwm + skrew_pwm_offset;
+		}
+		pwm_ch2.writeMicroseconds(pwm);
+	}
+	{      //auto mode
+		int ch3 = analogRead(CH3_IN_LP_PIN);
+		if (ch3 > 85) {
+			if (rudder_mode != RUDDER_MODE_AUTO) {
+				rudder_mode = RUDDER_MODE_AUTO;
+				rudder_pwm = MID_PULSE;
+				pinMode(INT_MODE_PIN, OUTPUT);
+				digitalWrite(INT_MODE_PIN, LOW);
+				skrew_pwm = MAX_PULSE;
+			}
+		} else if (ch3 < 80) {
+			if (rudder_mode != RUDDER_MODE_MANUAL) {
+				rudder_mode = RUDDER_MODE_MANUAL;
+				rudder_pwm = MID_PULSE;
+				pinMode(INT_MODE_PIN, INPUT);
+				skrew_pwm = MID_PULSE;
+			}
+		}
 	}
 
 	if (Serial.available() > 0) {
@@ -380,6 +434,24 @@ void loop() {
 						Serial.print("error");
 						Serial.println("*");
 					}
+				} else if (strcmp(p, "set_skrew_pwm_offset") == 0) {
+					int16_t value = 0;
+					p = strtok(NULL, "\0");
+					sscanf(p, "%d", &value);
+					skrew_pwm_offset = value;
+					EEPROM_writeint(offsetof(EEPROM_DATA, skrew_pwm_offset), skrew_pwm_offset);
+					Serial.print("$RET,");
+					Serial.print("ok");
+					Serial.println("*");
+				} else if (strcmp(p, "set_skrew_pwm_inv") == 0) {
+					int16_t value = 0;
+					p = strtok(NULL, "\0");
+					sscanf(p, "%d", &value);
+					skrew_pwm_inv = value;
+					EEPROM.write(offsetof(EEPROM_DATA, skrew_pwm_inv), skrew_pwm_inv);
+					Serial.print("$RET,");
+					Serial.print("ok");
+					Serial.println("*");
 				} else if (strcmp(p, "set_gps_baudrate") == 0) {
 					char nmea_cmd[64];
 					uint32_t gps_baudrate = 9600;
