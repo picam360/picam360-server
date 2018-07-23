@@ -335,21 +335,25 @@ void loop() {
 		pwm_ch2.writeMicroseconds(pwm);
 	}
 	{      //auto mode
-		int ch3 = analogRead(CH3_IN_LP_PIN);
-		if (ch3 > 85) {
+		static float ch3 = 0;
+		ch3 = (analogRead(CH3_IN_LP_PIN) + ch3 * 99) / 100;
+		//Serial.println(ch3);
+		if (ch3 > 128 || ch3 < 80) {
+			if (rudder_mode != RUDDER_MODE_MANUAL) {
+				rudder_mode = RUDDER_MODE_MANUAL;
+				rudder_pwm = MID_PULSE;
+				pinMode(INT_MODE_PIN, INPUT);
+				skrew_pwm = MID_PULSE;
+				//Serial.println(ch3);
+			}
+		} else if (ch3 > 85) {
 			if (rudder_mode != RUDDER_MODE_AUTO) {
 				rudder_mode = RUDDER_MODE_AUTO;
 				rudder_pwm = MID_PULSE;
 				pinMode(INT_MODE_PIN, OUTPUT);
 				digitalWrite(INT_MODE_PIN, LOW);
 				skrew_pwm = MAX_PULSE;
-			}
-		} else if (ch3 < 80) {
-			if (rudder_mode != RUDDER_MODE_MANUAL) {
-				rudder_mode = RUDDER_MODE_MANUAL;
-				rudder_pwm = MID_PULSE;
-				pinMode(INT_MODE_PIN, INPUT);
-				skrew_pwm = MID_PULSE;
+				//Serial.println(ch3);
 			}
 		}
 	}
