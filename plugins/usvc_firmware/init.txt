@@ -1,0 +1,14 @@
+
+set gps_baudrate 9600
+set rudder_pwm_offset 0
+set rudder_pwm_inv 0
+set rudder_mode 0
+set pulse_max 2000
+set pulse_min 1000
+set gain_kp -1200
+set gain_kv -400
+set low_gain_deg 5
+set low_gain_kp -300
+set low_gain_kv -10
+set skrew_pwm_offset 0
+set skrew_pwm_inv 0
