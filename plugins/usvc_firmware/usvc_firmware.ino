@@ -66,7 +66,7 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	int16_t low_gain_kv;
 } EEPROM_DATA;
 
-#define SAMPLE_TIME_MS_THRESHOLD 200
+#define SAMPLE_TIME_MS_THRESHOLD 30
 #define LOOP_CNT 100
 #define COMPASS_OFFSET  2         //コンパスが北を向いたときの角度β[deg]
 #define GPS_OFFSET 0
@@ -727,6 +727,13 @@ void control() {
 		Serial.print(",");
 		Serial.print(sample_time_ms_dif);
 		Serial.println("*");
+
+		Serial.print("$ADC");
+		for (int i = 0; i <= 5; i++) {
+			Serial.print(",");
+			Serial.print(analogRead(A0 + i));
+		}
+		Serial.println("*");
 		last_infodump_time_ms = sample_time_ms;
 	}
 
@@ -856,23 +863,8 @@ double Get_Compass(void) {
 	float headingd = compass.heading();
 	float heading = headingd * PI / 180;
 
-	delay(100);
-
-//  int ix,iy,iz;
-	// float fx,fy,fz;
-	float heading_LPF;
-
-	// compass.getValues(&ix,&iy,&iz);
-//  compass.getValues(&fx,&fy,&fz);
-
-//  float heading = atan2(fx, fz);
-//  if(heading < 0) {
-//    heading += 2 * PI;
-	//}
-
-	heading_LPF = LPF_OnePassEx_heading(heading);
 	if (HEADING_LPF != 0) {
-		return heading_LPF;
+		return LPF_OnePassEx_heading(heading);
 	} else {
 		return heading;
 	}

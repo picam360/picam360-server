@@ -22,6 +22,7 @@ module.exports = {
 		var vehicle_direction = 0;
 		var rudder_pwm = 0;
 		var rudder_mode = 0;
+		var adc_values = [];
 
 		async
 			.waterfall([
@@ -100,6 +101,12 @@ module.exports = {
 									rudder_pwm = parseFloat(params[8]);
 									status_arrived = true;
 									break;
+								case "$ADC" :
+									adc_values = [];
+									for (var i = 1; i < params.length; i++) {
+										adc_values.push(parseInt(params[i]));
+									}
+									break;
 								case "$RET" :
 									if (sp_callback != null) {
 										sp_callback(params);
@@ -155,7 +162,8 @@ module.exports = {
 							var record = {
 								"device_id" : "001",
 								"timestamp" : parseInt(Date.now() / 1000),
-								"gps_point" : gps_point
+								"gps_point" : gps_point,
+								"adc_values" : adc_values,
 							};
 
 							// Serialize record to JSON format and publish a
