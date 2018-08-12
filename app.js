@@ -930,6 +930,32 @@ async
 					filerequest_handler(filerequest.filename, filerequest.key, filerequest.conn);
 				}
 			}, 20);
+			if (options.aws_iot_enabled) {
+				var interval_s = options.aws_iot_interval_s || 60;
+				var awsIot = require('aws-iot-device-sdk');
+				var device = awsIot
+					.device({
+						keyPath : 'certs/aws_iot/'
+							+ options.aws_iot_private_key,
+						certPath : 'certs/aws_iot/'
+							+ options.aws_iot_certificate,
+						caPath : 'certs/aws_iot/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem',
+						clientId : options.aws_iot_client_id,
+						host : options.aws_iot_host,
+					});
+
+				device.on('connect', function() {
+					console.log('Connected to AWS IOT.');
+
+					setInterval(function() {
+						for (var i = 0; i < plugins.length; i++) {
+							if (plugins[i].aws_iot_handler) {
+								plugins[i].aws_iot_handler(device);
+							}
+						}
+					}, interval_s * 1000);
+				});
+			}
 			plugin_host.send_command = function(value, conn) {
 				if (value.startsWith(UPSTREAM_DOMAIN)) {
 					cmd2upstream_list
