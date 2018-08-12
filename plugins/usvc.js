@@ -1,6 +1,7 @@
 module.exports = {
 	create_plugin : function(plugin_host) {
 		console.log("create usv plugin");
+		var awsIot = require('aws-iot-device-sdk');
 		var async = require('async');
 		var fs = require("fs");
 		var sprintf = require('sprintf-js').sprintf;
@@ -135,6 +136,37 @@ module.exports = {
 							}
 						});
 					callback(null);
+				}, function(callback) { // aws iot
+					var device = awsIot.device({
+						keyPath : 'certs/aws_iot/private.pem.key',
+						certPath : 'certs/aws_iot/certificate.pem.crt',
+						caPath : 'certs/aws_iot/rootca.crt',
+						clientId : 'asv-r1-001',
+						host : 'adqfxae5wm5v9.iot.ap-northeast-1.amazonaws.com'
+					});
+
+					device.on('connect', function() {
+						console.log('Connected to AWS IOT.');
+
+						// Loop every 60 sec
+						setInterval(function() {
+
+							// Compose records
+							var record = {
+								"device_id" : "001",
+								"timestamp" : parseInt(Date.now() / 1000),
+								"gps_point" : gps_point
+							};
+
+							// Serialize record to JSON format and publish a
+							// message
+							var message = JSON.stringify(record);
+							console.log("Publish: " + message);
+							device.publish('asv_data', message);
+
+						}, 60 * 1000);
+					});
+					callback(null);
 				}], function(err, result) {
 			});
 
@@ -152,7 +184,7 @@ module.exports = {
 						break;
 					case "set_rudder_pwm" :
 						var v = parseInt(split[1]);
-						//console.log(split);
+						// console.log(split);
 						sp_send("set_rudder_pwm " + v, function(ret) {
 							// console.log(ret);
 						});
