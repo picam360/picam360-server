@@ -940,7 +940,6 @@ async
 						certPath : 'certs/aws_iot/'
 							+ options.aws_iot_certificate,
 						caPath : 'certs/aws_iot/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem',
-						clientId : options.aws_iot_client_id,
 						host : options.aws_iot_host,
 					});
 

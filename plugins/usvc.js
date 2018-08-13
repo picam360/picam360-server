@@ -170,8 +170,6 @@ module.exports = {
 					return;
 				}
 				var record = {
-					"device_id" : plugin.client_id,
-					"timestamp" : parseInt(Date.now() / 1000),
 					"latitude" : latitude,
 					"longitude" : longitude,
 					"heading" : heading,
