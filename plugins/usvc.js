@@ -191,15 +191,19 @@ module.exports = {
 				cmd = split[0].split('.')[1];
 				switch (cmd) {
 					case "set_waypoints" :
-						var new_waypoints = JSON.parse(split[1]);
-						sp_send("set max_waypoint " + new_waypoints.length, function(
-							ret) {
+						var json_str = decodeURIComponent(split[1]);
+						var new_waypoints = JSON.parse(json_str);
+						var cmd = "set max_waypoint_num "
+							+ new_waypoints.length;
+						console.log(cmd);
+						sp_send(cmd, function(ret) {
 							for (var i = 0; i < new_waypoints.length; i++) {
-								sp_send("set waypoint " + i + " "
-									+ new_waypoints[i].latitude + " "
-									+ new_waypoints[i].longitude + " "
-									+ new_waypoints[i].allowable_error, function(
-									ret, idx) {
+								var cmd = "set waypoint " + i + " "
+									+ new_waypoints[i].latitude.toFixed(6) + " "
+									+ new_waypoints[i].longitude.toFixed(6) + " "
+									+ new_waypoints[i].allowable_error;
+								console.log(cmd);
+								sp_send(cmd, function(ret, idx) {
 									if (idx == new_waypoints.length - 1) {
 										waypoints = new_waypoints;
 									}

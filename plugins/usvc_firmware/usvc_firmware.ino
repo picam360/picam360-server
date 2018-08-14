@@ -532,6 +532,11 @@ void command_handler(char *cmd) {
 			Serial.print("$RET,");
 			Serial.print("ok");
 			Serial.println("*");
+		} else {
+			Serial.print("$RET,");
+			Serial.print("error,unknown,");
+			Serial.print(cmd);
+			Serial.println("*");
 		}
 	} else if (strcmp(p, "get") == 0) {
 		p = strtok(NULL, " ");
@@ -565,6 +570,11 @@ void command_handler(char *cmd) {
 			Serial.print(cmd);
 			Serial.println("*");
 		}
+	} else {
+		Serial.print("$RET,");
+		Serial.print("error,unknown,");
+		Serial.print(cmd);
+		Serial.println("*");
 	}
 }
 
