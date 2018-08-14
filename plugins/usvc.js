@@ -144,7 +144,6 @@ module.exports = {
 			name : PLUGIN_NAME,
 			client_id : null,
 			init_options : function(options) {
-				plugin.client_id = options.aws_iot_client_id || null;
 			},
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
@@ -166,7 +165,7 @@ module.exports = {
 				}
 			},
 			aws_iot_handler : function(device) {
-				if (!plugin.client_id || (latitude == 0 && longitude == 0)) {
+				if (latitude == 0 && longitude == 0) {
 					return;
 				}
 				var record = {
