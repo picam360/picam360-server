@@ -44,12 +44,12 @@ SoftwareSerial Serial3(12, 13); // RX, TX
 #endif
 
 #define SOFTWARE_VERSION "0.1"
-#define MAX_WAY_POINT_NUM 64
+#define MAX_WAYPOINT_NUM 64
 typedef struct __attribute__ ((packed)) _EEPROM_DATA {
-	uint16_t max_way_point_num;
-	uint32_t North_way_point[MAX_WAY_POINT_NUM]; //%3.6f fixed frew[deg]
-	uint32_t East_way_point[MAX_WAY_POINT_NUM]; //%3.6f fixed frew[deg]
-	uint16_t allowable_error_dis[MAX_WAY_POINT_NUM]; //[m]
+	uint16_t max_waypoint_num;
+	uint32_t North_waypoint[MAX_WAYPOINT_NUM]; //%3.6f fixed frew[deg]
+	uint32_t East_waypoint[MAX_WAYPOINT_NUM]; //%3.6f fixed frew[deg]
+	uint16_t allowable_error[MAX_WAYPOINT_NUM]; //[m]
 	uint32_t gps_baudrate;
 	int16_t rudder_pwm_offset;
 	bool rudder_pwm_inv;
@@ -66,8 +66,7 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	int16_t low_gain_kv;
 } EEPROM_DATA;
 
-#define SAMPLE_TIME_MS_THRESHOLD 30
-#define LOOP_CNT 100
+#define SAMPLE_TIME_MS_THRESHOLD 20 //50hz
 #define COMPASS_OFFSET  2         //コンパスが北を向いたときの角度β[deg]
 #define GPS_OFFSET 0
 #define SIGNAL_CNT_NUM 100          //信号を出力するためのループ数
@@ -76,7 +75,7 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 #define CUTOFF_FREQ_HEADING 5    //カットオフ周波数[Hz]
 #define ZETA_HEADING 1.0
 
-#define PULSE_LPF 0              //制御入力パルスにローパスフィルタを使用する場合1 使用しない場合0
+#define PULSE_LPF 1              //制御入力パルスにローパスフィルタを使用する場合1 使用しない場合0
 #define CUTOFF_FREQ_PULSE 5      //カットオフ周波数[Hz]
 #define ZETA_PULSE 1.0
 
@@ -99,8 +98,8 @@ double beta;      //ボートの方位角[rad]
 double d_direction;      //目的地までの角度[rad]
 double p_d_direction = 0;    //1ループ前の目的地までの角度[rad]
 
-int max_way_point_num = 0;
-int way_point_cnt = 0;      //次のウェイポイントの番号
+int max_waypoint_num = 0;
+int waypoint_cnt = 0;      //次のウェイポイントの番号
 char GPS[6];              //GPGGAの判定用文字配列
 int flag_doll = 0;        //GPSの$判定用フラグ
 int flag_GPS_start = 0;    //GPGGAが取得できたときのフラグ
@@ -175,7 +174,7 @@ char start_signal = 200;
 char North_deg[5] = {0, 0, 0, 0};
 char East_deg[6] = {0, 0, 0, 0, 0};
 
-char next_way_point_num = 0;
+char next_waypoint_num = 0;
 
 char boat_rad[3] = {0, 0};    //bluetooth送信用データ（1.042[rad]→{10,42}，）
 
@@ -329,17 +328,17 @@ void setup() {
 	InitLPF_heading(SAMPLE_TIME_MS_THRESHOLD / 1000.0, CUTOFF_FREQ_HEADING, ZETA_HEADING);  //LPF初期設定
 	InitLPF_pulse(SAMPLE_TIME_MS_THRESHOLD / 1000.0, CUTOFF_FREQ_PULSE, ZETA_PULSE);  //LPF初期設定
 
-	way_point_cnt = 0;      //最初のウェイポイントの番号を設定
-	max_way_point_num = EEPROM_readint(offsetof(EEPROM_DATA, max_way_point_num));
-	if (max_way_point_num > MAX_WAY_POINT_NUM) {
-		max_way_point_num = MAX_WAY_POINT_NUM;
+	waypoint_cnt = 0;      //最初のウェイポイントの番号を設定
+	max_waypoint_num = EEPROM_readint(offsetof(EEPROM_DATA, max_waypoint_num));
+	if (max_waypoint_num > MAX_WAYPOINT_NUM) {
+		max_waypoint_num = MAX_WAYPOINT_NUM;
 	}
 
 	//dump way point
-	for (i = 0; i < max_way_point_num; i++) {
-		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, i));
-		uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, i));
-		uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, i));
+	for (i = 0; i < max_waypoint_num; i++) {
+		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, i));
+		uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, i));
+		uint32_t allowable_error = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error, i));
 		Serial.print("$INFO,");
 		Serial.print(i);
 		Serial.print(" ");
@@ -347,7 +346,7 @@ void setup() {
 		Serial.print(" ");
 		print_fixed_few_6(east);
 		Serial.print(" ");
-		Serial.print(aed);
+		Serial.print(allowable_error);
 		Serial.println("*");
 	}
 	Serial.println("$INFO,setup completed*");
@@ -357,22 +356,22 @@ void command_handler(char *cmd) {
 	char *p = strtok(cmd, " ");
 	if (strcmp(p, "set") == 0) {
 		p = strtok(NULL, " ");
-		if (strcmp(p, "way_point") == 0) {
+		if (strcmp(p, "waypoint") == 0) {
 			uint32_t cur = 0, north = 0, east = 0, aed = INT_MAX;
 			char north_str[16], east_str[16];
 			p = strtok(NULL, "\0");
 			sscanf(p, "%d %16s %16s %d", &cur, &north_str, &east_str, &aed);
 			north = parse_fixed_few_6(north_str);
 			east = parse_fixed_few_6(east_str);
-			if (cur >= max_way_point_num) {
+			if (cur >= max_waypoint_num) {
 				Serial.print("$RET,");
 				Serial.print("error");
 				Serial.println("*");
 			} else {
-				EEPROM_writelong(offsetof_in_array(EEPROM_DATA, North_way_point, cur), north);
-				EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_way_point, cur), east);
+				EEPROM_writelong(offsetof_in_array(EEPROM_DATA, North_waypoint, cur), north);
+				EEPROM_writelong(offsetof_in_array(EEPROM_DATA, East_waypoint, cur), east);
 				if (aed < INT_MAX) {
-					EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
+					EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error, cur), aed);
 				}
 				Serial.print("$RET,");
 				Serial.print("ok");
@@ -460,27 +459,27 @@ void command_handler(char *cmd) {
 			print_NMEA(nmea_cmd);
 
 			Serial3.begin(gps_baudrate);
-		} else if (strcmp(p, "aed") == 0) {
-			uint32_t cur, aed = 1;
+		} else if (strcmp(p, "allowable_error") == 0) {
+			uint32_t cur, allowable_error = 1;
 			p = strtok(NULL, "\0");
-			sscanf(p, "%ld %ld", &cur, &aed);
-			if (cur >= max_way_point_num) {
+			sscanf(p, "%ld %ld", &cur, &allowable_error);
+			if (cur >= max_waypoint_num) {
 				Serial.print("$RET,");
 				Serial.print("error");
 				Serial.println("*");
 			} else {
-				EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur), aed);
+				EEPROM_writeint(offsetof_in_array(EEPROM_DATA, allowable_error, cur), allowable_error);
 				Serial.print("$RET,");
 				Serial.print("ok");
 				Serial.println("*");
 			}
-		} else if (strcmp(p, "max_way_point_num") == 0) {
+		} else if (strcmp(p, "max_waypoint_num") == 0) {
 			p = strtok(NULL, "\0");
-			sscanf(p, "%d", &max_way_point_num);
-			if (max_way_point_num > MAX_WAY_POINT_NUM) {
-				max_way_point_num = MAX_WAY_POINT_NUM;
+			sscanf(p, "%d", &max_waypoint_num);
+			if (max_waypoint_num > MAX_WAYPOINT_NUM) {
+				max_waypoint_num = MAX_WAYPOINT_NUM;
 			}
-			EEPROM_writeint(offsetof(EEPROM_DATA, max_way_point_num), (uint16_t) max_way_point_num);
+			EEPROM_writeint(offsetof(EEPROM_DATA, max_waypoint_num), (uint16_t) max_waypoint_num);
 			Serial.print("$RET,");
 			Serial.print("ok");
 			Serial.println("*");
@@ -536,19 +535,19 @@ void command_handler(char *cmd) {
 		}
 	} else if (strcmp(p, "get") == 0) {
 		p = strtok(NULL, " ");
-		if (strcmp(p, "way_point") == 0) {
+		if (strcmp(p, "waypoint") == 0) {
 			uint32_t cur;
 			p = strtok(NULL, "\0");
 			sscanf(p, "%ld", &cur);
-			if (cur >= max_way_point_num) {
+			if (cur >= max_waypoint_num) {
 				Serial.print("$RET,");
 				Serial.print("error");
 				Serial.println("*");
 			} else {
 				Serial.print("$RET,");
-				uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, cur));
-				uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, cur));
-				uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, cur));
+				uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, cur));
+				uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, cur));
+				uint32_t aed = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error, cur));
 				print_fixed_few_6(north);
 				Serial.print(",");
 				print_fixed_few_6(east);
@@ -556,9 +555,9 @@ void command_handler(char *cmd) {
 				Serial.print(aed);
 				Serial.println("*");
 			}
-		} else if (strcmp(p, "max_way_point_num") == 0) {
+		} else if (strcmp(p, "max_waypoint_num") == 0) {
 			Serial.print("$RET,");
-			Serial.print(max_way_point_num);
+			Serial.print(max_waypoint_num);
 			Serial.println("*");
 		} else {
 			Serial.print("$RET,");
@@ -621,19 +620,19 @@ void control() {
 	}
 #endif
 
-	d_North = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_way_point, way_point_cnt)) - North;
-	d_East = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_way_point, way_point_cnt)) - East;
+	d_North = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, waypoint_cnt)) - North;
+	d_East = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, waypoint_cnt)) - East;
 
 	d_North_dis = (double) d_North * 111 / 1000;
 	d_East_dis = (double) d_East * 91 / 1000;
 
 	distance = sqrt((long double) d_North_dis * (long double) d_North_dis + (long double) d_East_dis * (long double) d_East_dis);
 
-	if (distance < (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error_dis, way_point_cnt))) {
+	if (distance < (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error, waypoint_cnt))) {
 
-		way_point_cnt++;
-		if (way_point_cnt == max_way_point_num) {
-			way_point_cnt = 0;
+		waypoint_cnt++;
+		if (waypoint_cnt == max_waypoint_num) {
+			waypoint_cnt = 0;
 		}
 	}
 	alpha = atan2(d_East_dis, d_North_dis);
@@ -715,7 +714,7 @@ void control() {
 		Serial.print(",");
 		Serial.print(distance);
 		Serial.print(",");
-		Serial.print(way_point_cnt);
+		Serial.print(waypoint_cnt);
 		Serial.print(",");
 		Serial.print(alpha * 180 / PI);
 		Serial.print(",");
@@ -743,7 +742,7 @@ void control() {
 		int_char_conv(North * 5 / 3, North_deg, 8);
 		int_char_conv(East * 5 / 3, East_deg, 9);
 		double_char_conv(beta, boat_rad, 4, 3);
-		next_way_point_num = way_point_cnt + 1;
+		next_waypoint_num = waypoint_cnt + 1;
 
 		Serial2.print(start_signal);
 
@@ -753,7 +752,7 @@ void control() {
 		for (int i = 0; i < 5; i++) {
 			Serial2.print(East_deg[i]);
 		}
-		Serial2.print(next_way_point_num);
+		Serial2.print(next_waypoint_num);
 		for (int i = 0; i < 2; i++) {
 			Serial2.print(boat_rad[i]);
 		}

@@ -13,16 +13,20 @@ module.exports = {
 
 		var sp_send = null;
 		var status_arrived = false;
-		var way_points = [];
+		var waypoints = [];
 		var latitude = 0;
 		var longitude = 0;
-		var next_way_point_distance = 0;
-		var next_way_point_idx = 0;
-		var next_way_point_direction = 0;
+		var next_waypoint_distance = 0;
+		var next_waypoint_idx = 0;
+		var next_waypoint_direction = 0;
 		var heading = 0;
 		var rudder_pwm = 0;
 		var rudder_mode = 0;
 		var adc_values = [];
+		var history = [];
+
+		var waypoints_required = false;
+		var history_required = false;
 
 		async.waterfall([function(callback) {
 			var sp_callback = null;
@@ -58,17 +62,18 @@ module.exports = {
 			};
 			sp.on("open", function() {
 				setInterval(function() {
-					sp_send("get_max_way_point_num", function(ret) {
-						var new_way_points = new Array(parseInt(ret[1]));
-						for (var i = 0; i < new_way_points.length; i++) {
-							sp_send("get_way_point " + i, function(ret, idx) {
-								var fary = [];
-								for (var i = 1; i < ret.length; i++) {
-									fary[i - 1] = parseFloat(ret[i]);
-								}
-								new_way_points[idx] = fary;
-								if (idx == new_way_points.length - 1) {
-									way_points = new_way_points;
+					sp_send("get max_waypoint_num", function(ret) {
+						var new_waypoints = new Array(parseInt(ret[1]));
+						for (var i = 0; i < new_waypoints.length; i++) {
+							sp_send("get waypoint " + i, function(ret, idx) {
+								var fary = {
+									latitude : parseFloat(ret[1]),
+									longitude : parseFloat(ret[2]),
+									allowable_error : parseFloat(ret[3]),
+								};
+								new_waypoints[idx] = fary;
+								if (idx == new_waypoints.length - 1) {
+									waypoints = new_waypoints;
 								}
 							}, i);
 						};
@@ -88,9 +93,9 @@ module.exports = {
 					case "$STATUS" :
 						latitude = parseFloat(params[1]);
 						longitude = parseFloat(params[2]);
-						next_way_point_distance = parseFloat(params[3]);
-						next_way_point_idx = parseFloat(params[4]);
-						next_way_point_direction = parseFloat(params[5]);
+						next_waypoint_distance = parseFloat(params[3]);
+						next_waypoint_idx = parseFloat(params[4]);
+						next_waypoint_direction = parseFloat(params[5]);
 						heading = parseFloat(params[6]);
 						rudder_mode = parseFloat(params[7]);
 						rudder_pwm = parseFloat(params[8]);
@@ -115,16 +120,23 @@ module.exports = {
 				if (status_arrived) {
 					status_arrived = false;
 					var status = {
-						way_points : way_points,
 						latitude : latitude,
 						longitude : longitude,
 						heading : heading,
-						next_way_point_distance : next_way_point_distance,
-						next_way_point_idx : next_way_point_idx,
-						next_way_point_direction : next_way_point_direction,
+						next_waypoint_distance : next_waypoint_distance,
+						next_waypoint_idx : next_waypoint_idx,
+						next_waypoint_direction : next_waypoint_direction,
 						rudder_mode : rudder_mode,
 						rudder_pwm : rudder_pwm,
 					};
+					if (waypoints_required) {
+						status.waypoints = waypoints;
+						waypoints_required = false
+					}
+					if (history_required) {
+						status.history = history;
+						history_required = false
+					}
 					return {
 						succeeded : true,
 						value : JSON.stringify(status)
@@ -142,8 +154,37 @@ module.exports = {
 
 		var plugin = {
 			name : PLUGIN_NAME,
-			client_id : null,
 			init_options : function(options) {
+				if (options.aws_iot_enabled) {
+					var AWS = require("aws-sdk");
+
+					AWS.config.update({
+						region : options.aws_region,
+					});
+
+					var docClient = new AWS.DynamoDB.DocumentClient();
+
+					var params = {
+						TableName : "asv_data",
+						KeyConditionExpression : "device_id = :device_id",
+						ExpressionAttributeValues : {
+							":device_id" : options.aws_iot_device_id
+						},
+						ScanIndexForward : false,
+						Limit : 60,
+					};
+
+					docClient.query(params, function(err, data) {
+						if (err) {
+							console.error("Unable to query. Error:", JSON
+								.stringify(err, null, 2));
+						} else {
+							console.log("DynamoDB Query succeeded. "
+								+ data.Items.length);
+							history = data.Items;
+						}
+					});
+				}
 			},
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
@@ -151,16 +192,21 @@ module.exports = {
 				switch (cmd) {
 					case "set_rudder_mode" :
 						var v = parseInt(split[1]);
-						sp_send("set_rudder_mode " + v, function(ret) {
+						sp_send("set rudder_mode " + v, function(ret) {
 							// console.log(ret);
 						});
 						break;
 					case "set_rudder_pwm" :
 						var v = parseInt(split[1]);
 						// console.log(split);
-						sp_send("set_rudder_pwm " + v, function(ret) {
+						sp_send("set rudder_pwm " + v, function(ret) {
 							// console.log(ret);
 						});
+					case "get_waypoints" :
+						waypoints_required = true;
+						break;
+					case "get_history" :
+						history_required = true;
 						break;
 				}
 			},
@@ -177,6 +223,10 @@ module.exports = {
 				var message = JSON.stringify(record);
 				console.log("Publish: " + message);
 				device.publish('asv_data', message);
+				history.unshift({
+					payload : record,
+					timestamp : Date.now(),
+				});
 			}
 		};
 		return plugin;
