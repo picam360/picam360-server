@@ -71,20 +71,6 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 #define GPS_OFFSET 0
 #define SIGNAL_CNT_NUM 100          //信号を出力するためのループ数
 
-#define HEADING_LPF 0            //ソーラーボート方位角にローパスを使用する場合1 使用しない場合0
-#define CUTOFF_FREQ_HEADING 5    //カットオフ周波数[Hz]
-#define ZETA_HEADING 1.0
-
-#define PULSE_LPF 1              //制御入力パルスにローパスフィルタを使用する場合1 使用しない場合0
-#define CUTOFF_FREQ_PULSE 5      //カットオフ周波数[Hz]
-#define ZETA_PULSE 1.0
-
-float LPF_OnePassEx_heading(double x);
-int LPF_OnePassEx_pulse(double x);
-void InitLPF_heading(double sampTime, double cutoffFreq_heading, double zeta_heading);
-void InitLPF_pulse(double sampTime, double cutoffFreq_pulse, double zeta_pulse);
-void ResetLPF_heading(void);
-void ResetLPF_pulse(void);
 double Get_Compass(void);
 
 //---------------------
@@ -150,20 +136,6 @@ bool skrew_pwm_inv = 0;
 #define RUDDER_MODE_AUTO 1
 #define RUDDER_MODE_AUX 2
 uint8_t rudder_mode = 0; //0:auto 1:manual
-
-//ローパスフィルタ用変数
-
-double g_lpf_wT_2_heading;
-double g_lpf_a0_heading;
-double g_lpf_a1_heading;
-double g_lpf_a2_heading;
-double g_lpf_passCnt_heading;
-
-double g_lpf_wT_2_pulse;
-double g_lpf_a0_pulse;
-double g_lpf_a1_pulse;
-double g_lpf_a2_pulse;
-double g_lpf_passCnt_pulse;
 
 #ifdef BT_DUMP
 void int_char_conv(long int x, char data[], int data_num);
@@ -325,8 +297,6 @@ void setup() {
 
 	compass.enableDefault();
 //  compass.setMode(0);
-	InitLPF_heading(SAMPLE_TIME_MS_THRESHOLD / 1000.0, CUTOFF_FREQ_HEADING, ZETA_HEADING);  //LPF初期設定
-	InitLPF_pulse(SAMPLE_TIME_MS_THRESHOLD / 1000.0, CUTOFF_FREQ_PULSE, ZETA_PULSE);  //LPF初期設定
 
 	waypoint_cnt = 0;      //最初のウェイポイントの番号を設定
 	max_waypoint_num = EEPROM_readint(offsetof(EEPROM_DATA, max_waypoint_num));
@@ -586,29 +556,33 @@ void control() {
 	}
 
 	{      //rudder
+		static float ch1 = 1500;
 		int16_t pwm = 0;
 		if (rudder_pwm_inv) {
 			pwm = -(rudder_pwm + rudder_pwm_offset - (pulse_max + pulse_min) / 2) + (pulse_max + pulse_min) / 2;
 		} else {
 			pwm = rudder_pwm + rudder_pwm_offset;
 		}
-		pwm_ch1.writeMicroseconds(pwm);
+		ch1 = pwm * 0.2 + ch1 * 0.8;
+		pwm_ch1.writeMicroseconds((int16_t) ch1);
 	}
 	{      //skrew
+		static float ch2 = 1500;
 		int16_t pwm = 0;
 		if (skrew_pwm_inv) {
 			pwm = -(skrew_pwm + skrew_pwm_offset - (pulse_max + pulse_min) / 2) + (pulse_max + pulse_min) / 2;
 		} else {
 			pwm = skrew_pwm + skrew_pwm_offset;
 		}
-		pwm_ch2.writeMicroseconds(pwm);
+		ch2 = pwm * 0.2 + ch2 * 0.8;
+		pwm_ch2.writeMicroseconds((int16_t) ch2);
 	}
 #ifdef ALWAYS_AUTOMODE
 #else
 	{      //auto mode
 		static float ch3 = 0;
 		ch3 = (analogRead(CH3_IN_LP_PIN) + ch3 * 99) / 100;
-		//Serial.println(ch3);
+		   //Serial.println(ch3);
 		if (ch3 > 128 || ch3 < 80) {
 			if (rudder_mode != RUDDER_MODE_MANUAL) {
 				rudder_mode = RUDDER_MODE_MANUAL;
@@ -650,8 +624,12 @@ void control() {
 	 {
 	 alpha += 2 * PI;
 	 }  */
-
-	beta = Get_Compass() - PI;
+	{
+		static float compass_v = 0;
+		beta = Get_Compass() - PI;
+		compass_v = beta * 0.2 + compass_v * 0.8;
+		beta = compass_v;
+	}
 
 	beta -= COMPASS_OFFSET * PI / 180;
 
@@ -698,10 +676,6 @@ void control() {
 			rudder_pwm = low_gain_kp * d_direction - low_gain_kv * (d_direction - p_d_direction) / sample_time_ms_dif * 1000 + (pulse_max + pulse_min) / 2;
 		} else {
 			rudder_pwm = gain_kp * d_direction - gain_kv * (d_direction - p_d_direction) / sample_time_ms_dif * 1000 + (pulse_max + pulse_min) / 2;
-		}
-
-		if (PULSE_LPF != 0) {
-			rudder_pwm = LPF_OnePassEx_pulse((double) rudder_pwm);      //入力パルスにローパスフィルタをかける
 		}
 
 		if (rudder_pwm < pulse_min)      //制御入力パルスを上限、下限の範囲以内にする
@@ -872,119 +846,7 @@ double Get_Compass(void) {
 	float headingd = compass.heading();
 	float heading = headingd * PI / 180;
 
-	if (HEADING_LPF != 0) {
-		return LPF_OnePassEx_heading(heading);
-	} else {
-		return heading;
-	}
-}
-
-/////////////////////////
-// ローパスフィルタ    //
-/////////////////////////
-
-//ローパスフィルタの設定を行う
-void InitLPF_heading(double sampTime, double cutoffFreq, double zeta) {
-	double wAF_heading = cutoffFreq * (2 * PI);     //アナログフィルタにおけるカットオフ角周波数 [rad/s]
-	double w_heading = atan2(wAF_heading * sampTime, 2) * 2 / sampTime; //デジタルフィルタにおけるカットオフ角周波数 [rad/s]
-	double wT_heading = w_heading * sampTime;        //ω･T
-
-	g_lpf_wT_2_heading = wT_heading * wT_heading;         //(ω･T)^2 を計算する
-	g_lpf_a0_heading = 4 + (4 * zeta * wT_heading) + g_lpf_wT_2_heading;   //ローパスフィルタの係数を計算する
-	g_lpf_a1_heading = -8 + (2 * g_lpf_wT_2_heading);
-	g_lpf_a2_heading = 4 - (4 * zeta * wT_heading) + g_lpf_wT_2_heading;
-
-	ResetLPF_heading();           //ローパスフィルタを通過した回数をリセットする
-}
-
-//ローパスフィルタを通過した回数をリセットする
-void ResetLPF_heading(void) {
-	g_lpf_passCnt_heading = 0;          //ローパスフィルタを通過した回数を初期化する
-}
-
-//ローパスフィルタ通過後の信号を取得する
-float LPF_OnePass_heading(double x, double xp, double xpp, double yp, double ypp) {
-	//ローパスフィルタ通過後の信号を計算する
-	return (g_lpf_wT_2_heading * (x + 2 * xp + xpp) - g_lpf_a1_heading * yp - g_lpf_a2_heading * ypp) / g_lpf_a0_heading;
-}
-
-//ローパスフィルタ通過後の信号を取得する（信号蓄積型）
-float LPF_OnePassEx_heading(double x) {
-	static double xp;               //元の信号（１つ前の値）
-	static double xpp;                //（２つ前の値）
-	static double yp;               //フィルタ適用後の信号（１つ前の値）
-	static double ypp;                //（２つ前の値）
-	float y;                 //（現在の値）
-
-	if (g_lpf_passCnt_heading == 0) {               //1 回目なら
-		xpp = x;                //元の信号を蓄積する
-		y = ypp = 0;                //フィルタ適用後の信号を蓄積する（0: 二次遅れ系の特性？）
-		g_lpf_passCnt_heading++;              //ローパスフィルタを通過した回数をカウント
-	} else if (g_lpf_passCnt_heading == 1) {                    //2 回目なら
-		xp = x;                 //元の信号を蓄積する
-		y = yp = 0;                //フィルタ適用後の信号を蓄積する（0: 二次遅れ系の特性？）
-		g_lpf_passCnt_heading++;                                                        //ローパスフィルタを通過した回数をカウント
-	}
-
-	else {                                         //3 回目以降なら（不必要なので、通過回数のカウントは行わない）
-		y = LPF_OnePass_heading(x, xp, xpp, yp, ypp);                     //ローパスフィルタ通過後の信号を取得する
-		xpp = xp;               //次回以降に備えて、信号をずらして蓄積する
-		xp = x;
-		ypp = yp;
-		yp = y;
-	}
-	return y;
-}
-
-void InitLPF_pulse(double sampTime, double cutoffFreq, double zeta) {
-	double wAF_pulse = cutoffFreq * (2 * PI);     //アナログフィルタにおけるカットオフ角周波数 [rad/s]
-	double w_pulse = atan2(wAF_pulse * sampTime, 2) * 2 / sampTime; //デジタルフィルタにおけるカットオフ角周波数 [rad/s]
-	double wT_pulse = w_pulse * sampTime;        //ω･T
-
-	g_lpf_wT_2_pulse = wT_pulse * wT_pulse;         //(ω･T)^2 を計算する
-	g_lpf_a0_pulse = 4 + (4 * zeta * wT_pulse) + g_lpf_wT_2_pulse;   //ローパスフィルタの係数を計算する
-	g_lpf_a1_pulse = -8 + (2 * g_lpf_wT_2_pulse);
-	g_lpf_a2_pulse = 4 - (4 * zeta * wT_pulse) + g_lpf_wT_2_pulse;
-
-	ResetLPF_pulse();           //ローパスフィルタを通過した回数をリセットする
-}
-
-//ローパスフィルタを通過した回数をリセットする
-void ResetLPF_pulse(void) {
-	g_lpf_passCnt_pulse = 0;          //ローパスフィルタを通過した回数を初期化する
-}
-
-//ローパスフィルタ通過後の信号を取得する
-float LPF_OnePass_pulse(double x, double xp, double xpp, double yp, double ypp) {
-	//ローパスフィルタ通過後の信号を計算する
-	return (g_lpf_wT_2_pulse * (x + 2 * xp + xpp) - g_lpf_a1_pulse * yp - g_lpf_a2_pulse * ypp) / g_lpf_a0_pulse;
-}
-
-int LPF_OnePassEx_pulse(double x) {
-	static double xp;               //元の信号（１つ前の値）
-	static double xpp;                //（２つ前の値）
-	static double yp;               //フィルタ適用後の信号（１つ前の値）
-	static double ypp;                //（２つ前の値）
-	float y;                 //（現在の値）
-
-	if (g_lpf_passCnt_pulse == 0) {               //1 回目なら
-		xpp = x;                //元の信号を蓄積する
-		y = ypp = 0;                //フィルタ適用後の信号を蓄積する（0: 二次遅れ系の特性？）
-		g_lpf_passCnt_pulse++;              //ローパスフィルタを通過した回数をカウント
-	} else if (g_lpf_passCnt_pulse == 1) {                    //2 回目なら
-		xp = x;                 //元の信号を蓄積する
-		y = yp = 0;                //フィルタ適用後の信号を蓄積する（0: 二次遅れ系の特性？）
-		g_lpf_passCnt_pulse++;                                                        //ローパスフィルタを通過した回数をカウント
-	}
-
-	else {                                         //3 回目以降なら（不必要なので、通過回数のカウントは行わない）
-		y = LPF_OnePass_pulse(x, xp, xpp, yp, ypp);                     //ローパスフィルタ通過後の信号を取得する
-		xpp = xp;               //次回以降に備えて、信号をずらして蓄積する
-		xp = x;
-		ypp = yp;
-		yp = y;
-	}
-	return (int) y;
+	return heading;
 }
 
 #ifdef BT_DUMP

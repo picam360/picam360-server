@@ -27,6 +27,7 @@ module.exports = {
 
 		var waypoints_required = false;
 		var history_required = false;
+		var rudder_pwm_candidate = null;
 
 		async.waterfall([function(callback) {
 			var sp_callback = null;
@@ -61,24 +62,36 @@ module.exports = {
 				}
 			};
 			sp.on("open", function() {
+				sp_send("get max_waypoint_num", function(ret) {
+					var new_waypoints = new Array(parseInt(ret[1]));
+					for (var i = 0; i < new_waypoints.length; i++) {
+						sp_send("get waypoint " + i, function(ret, idx) {
+							var fary = {
+								latitude : parseFloat(ret[1]),
+								longitude : parseFloat(ret[2]),
+								allowable_error : parseFloat(ret[3]),
+							};
+							new_waypoints[idx] = fary;
+							if (idx == new_waypoints.length - 1) {
+								waypoints = new_waypoints;
+							}
+						}, i);
+					};
+				});
+
+				var set_rudder_pwm_available = true;
 				setInterval(function() {
-					sp_send("get max_waypoint_num", function(ret) {
-						var new_waypoints = new Array(parseInt(ret[1]));
-						for (var i = 0; i < new_waypoints.length; i++) {
-							sp_send("get waypoint " + i, function(ret, idx) {
-								var fary = {
-									latitude : parseFloat(ret[1]),
-									longitude : parseFloat(ret[2]),
-									allowable_error : parseFloat(ret[3]),
-								};
-								new_waypoints[idx] = fary;
-								if (idx == new_waypoints.length - 1) {
-									waypoints = new_waypoints;
-								}
-							}, i);
-						};
-					});
-				}, 5000);
+					if (rudder_pwm_candidate && set_rudder_pwm_available) {
+						var cmd = "set rudder_pwm " + rudder_pwm_candidate;
+						console.log(cmd);
+						set_rudder_pwm_available = false;
+						sp_send(cmd, function(ret) {
+							set_rudder_pwm_available = true;
+							console.log(cmd);
+						});
+						rudder_pwm_candidate = null;
+					}
+				}, 200);
 			});
 			parser.on("data", function(data) {
 				var ret = data.toString('utf-8', 0, data.length);
@@ -199,9 +212,10 @@ module.exports = {
 						sp_send(cmd, function(ret) {
 							for (var i = 0; i < new_waypoints.length; i++) {
 								var cmd = "set waypoint " + i + " "
-									+ new_waypoints[i].latitude.toFixed(6) + " "
-									+ new_waypoints[i].longitude.toFixed(6) + " "
-									+ new_waypoints[i].allowable_error;
+									+ new_waypoints[i].latitude.toFixed(6)
+									+ " "
+									+ new_waypoints[i].longitude.toFixed(6)
+									+ " " + new_waypoints[i].allowable_error;
 								console.log(cmd);
 								sp_send(cmd, function(ret, idx) {
 									if (idx == new_waypoints.length - 1) {
@@ -218,11 +232,8 @@ module.exports = {
 						});
 						break;
 					case "set_rudder_pwm" :
-						var v = parseInt(split[1]);
-						// console.log(split);
-						sp_send("set rudder_pwm " + v, function(ret) {
-							// console.log(ret);
-						});
+						rudder_pwm_candidate = parseInt(split[1]);
+						break;
 					case "get_waypoints" :
 						waypoints_required = true;
 						break;
@@ -248,6 +259,7 @@ module.exports = {
 					payload : record,
 					timestamp : Date.now(),
 				});
+				history.pop();
 			}
 		};
 		return plugin;
