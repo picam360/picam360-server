@@ -21,7 +21,7 @@ module.exports = {
 		var next_waypoint_direction = 0;
 		var heading = 0;
 		var rudder_pwm = 0;
-		var rudder_mode = 0;
+		var mode_flag = [0, 0];
 		var adc_values = [];
 		var history = [];
 
@@ -79,19 +79,22 @@ module.exports = {
 					};
 				});
 
-				var set_rudder_pwm_available = true;
 				setInterval(function() {
-					if (rudder_pwm_candidate && set_rudder_pwm_available) {
+					if (rudder_pwm_candidate) {
 						var cmd = "set rudder_pwm " + rudder_pwm_candidate;
-						console.log(cmd);
-						set_rudder_pwm_available = false;
+						// console.log(cmd);
 						sp_send(cmd, function(ret) {
-							set_rudder_pwm_available = true;
 							console.log(cmd);
 						});
 						rudder_pwm_candidate = null;
 					}
 				}, 200);
+				setInterval(function() {
+					var cmd = "set network " + "1";
+					sp_send(cmd, function(ret) {
+						// console.log(cmd);
+					});
+				}, 1000);
 			});
 			parser.on("data", function(data) {
 				var ret = data.toString('utf-8', 0, data.length);
@@ -104,13 +107,14 @@ module.exports = {
 						console.log(ret);
 						break;
 					case "$STATUS" :
+						console.log(ret);
 						latitude = parseFloat(params[1]);
 						longitude = parseFloat(params[2]);
 						next_waypoint_distance = parseFloat(params[3]);
 						next_waypoint_idx = parseFloat(params[4]);
 						next_waypoint_direction = parseFloat(params[5]);
 						heading = parseFloat(params[6]);
-						rudder_mode = parseFloat(params[7]);
+						mode_flag = params[7].split(":");
 						rudder_pwm = parseFloat(params[8]);
 						status_arrived = true;
 						break;
@@ -139,7 +143,10 @@ module.exports = {
 						next_waypoint_distance : next_waypoint_distance,
 						next_waypoint_idx : next_waypoint_idx,
 						next_waypoint_direction : next_waypoint_direction,
-						rudder_mode : rudder_mode,
+						mode_flag : {
+							autonomous : parseInt(mode_flag[0]) ? true : false,
+							network : parseInt(mode_flag[1]) ? true : false,
+						},
 						rudder_pwm : rudder_pwm,
 					};
 					if (waypoints_required) {
@@ -225,9 +232,9 @@ module.exports = {
 							};
 						});
 						break;
-					case "set_rudder_mode" :
+					case "set_autonomous" :
 						var v = parseInt(split[1]);
-						sp_send("set rudder_mode " + v, function(ret) {
+						sp_send("set autonomous " + v, function(ret) {
 							// console.log(ret);
 						});
 						break;

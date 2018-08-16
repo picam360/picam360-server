@@ -5,8 +5,6 @@
 #include <LSM303.h>
 #include <Servo.h>
 
-#define ALWAYS_AUTOMODE
-
 #define USE_NEOSWSERIAL
 #ifdef USE_NEOSWSERIAL
 #include <NeoSWSerial.h>
@@ -20,9 +18,9 @@ Servo pwm_ch2;
 #define CH1_OUT_PIN 2
 #define CH2_OUT_PIN 4
 #define CH3_OUT_PIN 6
-#define CH1_IN_LP_PIN A0
-#define CH2_IN_LP_PIN A1
-#define CH3_IN_LP_PIN A2
+#define CH1_IN_LP_PIN A1
+#define CH2_IN_LP_PIN A2
+#define CH3_IN_LP_PIN A3
 #define INT_MODE_PIN 9
 
 //#define PI 3.14159265
@@ -48,10 +46,10 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	uint32_t North_waypoint[MAX_WAYPOINT_NUM]; //%3.6f fixed frew[deg]
 	uint32_t East_waypoint[MAX_WAYPOINT_NUM]; //%3.6f fixed frew[deg]
 	uint16_t allowable_error[MAX_WAYPOINT_NUM]; //[m]
+	uint8_t waypoint_cnt;
 	uint32_t gps_baudrate;
 	int16_t rudder_pwm_offset;
 	bool rudder_pwm_inv;
-	uint8_t rudder_mode;
 	int16_t skrew_pwm_offset;
 	bool skrew_pwm_inv;
 	uint8_t skrew_mode;
@@ -62,7 +60,6 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	uint8_t low_gain_deg;
 	int16_t low_gain_kp;
 	int16_t low_gain_kv;
-	uint8_t waypoint_cnt;
 } EEPROM_DATA;
 
 #define SAMPLE_TIME_MS_THRESHOLD 20 //50hz
@@ -114,6 +111,7 @@ double distance;        //目的地までの距離[m]
 
 //制御用変数
 
+uint32_t last_networkset_time_ms = 0;
 uint32_t last_infodump_time_ms = 0;
 uint32_t last_sample_time_ms = 0;
 int16_t pulse_max = 2100;
@@ -130,10 +128,11 @@ bool rudder_pwm_inv = 0;
 int skrew_pwm = (pulse_max + pulse_min) / 2;
 int skrew_pwm_offset = 0;
 bool skrew_pwm_inv = 0;
-#define RUDDER_MODE_MANUAL 0
-#define RUDDER_MODE_AUTO 1
-#define RUDDER_MODE_AUX 2
-uint8_t rudder_mode = 0; //0:auto 1:manual
+struct MODE_FLAG {
+	uint8_t autonomous :1;
+	uint8_t network :1;
+	uint8_t propo :1;
+} mode_flag = { };
 
 //for command handler
 char cmd[128];
@@ -181,6 +180,30 @@ void print_NMEA(const char *cmd) {
 	Serial3.println(checksum, HEX);
 }
 
+void set_pwm_passthrough(bool value) {
+	if (value) {
+		pinMode(INT_MODE_PIN, INPUT);
+	} else {
+		pinMode(INT_MODE_PIN, OUTPUT);
+		digitalWrite(INT_MODE_PIN, LOW);
+	}
+}
+
+void set_autonomous(bool value) {
+	if (value == mode_flag.autonomous) {
+		return;
+	}
+	if (value) {
+		mode_flag.autonomous = 1;
+		rudder_pwm = (pulse_max + pulse_min) / 2;
+		skrew_pwm = pulse_max;
+	} else {
+		mode_flag.autonomous = 0;
+		rudder_pwm = (pulse_max + pulse_min) / 2;
+		skrew_pwm = (pulse_max + pulse_min) / 2;
+	}
+}
+
 //---------------------
 //セットアップ
 //---------------------
@@ -198,7 +221,7 @@ void setup() {
 	Serial.println("*");
 	Serial3.begin(gps_baudrate);
 
-	//rudder
+//rudder
 	rudder_pwm_offset = EEPROM_readint(offsetof(EEPROM_DATA, rudder_pwm_offset));
 	Serial.print("$INFO,");
 	Serial.print("rudder_pwm_offset ");
@@ -208,11 +231,6 @@ void setup() {
 	Serial.print("$INFO,");
 	Serial.print("rudder_pwm_inv ");
 	Serial.print(rudder_pwm_inv);
-	Serial.println("*");
-	rudder_mode = EEPROM.read(offsetof(EEPROM_DATA, rudder_mode));
-	Serial.print("$INFO,");
-	Serial.print("rudder_mode ");
-	Serial.print(rudder_mode);
 	Serial.println("*");
 
 	pulse_max = EEPROM_readint(offsetof(EEPROM_DATA, pulse_max));
@@ -251,7 +269,7 @@ void setup() {
 	Serial.print(low_gain_kv);
 	Serial.println("*");
 
-	//skrew
+//skrew
 	skrew_pwm_offset = EEPROM_readint(offsetof(EEPROM_DATA, skrew_pwm_offset));
 	Serial.print("$INFO,");
 	Serial.print("skrew_pwm_offset ");
@@ -278,7 +296,7 @@ void setup() {
 	Serial.print(max_waypoint_num);
 	Serial.println("*");
 
-	//dump way point
+//dump way point
 	for (i = 0; i < max_waypoint_num; i++) {
 		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, i));
 		uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, i));
@@ -296,28 +314,20 @@ void setup() {
 
 	Wire.begin();
 
-	//pin setup
+//pin setup
 	pwm_ch1.attach(CH1_OUT_PIN);
 	pwm_ch2.attach(CH2_OUT_PIN);
-#ifdef ALWAYS_AUTOMODE
-	rudder_mode = RUDDER_MODE_AUTO;
-	rudder_pwm = (pulse_max + pulse_min) / 2;
-	pinMode(INT_MODE_PIN, OUTPUT);
-	digitalWrite(INT_MODE_PIN, LOW);
-	skrew_pwm = pulse_max;
-#else
-	pinMode(INT_MODE_PIN, INPUT);
-	rudder_pwm = (pulse_max+pulse_min)/2;
-#endif
+	set_autonomous(false);
+	set_pwm_passthrough(false);
 
 	compass.m_min = (LSM303::vector<int16_t> ) { -32767, -32767, -32767 };
 	compass.m_max = (LSM303::vector<int16_t> ) { +32767, +32767, +32767 };
 
-	// no delay needed as we have already a delay(5) in HMC5843::init()
+// no delay needed as we have already a delay(5) in HMC5843::init()
 	compass.init(); // Dont set mode yet, we'll do that later on.
-	// Calibrate HMC using self test, not recommended to change the gain after calibration.
-	//compass.calibrate(1); // Use gain 1=default, valid 0-7, 7 not recommended.
-	// Single mode conversion was used in calibration, now set continuous mode
+// Calibrate HMC using self test, not recommended to change the gain after calibration.
+//compass.calibrate(1); // Use gain 1=default, valid 0-7, 7 not recommended.
+// Single mode conversion was used in calibration, now set continuous mode
 
 	compass.enableDefault();
 //  compass.setMode(0);
@@ -351,24 +361,29 @@ void command_handler(char *cmd) {
 				Serial.print("ok");
 				Serial.println("*");
 			}
-		} else if (strcmp(p, "rudder_mode") == 0) {
+		} else if (strcmp(p, "autonomous") == 0) {
 			int16_t value = 0;
 			p = strtok(NULL, "\0");
 			sscanf(p, "%d", &value);
-			if (value >= 0 && value <= 2) {
-				rudder_mode = value;
-				if (rudder_mode == RUDDER_MODE_MANUAL) {
-					rudder_pwm = (pulse_max + pulse_min) / 2;
-				}
-				EEPROM.write(offsetof(EEPROM_DATA, rudder_mode), rudder_mode);
-				Serial.print("$RET,");
-				Serial.print("ok");
-				Serial.println("*");
+			if (value) {
+				set_autonomous(true);
+				set_pwm_passthrough(false);
 			} else {
-				Serial.print("$RET,");
-				Serial.print("error");
-				Serial.println("*");
+				set_autonomous(false);
+				set_pwm_passthrough(mode_flag.propo ? true : false);
 			}
+			Serial.print("$RET,");
+			Serial.print("ok");
+			Serial.println("*");
+		} else if (strcmp(p, "network") == 0) {
+			int16_t value = 0;
+			p = strtok(NULL, "\0");
+			sscanf(p, "%d", &value);
+			mode_flag.network = value;
+			last_networkset_time_ms = millis();
+			Serial.print("$RET,");
+			Serial.print("ok");
+			Serial.println("*");
 		} else if (strcmp(p, "rudder_pwm_offset") == 0) {
 			int16_t value = 0;
 			p = strtok(NULL, "\0");
@@ -391,7 +406,7 @@ void command_handler(char *cmd) {
 			int16_t value = 0;
 			p = strtok(NULL, "\0");
 			sscanf(p, "%d", &value);
-			if (rudder_mode == RUDDER_MODE_MANUAL && value >= pulse_min && value <= pulse_max) {
+			if (mode_flag.autonomous == 0 && value >= pulse_min && value <= pulse_max) {
 				rudder_pwm = value;
 				Serial.print("$RET,");
 				Serial.print("ok");
@@ -594,32 +609,57 @@ void control() {
 		ch2 = pwm * 0.2 + ch2 * 0.8;
 		pwm_ch2.writeMicroseconds((int16_t) ch2);
 	}
-#ifdef ALWAYS_AUTOMODE
-#else
-	{      //auto mode
+
+	{      //mode check
+		static uint8_t propo_count = 0;
+		static uint32_t last_propo_changed_time_ms = 0;
 		static float ch3 = 0;
-		ch3 = (analogRead(CH3_IN_LP_PIN) + ch3 * 99) / 100;
-		//Serial.println(ch3);
-		if (ch3 > 128 || ch3 < 80) {
-			if (rudder_mode != RUDDER_MODE_MANUAL) {
-				rudder_mode = RUDDER_MODE_MANUAL;
-				rudder_pwm = (pulse_max+pulse_min)/2;
-				pinMode(INT_MODE_PIN, INPUT);
-				skrew_pwm = (pulse_max+pulse_min)/2;
-				//Serial.println(ch3);
+		ch3 = analogRead(CH3_IN_LP_PIN) * 0.2 + ch3 * 0.8;
+		if (1000 < ch3) { // 5V
+			mode_flag.propo = 0;
+			set_autonomous(true);
+			set_pwm_passthrough(false);
+		} else if (660 < ch3 && ch3 < 690) { // 3.3V
+			mode_flag.propo = 0;
+		} else if (ch3 < 75) { // 0V , pwm 1ms
+			if (mode_flag.propo == 1) {
+				if (sample_time_ms - last_propo_changed_time_ms < 2000) {
+				} else {
+					propo_count = 0;
+				}
+				mode_flag.propo = 0;
+				set_autonomous(false);
+				set_pwm_passthrough(false);
+				last_propo_changed_time_ms = sample_time_ms;
 			}
-		} else if (ch3 > 85) {
-			if (rudder_mode != RUDDER_MODE_AUTO) {
-				rudder_mode = RUDDER_MODE_AUTO;
-				rudder_pwm = (pulse_max+pulse_min)/2;
-				pinMode(INT_MODE_PIN, OUTPUT);
-				digitalWrite(INT_MODE_PIN, LOW);
-				skrew_pwm = pulse_max;
-				//Serial.println(ch3);
+		} else if (80 < ch3) { // pwm 2ms
+			if (mode_flag.propo == 0) {
+				if (sample_time_ms - last_propo_changed_time_ms < 2000) {
+					propo_count++;
+					Serial.print("$INFO,");
+					Serial.print("propo_count ");
+					Serial.println(propo_count);
+				} else {
+					propo_count = 0;
+				}
+				mode_flag.propo = 1;
+				set_autonomous(false);
+				set_pwm_passthrough(true);
+				last_propo_changed_time_ms = sample_time_ms;
+			} else if (sample_time_ms - last_propo_changed_time_ms > 2000) {
+				if (propo_count >= 2) { //propo auto mode 
+					Serial.print("$INFO,");
+					Serial.println("start auto by propo command");
+					set_autonomous(true);
+					set_pwm_passthrough(false);
+					propo_count = 0;
+				}
 			}
 		}
+		if (sample_time_ms - last_networkset_time_ms > 10 * 1000) { // network timeout
+			mode_flag.network = 0;
+		}
 	}
-#endif
 
 	d_North = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, waypoint_cnt)) - North;
 	d_East = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, waypoint_cnt)) - East;
@@ -658,7 +698,7 @@ void control() {
 	}
 
 	d_direction = alpha - beta;
-	//   d_direction = alpha + beta;
+//   d_direction = alpha + beta;
 	d_direction -= GPS_OFFSET * PI / 180;
 
 	if (d_direction < (-1) * PI) {
@@ -688,15 +728,14 @@ void control() {
 	 d_direction -= 2 * PI; 
 	 }*/
 
-	if (rudder_mode == RUDDER_MODE_AUTO) {
+	if (mode_flag.autonomous) {
 		if (d_direction < low_gain_deg * PI / 180 && d_direction > low_gain_deg * PI / 180 * (-1)) {
 			rudder_pwm = low_gain_kp * d_direction - low_gain_kv * (d_direction - p_d_direction) / sample_time_ms_dif * 1000 + (pulse_max + pulse_min) / 2;
 		} else {
 			rudder_pwm = gain_kp * d_direction - gain_kv * (d_direction - p_d_direction) / sample_time_ms_dif * 1000 + (pulse_max + pulse_min) / 2;
 		}
-
-		if (rudder_pwm < pulse_min)      //制御入力パルスを上限、下限の範囲以内にする
-				{
+		//制御入力パルスを上限、下限の範囲以内にする
+		if (rudder_pwm < pulse_min) {
 			rudder_pwm = pulse_min;
 		}
 		if (rudder_pwm > pulse_max) {
@@ -723,7 +762,11 @@ void control() {
 		Serial.print(",");
 		Serial.print(beta * 180 / PI);
 		Serial.print(",");
-		Serial.print(rudder_mode);
+		Serial.print(mode_flag.autonomous);
+		Serial.print(":");
+		Serial.print(mode_flag.network);
+		Serial.print(":");
+		Serial.print(mode_flag.propo);
 		Serial.print(",");
 		Serial.print(rudder_pwm);
 		Serial.print(",");
@@ -847,11 +890,11 @@ double Get_Compass(void) {
 //
 // read double word from EEPROM, give starting address
 unsigned long EEPROM_readlong(int address) {
-	//use word read function for reading upper part
+//use word read function for reading upper part
 	unsigned long dword = EEPROM_readint(address);
-	//shift read word up
+//shift read word up
 	dword = dword << 16;
-	// read lower word from EEPROM and OR it into double word
+// read lower word from EEPROM and OR it into double word
 	dword = dword | EEPROM_readint(address + 2);
 	return dword;
 }
@@ -864,11 +907,11 @@ void EEPROM_writeint(int address, int value) {
 
 //write long integer into EEPROM
 void EEPROM_writelong(int address, unsigned long value) {
-	//truncate upper part and write lower part into EEPROM
+//truncate upper part and write lower part into EEPROM
 	EEPROM_writeint(address + 2, word(value));
-	//shift upper part down
+//shift upper part down
 	value = value >> 16;
-	//truncate and write
+//truncate and write
 	EEPROM_writeint(address, word(value));
 }
 
