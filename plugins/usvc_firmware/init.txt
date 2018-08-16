@@ -12,3 +12,4 @@ set low_gain_kp -300
 set low_gain_kv -10
 set skrew_pwm_offset 0
 set skrew_pwm_inv 0
+set waypoint_cnt 0

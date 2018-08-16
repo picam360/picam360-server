@@ -2,7 +2,6 @@
 #include <limits.h>
 #include <EEPROM.h>
 #include <Wire.h>
-//#include <HMC58X3.h>
 #include <LSM303.h>
 #include <Servo.h>
 
@@ -30,7 +29,6 @@ Servo pwm_ch2;
 
 #if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
 //mega
-#define BT_DUMP
 #elif defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
 //uno
 #define USE_NEOSWSERIAL
@@ -64,12 +62,12 @@ typedef struct __attribute__ ((packed)) _EEPROM_DATA {
 	uint8_t low_gain_deg;
 	int16_t low_gain_kp;
 	int16_t low_gain_kv;
+	uint8_t waypoint_cnt;
 } EEPROM_DATA;
 
 #define SAMPLE_TIME_MS_THRESHOLD 20 //50hz
 #define COMPASS_OFFSET  2         //コンパスが北を向いたときの角度β[deg]
 #define GPS_OFFSET 0
-#define SIGNAL_CNT_NUM 100          //信号を出力するためのループ数
 
 double Get_Compass(void);
 
@@ -137,22 +135,6 @@ bool skrew_pwm_inv = 0;
 #define RUDDER_MODE_AUX 2
 uint8_t rudder_mode = 0; //0:auto 1:manual
 
-#ifdef BT_DUMP
-void int_char_conv(long int x, char data[], int data_num);
-void double_char_conv(double x, char data[], int data_num, int floating_point_num);
-//データ送信用変数
-char start_signal = 200;
-
-char North_deg[5] = {0, 0, 0, 0};
-char East_deg[6] = {0, 0, 0, 0, 0};
-
-char next_waypoint_num = 0;
-
-char boat_rad[3] = {0, 0};    //bluetooth送信用データ（1.042[rad]→{10,42}，）
-
-int signal_cnt = 0;
-#endif
-
 //for command handler
 char cmd[128];
 uint8_t cmd_cur;
@@ -206,70 +188,112 @@ void setup() {
 	int i = 0;
 
 	Serial.begin(9600);
-	Serial.println("$INFO,setup started*");
+	Serial.print("$INFO,");
+	Serial.println("setup started*");
 
 	uint32_t gps_baudrate = (uint32_t) EEPROM_readlong(offsetof(EEPROM_DATA, gps_baudrate));
-	Serial.print("$INFO,gps_baudrate ");
+	Serial.print("$INFO,");
+	Serial.print("gps_baudrate ");
 	Serial.print(gps_baudrate);
 	Serial.println("*");
 	Serial3.begin(gps_baudrate);
 
 	//rudder
 	rudder_pwm_offset = EEPROM_readint(offsetof(EEPROM_DATA, rudder_pwm_offset));
-	Serial.print("$INFO,rudder_pwm_offset ");
+	Serial.print("$INFO,");
+	Serial.print("rudder_pwm_offset ");
 	Serial.print(rudder_pwm_offset);
 	Serial.println("*");
 	rudder_pwm_inv = EEPROM.read(offsetof(EEPROM_DATA, rudder_pwm_inv));
-	Serial.print("$INFO,rudder_pwm_inv ");
+	Serial.print("$INFO,");
+	Serial.print("rudder_pwm_inv ");
 	Serial.print(rudder_pwm_inv);
 	Serial.println("*");
 	rudder_mode = EEPROM.read(offsetof(EEPROM_DATA, rudder_mode));
-	Serial.print("$INFO,rudder_mode ");
+	Serial.print("$INFO,");
+	Serial.print("rudder_mode ");
 	Serial.print(rudder_mode);
 	Serial.println("*");
 
 	pulse_max = EEPROM_readint(offsetof(EEPROM_DATA, pulse_max));
-	Serial.print("$INFO,pulse_max ");
+	Serial.print("$INFO,");
+	Serial.print("pulse_max ");
 	Serial.print(pulse_max);
 	Serial.println("*");
 	pulse_min = EEPROM_readint(offsetof(EEPROM_DATA, pulse_min));
-	Serial.print("$INFO,pulse_min ");
+	Serial.print("$INFO,");
+	Serial.print("pulse_min ");
 	Serial.print(pulse_min);
 	Serial.println("*");
 	gain_kp = EEPROM_readint(offsetof(EEPROM_DATA, gain_kp));
-	Serial.print("$INFO,gain_kp ");
+	Serial.print("$INFO,");
+	Serial.print("gain_kp ");
 	Serial.print(gain_kp);
 	Serial.println("*");
 	gain_kv = EEPROM_readint(offsetof(EEPROM_DATA, gain_kv));
-	Serial.print("$INFO,gain_kv ");
+	Serial.print("$INFO,");
+	Serial.print("gain_kv ");
 	Serial.print(gain_kv);
 	Serial.println("*");
 	low_gain_deg = EEPROM.read(offsetof(EEPROM_DATA, low_gain_deg));
-	Serial.print("$INFO,low_gain_deg ");
+	Serial.print("$INFO,");
+	Serial.print("low_gain_deg ");
 	Serial.print(low_gain_deg);
 	Serial.println("*");
 	low_gain_kp = EEPROM_readint(offsetof(EEPROM_DATA, low_gain_kp));
-	Serial.print("$INFO,low_gain_kp ");
+	Serial.print("$INFO,");
+	Serial.print("low_gain_kp ");
 	Serial.print(low_gain_kp);
 	Serial.println("*");
 	low_gain_kv = EEPROM_readint(offsetof(EEPROM_DATA, low_gain_kv));
-	Serial.print("$INFO,low_gain_kv ");
+	Serial.print("$INFO,");
+	Serial.print("low_gain_kv ");
 	Serial.print(low_gain_kv);
 	Serial.println("*");
 
 	//skrew
 	skrew_pwm_offset = EEPROM_readint(offsetof(EEPROM_DATA, skrew_pwm_offset));
-	Serial.print("$INFO,skrew_pwm_offset ");
+	Serial.print("$INFO,");
+	Serial.print("skrew_pwm_offset ");
 	Serial.print(skrew_pwm_offset);
 	Serial.println("*");
 	skrew_pwm_inv = EEPROM.read(offsetof(EEPROM_DATA, skrew_pwm_inv));
-	Serial.print("$INFO,skrew_pwm_inv ");
+	Serial.print("$INFO,");
+	Serial.print("skrew_pwm_inv ");
 	Serial.print(skrew_pwm_inv);
 	Serial.println("*");
 
-#ifdef BT_DUMP
-	Serial2.begin(115200);
-#endif
+	waypoint_cnt = EEPROM.read(offsetof(EEPROM_DATA, waypoint_cnt));
+	Serial.print("$INFO,");
+	Serial.print("waypoint_cnt ");
+	Serial.print(waypoint_cnt);
+	Serial.println("*");
+
+	max_waypoint_num = EEPROM_readint(offsetof(EEPROM_DATA, max_waypoint_num));
+	if (max_waypoint_num > MAX_WAYPOINT_NUM) {
+		max_waypoint_num = MAX_WAYPOINT_NUM;
+	}
+	Serial.print("$INFO,");
+	Serial.print("max_waypoint_num ");
+	Serial.print(max_waypoint_num);
+	Serial.println("*");
+
+	//dump way point
+	for (i = 0; i < max_waypoint_num; i++) {
+		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, i));
+		uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, i));
+		uint32_t allowable_error = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error, i));
+		Serial.print("$INFO,");
+		Serial.print(i);
+		Serial.print(" ");
+		print_fixed_few_6(north);
+		Serial.print(" ");
+		print_fixed_few_6(east);
+		Serial.print(" ");
+		Serial.print(allowable_error);
+		Serial.println("*");
+	}
+
 	Wire.begin();
 
 	//pin setup
@@ -298,28 +322,8 @@ void setup() {
 	compass.enableDefault();
 //  compass.setMode(0);
 
-	waypoint_cnt = 0;      //最初のウェイポイントの番号を設定
-	max_waypoint_num = EEPROM_readint(offsetof(EEPROM_DATA, max_waypoint_num));
-	if (max_waypoint_num > MAX_WAYPOINT_NUM) {
-		max_waypoint_num = MAX_WAYPOINT_NUM;
-	}
-
-	//dump way point
-	for (i = 0; i < max_waypoint_num; i++) {
-		uint32_t north = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, North_waypoint, i));
-		uint32_t east = (uint32_t) EEPROM_readlong(offsetof_in_array(EEPROM_DATA, East_waypoint, i));
-		uint32_t allowable_error = (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error, i));
-		Serial.print("$INFO,");
-		Serial.print(i);
-		Serial.print(" ");
-		print_fixed_few_6(north);
-		Serial.print(" ");
-		print_fixed_few_6(east);
-		Serial.print(" ");
-		Serial.print(allowable_error);
-		Serial.println("*");
-	}
-	Serial.println("$INFO,setup completed*");
+	Serial.print("$INFO,");
+	Serial.println("setup completed*");
 }
 
 void command_handler(char *cmd) {
@@ -453,6 +457,19 @@ void command_handler(char *cmd) {
 			Serial.print("$RET,");
 			Serial.print("ok");
 			Serial.println("*");
+		} else if (strcmp(p, "waypoint_cnt") == 0) {
+			p = strtok(NULL, "\0");
+			sscanf(p, "%d", &waypoint_cnt);
+			if (waypoint_cnt < 0) {
+				waypoint_cnt = 0;
+			}
+			if (waypoint_cnt >= max_waypoint_num) {
+				waypoint_cnt = max_waypoint_num - 1;
+			}
+			EEPROM.write(offsetof(EEPROM_DATA, waypoint_cnt), waypoint_cnt);
+			Serial.print("$RET,");
+			Serial.print("ok");
+			Serial.println("*");
 		} else if (strcmp(p, "pulse_max") == 0) {
 			p = strtok(NULL, "\0");
 			sscanf(p, "%d", &pulse_max);
@@ -582,7 +599,7 @@ void control() {
 	{      //auto mode
 		static float ch3 = 0;
 		ch3 = (analogRead(CH3_IN_LP_PIN) + ch3 * 99) / 100;
-		   //Serial.println(ch3);
+		//Serial.println(ch3);
 		if (ch3 > 128 || ch3 < 80) {
 			if (rudder_mode != RUDDER_MODE_MANUAL) {
 				rudder_mode = RUDDER_MODE_MANUAL;
@@ -613,11 +630,11 @@ void control() {
 	distance = sqrt((long double) d_North_dis * (long double) d_North_dis + (long double) d_East_dis * (long double) d_East_dis);
 
 	if (distance < (uint16_t) EEPROM_readint(offsetof_in_array(EEPROM_DATA, allowable_error, waypoint_cnt))) {
-
 		waypoint_cnt++;
 		if (waypoint_cnt == max_waypoint_num) {
 			waypoint_cnt = 0;
 		}
+		EEPROM.write(offsetof(EEPROM_DATA, waypoint_cnt), waypoint_cnt);
 	}
 	alpha = atan2(d_East_dis, d_North_dis);
 	/*if(alpha < 0)
@@ -691,6 +708,8 @@ void control() {
 	last_sample_time_ms = sample_time_ms;
 
 	if (sample_time_ms - last_infodump_time_ms > 1000) {
+		last_infodump_time_ms = sample_time_ms;
+
 		Serial.print("$STATUS,");
 		print_fixed_few_6(North);
 		Serial.print(",");
@@ -717,33 +736,7 @@ void control() {
 			Serial.print(analogRead(A0 + i));
 		}
 		Serial.println("*");
-		last_infodump_time_ms = sample_time_ms;
 	}
-
-#ifdef BT_DUMP
-	if (signal_cnt >= SIGNAL_CNT_NUM)    //SIGNAL_CNT_NUM回に1度bluetoothにてデータを送信する
-	{
-		int_char_conv(North * 5 / 3, North_deg, 8);
-		int_char_conv(East * 5 / 3, East_deg, 9);
-		double_char_conv(beta, boat_rad, 4, 3);
-		next_waypoint_num = waypoint_cnt + 1;
-
-		Serial2.print(start_signal);
-
-		for (int i = 0; i < 4; i++) {
-			Serial2.print(North_deg[i]);
-		}
-		for (int i = 0; i < 5; i++) {
-			Serial2.print(East_deg[i]);
-		}
-		Serial2.print(next_waypoint_num);
-		for (int i = 0; i < 2; i++) {
-			Serial2.print(boat_rad[i]);
-		}
-		signal_cnt = 0;
-	}
-	signal_cnt++;
-#endif
 }
 
 //---------------------
@@ -848,58 +841,6 @@ double Get_Compass(void) {
 
 	return heading;
 }
-
-#ifdef BT_DUMP
-void int_char_conv(long int x, char data[], int data_num) {
-	int i = 0;
-	int j = 0;
-	long int pow_up = 0;
-	long int pow_down = 0;
-
-	for (i = 0; i < data_num / 2 + data_num % 2; i++) {
-		if (data_num % 2 != 1 || i != data_num / 2) {
-			for (j = 0, pow_up = 1, pow_down = 1; j < data_num - 2 * i; j++) {
-				pow_up *= 10;
-				if (j < data_num - 2 * (i + 1)) {
-					pow_down *= 10;
-				}
-			}
-			data[i] = x % pow_up / pow_down;
-		} else {
-			data[i] = x % 10;
-		}
-		if (i == 0 && x < 0) {
-			data[i] += 100;
-		}
-	}
-}
-
-void double_char_conv(double x, char data[], int data_num, int floating_point_num) {
-	int i = 0;
-	int j = 0;
-	int offset = 0;
-	long int pow_up = 0;
-	long int pow_down = 0;
-
-	for (j = 0, offset = 1; j < floating_point_num; j++) {
-		offset *= 10;
-	}
-
-	for (i = 0; i < data_num / 2 + data_num % 2; i++) {
-		if (data_num % 2 != 1 || i != data_num) {
-			for (j = 0, pow_up = 1, pow_down = 1; j < data_num - 2 * i; j++) {
-				pow_up *= 10;
-				if (j < data_num - 2 * (i + 1)) {
-					pow_down *= 10;
-				}
-			}
-			data[i] = (long int) (x * (double) offset) % pow_up / pow_down;
-		} else {
-			data[i] = (int) (x * (double) offset) % 10;
-		}
-	}
-}
-#endif
 
 //
 //EEPROM HELPER START
