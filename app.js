@@ -381,7 +381,8 @@ async
 						var data = pack.GetPacketData();
 						if (!active_frame) {
 							if ((data[header_len] == 0xFF && data[header_len + 1] == 0xD8)
-								|| (data[header_len] == 0x4E && data[header_len + 1] == 0x41)) { // SOI
+								|| (data[header_len] == 0x4E && data[header_len + 1] == 0x41)
+								|| (data[header_len] == 0x48 && data[header_len + 1] == 0x45)) { // SOI
 								active_frame = [];
 								// console.log("new_frame");
 							}
@@ -389,11 +390,12 @@ async
 						if (active_frame) {
 							active_frame.push(data);
 							if ((data[data_len - 2] == 0xFF && data[data_len - 1] == 0xD9)
-								|| (data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)) { // EOI
+								|| (data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)
+								|| (data[data_len - 2] == 0x56 && data[data_len - 1] == 0x43)) { // EOI
 								var conn;
 								var server_key;
-								if (data[data_len - 2] == 0x4C
-									&& data[data_len - 1] == 0x55) {
+								if ((data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)
+									|| (data[data_len - 2] == 0x56 && data[data_len - 1] == 0x43)) {
 									if ((active_frame[0][header_len + 2 + 4] & 0x1f) == 6) {// sei
 										var str = String.fromCharCode
 											.apply("", active_frame[0]
