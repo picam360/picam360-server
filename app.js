@@ -394,22 +394,30 @@ async
 								|| (data[data_len - 2] == 0x56 && data[data_len - 1] == 0x43)) { // EOI
 								var conn;
 								var server_key;
-								if ((data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)
-									|| (data[data_len - 2] == 0x56 && data[data_len - 1] == 0x43)) {
+								var sei = false;
+								if (data[data_len - 2] == 0x4C
+									&& data[data_len - 1] == 0x55) {// h264
 									if ((active_frame[0][header_len + 2 + 4] & 0x1f) == 6) {// sei
-										var str = String.fromCharCode
-											.apply("", active_frame[0]
-												.subarray(header_len + 2 + 4), 0);
-										var split = str.split(' ');
-										for (var i = 0; i < split.length; i++) {
-											var separator = (/[=,\"]/);
-											var _split = split[i]
-												.split(separator);
-											if (_split[0] == "frame_id") {
-												conn = rtp.get_conn(_split[2]);
-											} else if (_split[0] == "server_key") {
-												server_key = _split[2];
-											}
+										sei = true;
+									}
+								} else if (data[data_len - 2] == 0x56
+									&& data[data_len - 1] == 0x43) {// h265
+									if (((active_frame[0][header_len + 2 + 4] & 0x7e) >> 1) == 40) {// sei
+										sei = true;
+									}
+								}
+								if (sei) {// sei
+									var str = String.fromCharCode
+										.apply("", active_frame[0]
+											.subarray(header_len + 2 + 4), 0);
+									var split = str.split(' ');
+									for (var i = 0; i < split.length; i++) {
+										var separator = (/[=,\"]/);
+										var _split = split[i].split(separator);
+										if (_split[0] == "frame_id") {
+											conn = rtp.get_conn(_split[2]);
+										} else if (_split[0] == "server_key") {
+											server_key = _split[2];
 										}
 									}
 								}
