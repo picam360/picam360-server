@@ -120,7 +120,7 @@ async
 					var status = "<picam360:status name=\"" + name
 						+ "\" value=\"" + value + "\" />";
 					var pack = rtp
-						.build_packet(new Buffer(status, 'ascii'), 100);
+						.build_packet(new Buffer(status, 'ascii'), PT_STATUS);
 					rtp.sendpacket(conn, pack);
 				}, 1000);
 			}
@@ -153,38 +153,64 @@ async
 					tmp_latency : 0,
 					tmp_time : 0,
 					frame_id : upstream_next_frame_id,
-					timeout : false
+					timeout : false,
+					is_init : false
 				};
-				conn.on('data', function(data) {
-					watcher.timeout = false;
-				});
-
-				rtcp.add_connection(conn);
-				rtp_rx_watcher.push(watcher);
-
-				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
-					|| "PICAM360MAP", options.frame_width || 512, options.frame_height || 512, options.frame_encode
-					|| "h264", options.frame_fps || 5);
-				if (options.frame_bitrate) {
-					create_frame_cmd += " -k " + options.frame_bitrate;
-				}
-				console.log(create_frame_cmd);
-				plugin_host
-					.send_command(UPSTREAM_DOMAIN + create_frame_cmd, conn);
-
-				watcher.timer = setInterval(function() {
-					if (watcher.timeout) {
-						console.log("timeout");
-						rtp.remove_watcher(conn);
-						if (conn.peerConnection) { // webrtc
-							conn.close();
-						} else {
-							conn.disconnect(true);
-						}
-					} else {
-						watcher.timeout = true;
+				var init_con = function() {
+					watcher.is_init = true;
+					var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
+						|| "PICAM360MAP", options.frame_width || 512, options.frame_height || 512, options.frame_encode
+						|| "h264", options.frame_fps || 5);
+					if (options.frame_bitrate) {
+						create_frame_cmd += " -k " + options.frame_bitrate;
 					}
-				}, 10000);
+					console.log(create_frame_cmd);
+					plugin_host
+						.send_command(UPSTREAM_DOMAIN + create_frame_cmd, conn);
+
+					rtcp.add_connection(conn);
+					rtp_rx_watcher.push(watcher);
+
+					watcher.timer = setInterval(function() {
+						if (watcher.timeout) {
+							console.log("timeout");
+							rtp.remove_watcher(conn);
+							if (conn.peerConnection) { // webrtc
+								conn.close();
+							} else {
+								conn.disconnect(true);
+							}
+						} else {
+							watcher.timeout = true;
+						}
+					}, 10000);
+				};
+				conn
+					.on('data', function(data) {
+						watcher.timeout = false;
+						if (!watcher.is_init) {
+							var pack = rtcp.PacketHeader(data);
+							if (pack.GetPayloadType() == PT_CMD) {
+								var cmd = pack.GetPacketData()
+									.toString('ascii', pack.GetHeaderLength());
+								var split = cmd.split('\"');
+								var id = split[1];
+								var value = split[3].split(' ');
+								if (value[0] == "ping") {
+									var status = "<picam360:status name=\"pong\" value=\""
+										+ value[1]
+										+ " "
+										+ new Date().getTime()
+										+ "\" />";
+									var pack = rtp
+										.build_packet(new Buffer(status, 'ascii'), PT_STATUS);
+									rtp.sendpacket(conn, pack);
+									return;
+								}
+							}
+							init_con();
+						}
+					});
 			}
 
 			rtp.remove_watcher = function(conn) {
@@ -389,35 +415,74 @@ async
 						}
 						if (active_frame) {
 							active_frame.push(data);
-							if ((data[data_len - 2] == 0xFF && data[data_len - 1] == 0xD9)
-								|| (data[data_len - 2] == 0x4C && data[data_len - 1] == 0x55)
-								|| (data[data_len - 2] == 0x56 && data[data_len - 1] == 0x43)) { // EOI
+							var codec = null;
+							if (data[data_len - 2] == 0xFF
+								&& data[data_len - 1] == 0xD9) {
+								codec = "MJPEG";
+							} else if (data[data_len - 2] == 0x4C
+								&& data[data_len - 1] == 0x55) {
+								codec = "H264";
+							} else if (data[data_len - 2] == 0x56
+								&& data[data_len - 1] == 0x43) {
+								codec = "H265";
+							}
+							if (codec) { // EOI
 								var conn;
 								var server_key;
-								var sei = false;
-								if (data[data_len - 2] == 0x4C
-									&& data[data_len - 1] == 0x55) {// h264
-									if ((active_frame[0][header_len + 2 + 4] & 0x1f) == 6) {// sei
-										sei = true;
+								if (codec == "H264" || codec == "H265") {
+									var sei = false;
+									var nal_type = -1;
+									if (codec == "H264") {
+										nal_type = active_frame[0][header_len + 2 + 4] & 0x1f;
+										if (nal_type == 6) {// sei
+											sei = true;
+										}
+									} else if (codec == "H265") {
+										nal_type = (active_frame[0][header_len + 2 + 4] & 0x7e) >> 1;
+										if (nal_type == 40) {// sei
+											sei = true;
+										}
 									}
-								} else if (data[data_len - 2] == 0x56
-									&& data[data_len - 1] == 0x43) {// h265
-									if (((active_frame[0][header_len + 2 + 4] & 0x7e) >> 1) == 40) {// sei
-										sei = true;
-									}
-								}
-								if (sei) {// sei
-									var str = String.fromCharCode
-										.apply("", active_frame[0]
-											.subarray(header_len + 2 + 4), 0);
-									var split = str.split(' ');
-									for (var i = 0; i < split.length; i++) {
-										var separator = (/[=,\"]/);
-										var _split = split[i].split(separator);
-										if (_split[0] == "frame_id") {
-											conn = rtp.get_conn(_split[2]);
-										} else if (_split[0] == "server_key") {
-											server_key = _split[2];
+									if (sei) {// sei
+										var str = String.fromCharCode
+											.apply("", active_frame[0]
+												.subarray(header_len + 2 + 4), 0);
+										var split = str.split(' ');
+										for (var i = 0; i < split.length; i++) {
+											var separator = (/[=,\"]/);
+											var _split = split[i]
+												.split(separator);
+											if (_split[0] == "frame_id") {
+												conn = rtp.get_conn(_split[2]);
+											} else if (_split[0] == "server_key") {
+												server_key = _split[2];
+											}
+										}
+
+										if (options.h265_debug) {
+											var nal_len = 0;
+											var _nal_len = 0;
+											for (var i = 1; i < active_frame.length - 1; i++) {
+												if (i == 1) {
+													nal_len = active_frame[i][header_len + 0] << 24
+														| active_frame[i][header_len + 1] << 16
+														| active_frame[i][header_len + 2] << 8
+														| active_frame[i][header_len + 3];
+													_nal_len += active_frame[i].length - 4 - 12;
+
+													// nal header 1byte
+													if (codec == "H264") {
+														nal_type = active_frame[i][header_len + 4] & 0x1f;
+													} else if (codec == "H265") {
+														nal_type = (active_frame[i][header_len + 4] & 0x7e) >> 1;
+													}
+												} else {
+													_nal_len += active_frame[i].length - 12;
+												}
+											}
+											console.log("nal_len:" + nal_len
+												+ "," + _nal_len + ":nal_type:"
+												+ nal_type);
 										}
 									}
 								}
@@ -482,7 +547,7 @@ async
 						var status = "<picam360:status name=\"" + name
 							+ "\" value=\"" + value + "\" />";
 						var pack = rtp
-							.build_packet(new Buffer(status, 'ascii'), 100);
+							.build_packet(new Buffer(status, 'ascii'), PT_STATUS);
 						pack_list.push(pack);
 					}
 				}
@@ -770,7 +835,8 @@ async
 					}
 					return;
 				}
-				if (split[0] == "get_file") {
+				if (split[0] == "ping") {
+				} else if (split[0] == "get_file") {
 					filerequest_list.push({
 						filename : split[1],
 						key : split[2],

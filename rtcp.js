@@ -83,6 +83,7 @@ function sendpacket(pack, port, ip) {
 	rtcp_tx.send(pack, 0, pack.length, port, ip);
 }
 
+exports.PacketHeader = PacketHeader;
 exports.set_callback = set_callback;
 exports.add_connection = add_connection;
 exports.build_packet = build_packet;
