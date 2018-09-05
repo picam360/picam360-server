@@ -183,7 +183,7 @@ async
 						} else {
 							watcher.timeout = true;
 						}
-					}, 10000);
+					}, 60000);
 				};
 				conn
 					.on('data', function(data) {
@@ -402,9 +402,17 @@ async
 							}
 						}
 					} else if (pack.GetPayloadType() == PT_CAM_BASE) {
+						if (options.latency_debug) {
+							var latency = new Date().getTime() / 1000
+								- (pack.GetTimestamp() + pack.GetSsrc() / 1E6);
+							console.log("seq:" + pack.GetSequenceNumber()
+								+ ":latency:" + latency);
+						}
 						var data_len = pack.GetPacketLength();
 						var header_len = pack.GetHeaderLength();
 						var data = pack.GetPacketData();
+						//rtp._sendpacket([data]);
+						//return;
 						if (!active_frame) {
 							if ((data[header_len] == 0xFF && data[header_len + 1] == 0xD8)
 								|| (data[header_len] == 0x4E && data[header_len + 1] == 0x41)

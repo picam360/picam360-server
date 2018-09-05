@@ -10,12 +10,16 @@ function PacketHeader(pack) {
 	var payloadtype = pack.readUInt8(1) & 0x7F;
 	var sequencenumber = pack.readUInt16BE(2);
 	var timestamp = pack.readUInt32BE(4);
+	var ssrc = pack.readUInt32BE(8);
 	var self = {
 		GetSequenceNumber : function() {
 			return sequencenumber;
 		},
 		GetTimestamp : function() {
 			return timestamp;
+		},
+		GetSsrc : function() {
+			return ssrc;
 		},
 		GetPacketData : function() {
 			return pack;
