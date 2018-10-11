@@ -159,7 +159,7 @@ async
 				var init_con = function() {
 					watcher.is_init = true;
 					var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
-						|| "PICAM360MAP", options.frame_width || 512, options.frame_height || 512, options.frame_encode
+						|| "WINDOW", options.frame_width || 512, options.frame_height || 512, options.frame_encode
 						|| "h264", options.frame_fps || 5);
 					if (options.frame_bitrate) {
 						create_frame_cmd += " -k " + options.frame_bitrate;
@@ -467,7 +467,7 @@ async
 											}
 										}
 
-										if (options.h265_debug) {
+										if (options.debug == "stream") {
 											var nal_len = 0;
 											var _nal_len = 0;
 											for (var i = 1; i < active_frame.length - 1; i++) {
