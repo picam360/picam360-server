@@ -944,7 +944,7 @@ async
 						child_process.exec(cmd, function() {
 							var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
 								+ ' -m '
-								+ (options.frame_mode || "PICAM360MAP");
+								+ (options.frame_mode || "WINDOW");
 							plugin_host.send_command(cmd, conn);
 							fs.readFile(filepath, function(err, data) {
 								if (err) {
