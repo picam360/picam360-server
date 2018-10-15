@@ -1,0 +1,19 @@
+#!/bin/bash
+
+cp setup/picam360-server ${CMAKE_INSTALL_PREFIX}/bin
+cp config.json.tmp ${CMAKE_INSTALL_PREFIX}/etc/picam360-server.conf
+cp setup/picam360-server.service /etc/systemd/system/
+
+if [ ! -d "/var/www/picam360-server/" ]; then
+	mkdir -p /var/www/picam360-server/
+fi
+cp ./*.js /var/www/picam360-server/
+cp -ru certs /var/www/picam360-server/
+cp -ru node_modules /var/www/picam360-server/
+cp -ru plugins /var/www/picam360-server/
+cp www/config.json.tmp www/config.json
+cp -ru www /var/www/picam360-server/
+
+systemctl daemon-reload
+systemctl start picam360-server.service
+systemctl enable picam360-server.service

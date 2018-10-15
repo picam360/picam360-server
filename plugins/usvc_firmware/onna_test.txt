@@ -1,0 +1,3 @@
+set max_way_point_num 2
+set way_point 0 26.507264 127.864927
+set way_point 1 26.507951 127.865558

@@ -81,10 +81,22 @@ var m_request_call = "";
 
 var http = null;
 
-var options = JSON.parse(fs.readFileSync('config.json', 'utf8'));
+var options = [];
 
 async
 	.waterfall([
+		function(callback) {// argv
+			var conf_filepath = 'config.json';
+			for (var i = 0; i < process.argv.length; i++) {
+				if (process.argv[i] == "-c") {
+					conf_filepath = process.argv[i + 1];
+					i++;
+				}
+			}
+			console.log("load config file : " + conf_filepath);
+			options = JSON.parse(fs.readFileSync(conf_filepath, 'utf8'));
+			callback(null);
+		},
 		function(callback) {// exit sequence
 			process.on('SIGINT', function() {
 				console.log("exit process done");
@@ -411,8 +423,8 @@ async
 						var data_len = pack.GetPacketLength();
 						var header_len = pack.GetHeaderLength();
 						var data = pack.GetPacketData();
-						//rtp._sendpacket([data]);
-						//return;
+						// rtp._sendpacket([data]);
+						// return;
 						if (!active_frame) {
 							if ((data[header_len] == 0xFF && data[header_len + 1] == 0xD8)
 								|| (data[header_len] == 0x4E && data[header_len + 1] == 0x41)
@@ -943,8 +955,7 @@ async
 						console.log(cmd);
 						child_process.exec(cmd, function() {
 							var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id
-								+ ' -m '
-								+ (options.frame_mode || "WINDOW");
+								+ ' -m ' + (options.frame_mode || "WINDOW");
 							plugin_host.send_command(cmd, conn);
 							fs.readFile(filepath, function(err, data) {
 								if (err) {

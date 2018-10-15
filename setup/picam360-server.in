@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cd /var/www/picam360-server
+${NODE_PATH} app.js -c ${CMAKE_INSTALL_PREFIX}/etc/picam360-server.conf
