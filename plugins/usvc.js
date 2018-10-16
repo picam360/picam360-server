@@ -21,6 +21,7 @@ module.exports = {
 		var next_waypoint_direction = 0;
 		var heading = 0;
 		var rudder_pwm = 0;
+		var skrew_pwm = 0;
 		var mode_flag = [0, 0];
 		var adc_values = [];
 		var history = [];
@@ -28,6 +29,7 @@ module.exports = {
 		var waypoints_required = false;
 		var history_required = false;
 		var rudder_pwm_candidate = null;
+		var skrew_pwm_candidate = null;
 
 		async.waterfall([function(callback) {
 			var sp_callback = null;
@@ -88,6 +90,14 @@ module.exports = {
 						});
 						rudder_pwm_candidate = null;
 					}
+					if (skrew_pwm_candidate) {
+						var cmd = "set skrew_pwm " + skrew_pwm_candidate;
+						// console.log(cmd);
+						sp_send(cmd, function(ret) {
+							console.log(cmd);
+						});
+						skrew_pwm_candidate = null;
+					}
 				}, 200);
 				setInterval(function() {
 					var cmd = "set network " + "1";
@@ -116,6 +126,7 @@ module.exports = {
 						heading = parseFloat(params[6]);
 						mode_flag = params[7].split(":");
 						rudder_pwm = parseFloat(params[8]);
+						skrew_pwm = parseFloat(params[9]);
 						status_arrived = true;
 						break;
 					case "$ADC" :
@@ -148,6 +159,7 @@ module.exports = {
 							network : parseInt(mode_flag[1]) ? true : false,
 						},
 						rudder_pwm : rudder_pwm,
+						skrew_pwm : skrew_pwm,
 					};
 					if (waypoints_required) {
 						status.waypoints = waypoints;
@@ -240,6 +252,9 @@ module.exports = {
 						break;
 					case "set_rudder_pwm" :
 						rudder_pwm_candidate = parseInt(split[1]);
+						break;
+					case "set_skrew_pwm" :
+						skrew_pwm_candidate = parseInt(split[1]);
 						break;
 					case "get_waypoints" :
 						waypoints_required = true;

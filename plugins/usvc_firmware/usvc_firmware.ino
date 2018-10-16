@@ -434,6 +434,20 @@ void command_handler(char *cmd) {
 			Serial.print("$RET,");
 			Serial.print("ok");
 			Serial.println("*");
+		} else if (strcmp(p, "skrew_pwm") == 0) {
+			int16_t value = 0;
+			p = strtok(NULL, "\0");
+			sscanf(p, "%d", &value);
+			if (mode_flag.autonomous == 0 && value >= pulse_min && value <= pulse_max) {
+				skrew_pwm = value;
+				Serial.print("$RET,");
+				Serial.print("ok");
+				Serial.println("*");
+			} else {
+				Serial.print("$RET,");
+				Serial.print("error");
+				Serial.println("*");
+			}
 		} else if (strcmp(p, "gps_baudrate") == 0) {
 			char nmea_cmd[64];
 			uint32_t gps_baudrate = 9600;
@@ -769,6 +783,8 @@ void control() {
 		Serial.print(mode_flag.propo);
 		Serial.print(",");
 		Serial.print(rudder_pwm);
+		Serial.print(",");
+		Serial.print(skrew_pwm);
 		Serial.print(",");
 		Serial.print(sample_time_ms_dif);
 		Serial.println("*");
