@@ -12,8 +12,8 @@ cp ./*.js /var/www/picam360-server/
 rsync -av certs /var/www/picam360-server/
 rsync -av node_modules /var/www/picam360-server/
 rsync -av plugins /var/www/picam360-server/
-cp www/config.json.tmp www/config.json
 rsync -av --exclude=".*" www /var/www/picam360-server/
+cp www/config.json.tmp /var/www/picam360-server/www/config.json
 
 systemctl daemon-reload
 systemctl start picam360-server.service
