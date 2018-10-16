@@ -1,5 +1,5 @@
 [Unit]
-Description = picam360-capture daemon
+Description = picam360-server daemon
 
 [Service]
 ExecStart = /bin/bash ${CMAKE_INSTALL_PREFIX}/bin/picam360-server

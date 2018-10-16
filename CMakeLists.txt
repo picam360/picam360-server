@@ -15,8 +15,8 @@ add_custom_target(git_submodule_update ALL
 )
 
 add_custom_target(npm_install ALL
-	COMMAND npm install
-	COMMENT "npm install - it takes few minutes (make sure package-lock.json not existing)"
+	COMMAND npm -dd install
+	COMMENT "npm install - it takes few minutes"
 )
 	
 #install
