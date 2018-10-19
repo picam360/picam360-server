@@ -4,7 +4,7 @@ picam360-server
 Introduction
 ============
 
-This is capture software of picam360 camera.
+This is streaming web server software of picam360 camera.
 
 .. _`picam360 Home Page`: https://www.picam360.com
 
