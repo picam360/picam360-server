@@ -4,9 +4,9 @@ picam360-server
 Introduction
 ============
 
-This is streaming web server software of picam360 camera.
+This is video streaming web server software of `picam360`.
 
-.. _`picam360 Home Page`: https://www.picam360.com
+.. _`picam360`: https://www.picam360.com
 
 picam360-server is maintained and supported by `OHMYDIGIFAB`_ and developed in
 collaboration with a productive community of contributors.
