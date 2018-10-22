@@ -45,4 +45,5 @@ within the picam360-server source directory or any other build directory of your
 choice. Once this has finished successfully, run ``make`` and
 ``make install``.  In summary::
 
+ $ git clone https://github.com/picam360/picam360-server.git
  $ cmake . && make && sudo make install
