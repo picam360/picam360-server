@@ -20,6 +20,7 @@ var PT_STATUS = 100;
 var PT_CMD = 101;
 var PT_FILE = 102;
 var PT_CAM_BASE = 110;
+var PT_AUDIO_BASE = 120;
 
 var SIGNALING_HOST = "peer.picam360.com";
 // var SIGNALING_HOST = "test-peer-server.herokuapp.com";
@@ -525,6 +526,9 @@ async
 								startTime = new Date();
 							}
 						}
+					} else if (pack.GetPayloadType() == PT_AUDIO_BASE) {
+						var data = pack.GetPacketData();
+						rtp._sendpacket(data, null);
 					}
 				});
 			// cmd from downstream
