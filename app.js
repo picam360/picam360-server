@@ -512,7 +512,11 @@ async
 									need_to_send = rtp
 										.push_frame_queue(server_key, conn);
 								}
-								rtp._sendpacket(active_frame, conn);
+								if (conn) {
+									rtp._sendpacket(active_frame, conn);
+								} else {
+									console.log("warning : no conn");
+								}
 
 								active_frame = null;
 								// console.log("active_frame");
@@ -1077,7 +1081,10 @@ async
 
 			plugin_host.add_watch(UPSTREAM_DOMAIN + "next_frame_id", function(
 				value) {
-				upstream_next_frame_id = value;
+				if (upstream_next_frame_id != value) {
+					upstream_next_frame_id = value;
+					console.log("next_frame_id updted : " + value);
+				}
 			});
 
 			plugin_host.add_watch(UPSTREAM_DOMAIN + "info", function(value) {
