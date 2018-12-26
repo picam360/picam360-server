@@ -18,6 +18,7 @@
   "xmlhttprequest": "^1.8.0",
   "serialport": "^6.2.0",
   "aws-sdk" : "*",
-  "aws-iot-device-sdk" : "*"
+  "aws-iot-device-sdk" : "*",
+  "i2c-bus" : "*"
  }
 }
