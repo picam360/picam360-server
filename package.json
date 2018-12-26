@@ -19,6 +19,7 @@
   "serialport": "^6.2.0",
   "aws-sdk" : "*",
   "aws-iot-device-sdk" : "*",
-  "i2c-bus" : "*"
+  "i2c-bus" : "*",
+  "node-gpsd" : "*"
  }
 }

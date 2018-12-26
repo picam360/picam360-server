@@ -5,6 +5,7 @@ module.exports = {
 		var fs = require("fs");
 		var sprintf = require('sprintf-js').sprintf;
 		var SerialPort = require('serialport');
+		var gpsd = require('node-gpsd');
 
 		var PLUGIN_NAME = "usvc";
 		var COM_PORT = "/dev/ttyACM0";
@@ -130,6 +131,26 @@ module.exports = {
 			}, 200);
 			callback(null);
 		}, function(callback) {
+			var listener = new gpsd.Listener({
+			    port: 2947,
+			    hostname: 'localhost',
+			    logger:  {
+			        info: function() {},
+			        warn: console.warn,
+			        error: console.error
+			    },
+			    parse: true
+			});
+			listener.connect(function() {
+			    console.log('GPSD Connected');
+				listener.on('TPV', function(tpvData){
+				    console.log(tpvData);
+				});
+				listener.watch();
+			});
+//			listener.disconnect(function() {
+//			    console.log('Disconnected');
+//			});
 			callback(null);
 		}], function(err, result) {
 		});
