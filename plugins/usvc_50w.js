@@ -112,7 +112,9 @@ module.exports = {
 				// ch2.toFixed(3) + "V " + ch3.toFixed(3) + "V");
 				// console.log(ch0.toFixed(3) + "V " + ch1_ms.toFixed(3) + "ms "
 				// + ch2_ms.toFixed(3) + "ms " + ch3_ms.toFixed(3) + "ms");
-				
+				{
+					heading = plugin_host.get_vehicle_north();
+				}
 				{
 					var fd = fs.openSync("/dev/pi-blaster", 'w');
 					if(1500 < ch3_ms && ch3_ms < 2000) {
@@ -145,12 +147,19 @@ module.exports = {
 			    console.log('GPSD Connected');
 				listener.on('TPV', function(tpvData){
 				    console.log(tpvData);
+				    if(tpvData.lat && tpvData.lon){
+				    	latitude = tpvData.lat;
+				    	longitude = tpvData.lon;
+				    }else{
+				    	latitude = 0;
+				    	longitude = 0;
+				    }
 				});
 				listener.watch();
 			});
-//			listener.disconnect(function() {
-//			    console.log('Disconnected');
-//			});
+// listener.disconnect(function() {
+// console.log('Disconnected');
+// });
 			callback(null);
 		}], function(err, result) {
 		});

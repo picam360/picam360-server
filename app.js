@@ -72,6 +72,8 @@ var filerequest_list = [];
 var upstream_next_frame_id = 0;
 var upstream_info = "";
 var upstream_menu = "";
+var upstream_quaternion = [0, 0, 0, 1.0];
+var upstream_north = 0;
 
 var is_recording = false;
 var memoryusage_start = 0;
@@ -398,8 +400,9 @@ async
 											var tag = str
 												.slice(last_spece + 1, first_dq - 1);
 											if (tag == "name") {
-												name = str
-													.slice(first_dq + 1, i);
+												name = UPSTREAM_DOMAIN
+													+ str
+														.slice(first_dq + 1, i);
 											} else if (tag == "value") {
 												value = str
 													.slice(first_dq + 1, i);
@@ -1069,6 +1072,12 @@ async
 					});
 				}
 			};
+			plugin_host.get_vehicle_quaternion = function() {
+				return upstream_quaternion;
+			};
+			plugin_host.get_vehicle_north = function() {
+				return upstream_north;
+			};
 			plugin_host.get_view_quaternion = function() {
 				return m_view_quaternion;
 			};
@@ -1085,6 +1094,19 @@ async
 					upstream_next_frame_id = value;
 					console.log("next_frame_id updted : " + value);
 				}
+			});
+
+			plugin_host.add_watch(UPSTREAM_DOMAIN + "quaternion", function(
+				value) {
+				var separator = (/[,]/);
+				var split = value.split(separator);
+				upstream_quaternion = [parseFloat(split[0]),
+					parseFloat(split[1]), parseFloat(split[2]),
+					parseFloat(split[3])];
+			});
+
+			plugin_host.add_watch(UPSTREAM_DOMAIN + "north", function(value) {
+				upstream_north = value;
 			});
 
 			plugin_host.add_watch(UPSTREAM_DOMAIN + "info", function(value) {
