@@ -97,10 +97,12 @@ async
 				}
 			}
 			var tmp_conf_filepath = "/tmp/picam360-server.conf.json";
-			var cmd = "grep -v -e '^\s*#' " + conf_filepath + " > " + tmp_conf_filepath;
+			var cmd = "grep -v -e '^\s*#' " + conf_filepath + " > "
+				+ tmp_conf_filepath;
 			child_process.exec(cmd, function() {
 				console.log("load config file : " + conf_filepath);
-				options = JSON.parse(fs.readFileSync(tmp_conf_filepath, 'utf8'));
+				options = JSON
+					.parse(fs.readFileSync(tmp_conf_filepath, 'utf8'));
 				callback(null);
 			});
 		},
@@ -1040,31 +1042,6 @@ async
 					filerequest_handler(filerequest.filename, filerequest.key, filerequest.conn);
 				}
 			}, 20);
-			if (options.aws_iot_enabled) {
-				var interval_s = options.aws_iot_interval_s || 60;
-				var awsIot = require('aws-iot-device-sdk');
-				var device = awsIot
-					.device({
-						keyPath : 'certs/aws_iot/'
-							+ options.aws_iot_private_key,
-						certPath : 'certs/aws_iot/'
-							+ options.aws_iot_certificate,
-						caPath : 'certs/aws_iot/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem',
-						host : options.aws_iot_host,
-					});
-
-				device.on('connect', function() {
-					console.log('Connected to AWS IOT.');
-
-					setInterval(function() {
-						for (var i = 0; i < plugins.length; i++) {
-							if (plugins[i].aws_iot_handler) {
-								plugins[i].aws_iot_handler(device);
-							}
-						}
-					}, interval_s * 1000);
-				});
-			}
 			plugin_host.send_command = function(value, conn) {
 				if (value.startsWith(UPSTREAM_DOMAIN)) {
 					cmd2upstream_list
@@ -1176,6 +1153,42 @@ async
 						plugins[i].init_options(options);
 					}
 				}
+			}
+			callback(null);
+		},
+		function(callback){
+			//aws_iot
+			if (options.aws_iot_enabled) {
+				var awsIot = require('aws-iot-device-sdk');
+				var thingShadow = awsIot
+					.thingShadow({
+						keyPath : 'certs/aws_iot/'
+							+ options.aws_iot_private_key,
+						certPath : 'certs/aws_iot/'
+							+ options.aws_iot_certificate,
+						caPath : 'certs/aws_iot/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem',
+						// clientId : options.aws_iot_client_id,
+						host : options.aws_iot_host,
+					});
+
+				thingShadow.on('connect', function() {
+					console.log('Connected to AWS IOT.');
+
+					for (var i = 0; i < plugins.length; i++) {
+						if (plugins[i].aws_iot_conneced) {
+							plugins[i].aws_iot_conneced(thingShadow, options.aws_iot_client_id);
+						}
+					}
+					
+					thingShadow
+						.register(options.aws_iot_client_id, {}, function() {
+							for (var i = 0; i < plugins.length; i++) {
+								if (plugins[i].aws_iot_registered) {
+									plugins[i].aws_iot_registered(thingShadow, options.aws_iot_client_id);
+								}
+							}
+						});
+				});
 			}
 			callback(null);
 		}], function(err, result) {
