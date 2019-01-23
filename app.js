@@ -96,9 +96,13 @@ async
 					i++;
 				}
 			}
-			console.log("load config file : " + conf_filepath);
-			options = JSON.parse(fs.readFileSync(conf_filepath, 'utf8'));
-			callback(null);
+			var tmp_conf_filepath = "/tmp/picam360-server.conf.json";
+			var cmd = "grep -v -e '^\s*#' " + conf_filepath + " > " + tmp_conf_filepath;
+			child_process.exec(cmd, function() {
+				console.log("load config file : " + conf_filepath);
+				options = JSON.parse(fs.readFileSync(tmp_conf_filepath, 'utf8'));
+				callback(null);
+			});
 		},
 		function(callback) {// exit sequence
 			process.on('SIGINT', function() {
