@@ -31,6 +31,7 @@ module.exports = {
 		var mode_flag = [0, 0];
 		var adc_values = [];
 		var history = [];
+		var thruster_mode = 0;
 
 		var waypoints_required = false;
 		var history_required = false;
@@ -235,6 +236,7 @@ module.exports = {
 			name : PLUGIN_NAME,
 			init_options : function(_options) {
 				options = _options.usvc || {};
+				thruster_mode = options.default_thruster_mode || "SINGLE";
 				if (_options.aws_iot_enabled) {
 					// var AWS = require("aws-sdk");
 					//
@@ -313,15 +315,22 @@ module.exports = {
 				}
 			},
 			aws_iot_conneced : function(thingShadow, client_id) {
-				var delta_fnc = function(state) {
+				var reported_fnc = function(state) {
 					if (state.waypoints) {
 						waypoints = state.waypoints;
 					}
+					if (state.thruster_mode) {
+						thruster_mode = state.thruster_mode;
+					}
+				}
+				var delta_fnc = function(state) {
+					reported_fnc(state);
 					var report = {
 						"state" : {
 							"desired" : null,
 							"reported" : {
-								"waypoints" : waypoints
+								"waypoints" : waypoints,
+								"thruster_mode" : thruster_mode
 							}
 						}
 					};
@@ -330,8 +339,8 @@ module.exports = {
 				thingShadow.on('status', function(thingName, stat, clientToken,
 					stateObject) {
 					if (clientToken == clientTokenGet) {
-						if (stateObject.state.reported.waypoints) {
-							waypoints = stateObject.state.reported.waypoints;
+						if (stateObject.state.reported) {
+							reported_fnc(stateObject.state.reported);
 						}
 						if (stateObject.state.delta) {
 							delta_fnc(stateObject.state.delta);
