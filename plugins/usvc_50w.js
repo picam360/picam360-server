@@ -25,7 +25,7 @@ module.exports = {
 		var next_waypoint_distance = 0;
 		var next_waypoint_idx = 0;
 		var next_waypoint_direction = 0;
-		var heading = 0;
+		var north = 0;
 		var rudder_pwm = 0;
 		var skrew_pwm = 0;
 		var adc_values = [];
@@ -33,11 +33,11 @@ module.exports = {
 		var auto_mode = false;
 		var battery = 0;
 
-		var history_min = {};
-		var history_hour = {};
-		var history_day = {};
-		var history_week = {};
-		var history_month = {};
+		var history_1min = {};
+		var history_10min = {};
+		var history_100min = {};
+		var history_1000min = {};
+		var history_10000min = {};// around 6days
 
 		var waypoints_required = false;
 		var history_required = false;
@@ -173,7 +173,7 @@ module.exports = {
 						// + ch2_ms.toFixed(3) + "ms " + ch3_ms.toFixed(3) +
 						// "ms");
 						{
-							heading = plugin_host.get_vehicle_north();
+							north = plugin_host.get_vehicle_north();
 						}
 						{
 							var fd = fs.openSync("/dev/pi-blaster", 'w');
@@ -232,7 +232,7 @@ module.exports = {
 								var status = {
 									latitude : latitude,
 									longitude : longitude,
-									heading : heading,
+									north : north,
 									next_waypoint_distance : next_waypoint_distance,
 									next_waypoint_idx : next_waypoint_idx,
 									next_waypoint_direction : next_waypoint_direction,
@@ -245,7 +245,7 @@ module.exports = {
 								}
 								if (history_required) {
 									status.history = Object
-										.assign({}, history_min, history_hour, history_day, history_week, history_month);
+										.assign({}, history_1min, history_10min, history_100min, history_1000min, history_10000min);
 									history_required = false
 								}
 								return {
@@ -352,20 +352,20 @@ module.exports = {
 							var state = stateObject.state.reported;
 							reported_fnc(state, false);
 
-							if (state.history_min) {
-								history_min = state.history_min;
+							if (state.history_1min) {
+								history_min = state.history_1min;
 							}
-							if (state.history_hour) {
-								history_hour = state.history_hour;
+							if (state.history_10min) {
+								history_hour = state.history_10min;
 							}
-							if (state.history_day) {
-								history_day = state.history_day;
+							if (state.history_100min) {
+								history_day = state.history_100min;
 							}
-							if (state.history_week) {
-								history_week = state.history_week;
+							if (state.history_1000min) {
+								history_week = state.history_1000min;
 							}
-							if (state.history_month) {
-								history_month = state.history_month;
+							if (state.history_10000min) {
+								history_month = state.history_10000min;
 							}
 						}
 						if (stateObject.state.delta) {
@@ -399,21 +399,26 @@ module.exports = {
 								return;
 							}
 							var state = {
-								"latitude" : latitude,
-								"longitude" : longitude,
-								"heading" : heading,
-								"battery" : battery,
-								"adc_values" : adc_values,
+								"lat" : latitude.toFixed(6),
+								"lon" : longitude.toFixed(6),
+								"north" : north.toFixed(3),
+								"bat" : battery.toFixed(3),
+								"adc" : adc_values,
 							};
 							// update history
-							var history_tbl = [history_min, history_hour,
-								history_day, history_week, history_month];
+							// care shadow size limited 8k
+							var history_tbl = [history_1min, history_10min,
+								history_100min, history_1000min,
+								history_10000min];
 							var report_tbl = [{}, {}, {}, {}, {}];
-							var max_count_tbl = [60, 24, 30, 24, 24];
-							var interval_s_tbl = [60, 60 * 60, 60 * 60 * 24,
-								60 * 60 * 24 * 7, 60 * 60 * 24 * 7 * 4];
+							var max_count_tbl = [5, 5, 5, 5, 5];// max25nodes30days
+							var interval_s_tbl = [60, 60 * 10, 60 * 100,
+								60 * 1000, 60 * 10000];
 							var new_key = parseInt(Date.now() / 1000);
-							var new_value = Object.assign({}, state);
+							var new_value = {
+								"lat" : state.lat,
+								"lon" : state.lon,
+							};
 							for (var i = 0; i < history_tbl.length - 1; i++) {
 								var keys = Object.keys(history_tbl[i]);
 								if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
@@ -431,11 +436,11 @@ module.exports = {
 									break;
 								}
 							}
-							state.history_min = report_tbl[0];
-							state.history_hour = report_tbl[1];
-							state.history_day = report_tbl[2];
-							state.history_week = report_tbl[3];
-							state.history_month = report_tbl[4];
+							state.history_1min = report_tbl[0];
+							state.history_10min = report_tbl[1];
+							state.history_100min = report_tbl[2];
+							state.history_1000min = report_tbl[3];
+							state.history_10000min = report_tbl[4];
 
 							var cmd = {
 								"state" : {
