@@ -20,7 +20,7 @@ module.exports = {
 
 		var i2c = null;
 		var sp_send = null;
-		var status_arrived = false;
+		var gps_arrived = false;
 		var latitude = 0;
 		var longitude = 0;
 		var north = 0;
@@ -45,6 +45,7 @@ module.exports = {
 		var next_waypoint_distance = 0;
 		var next_waypoint_direction = 0;
 		var p_d_direction = 0;
+		var waypoint_data = null;
 
 		var options = {
 			thruster_mode : "SINGLE",
@@ -237,6 +238,7 @@ module.exports = {
 								latitude = 0;
 								longitude = 0;
 							}
+							gps_arrived = true;
 						});
 						listener.watch();
 					});
@@ -248,17 +250,18 @@ module.exports = {
 				function(callback) {
 					plugin_host
 						.add_status(PLUGIN_NAME + ".status", function() {
-							if (status_arrived) {
-								status_arrived = false;
+							if (gps_arrived) {
+								gps_arrived = false;
 								var status = {
-									latitude : latitude,
-									longitude : longitude,
+									lat : latitude,
+									lon : longitude,
 									north : north,
 									next_waypoint_distance : next_waypoint_distance,
 									next_waypoint_idx : options.next_waypoint_idx,
 									next_waypoint_direction : next_waypoint_direction,
 									rudder_pwm : rudder_pwm,
 									skrew_pwm : skrew_pwm,
+									auto_mode : options.auto_mode,
 								};
 								if (waypoints_required) {
 									status.waypoints = options.waypoints;
@@ -321,11 +324,37 @@ module.exports = {
 							* 180 / Math.PI;
 						if (Math.abs(next_waypoint_distance) < (waypoint.tol || 5)) { // tol_is_Tolerance
 							// arrived
+							if (!waypoint_data) {
+								waypoint_data = {
+									cmds : []
+								};
+							}
 							if (waypoint.cmds) {
-								var wait = function(params) {
-									return (Date.now() / 1000 > params);
+								function isObject(o) {
+									return (o instanceof Object && !(o instanceof Array))
+										? true
+										: false;
+								};
+								var wait = function(data, params) {
+									if (!isObject(params)) {
+										params = {
+											value : params
+										};
+									}
+									if (!data.start) {
+										data.start = params.start || Date.now()
+											/ 1000;
+									}
+									return (Date.now() / 1000 > data.start
+										+ params.value);
 								}
-								var sampling = function(params) {
+								var sampling = function(data, params) {
+									if (!isObject(params)) {
+										params = {
+											ch : params,
+											cnt : 10
+										};
+									}
 									var value = get_ads7828_value(params.ch, params.cnt);
 									var state = {
 										"lat" : latitude,
@@ -350,7 +379,10 @@ module.exports = {
 										// error
 										continue;
 									}
-									var ret = func(cmds[i].params);
+									if (!waypoint_data.cmds[i]) {
+										waypoint_data.cmds[i] = {};
+									}
+									var ret = func(waypoint_data.cmds[i], cmds[i].params);
 									if (!ret) {
 										return;
 									} else {
@@ -359,6 +391,7 @@ module.exports = {
 								}
 							}
 							options.next_waypoint_idx++;
+							waypoint_data = null;
 							return;
 						}
 						// control
@@ -581,48 +614,51 @@ module.exports = {
 							};
 							// update history
 							// care shadow size limited 8k
-							var history_tbl = [history_1min, history_10min,
-								history_100min, history_1000min,
-								history_10000min];
-							var report_tbl = [{}, {}, {}, {}, {}];
-							var max_count_tbl = [5, 5, 5, 5, 5];// max25nodes30days
-							var interval_s_tbl = [60, 60 * 10, 60 * 100,
-								60 * 1000, 60 * 10000];
-							var new_key = parseInt(Date.now() / 1000);
-							var new_value = {
-								"lat" : state.lat,
-								"lon" : state.lon,
-							};
-							for (var i = 0; i < history_tbl.length - 1; i++) {
-								var keys = Object.keys(history_tbl[i]);
-								for (var j = 0; j < keys.length
-									- max_count_tbl[i]; j++) {
-									delete history_tbl[i][keys[j]];
-									report_tbl[i][keys[j]] = null;
+							if (latitude == 0 && longitude == 0) { // GPS_LOST
+							} else {
+								var history_tbl = [history_1min, history_10min,
+									history_100min, history_1000min,
+									history_10000min];
+								var report_tbl = [{}, {}, {}, {}, {}];
+								var max_count_tbl = [5, 5, 5, 5, 5];// max25nodes30days
+								var interval_s_tbl = [60, 60 * 10, 60 * 100,
+									60 * 1000, 60 * 10000];
+								var new_key = parseInt(Date.now() / 1000);
+								var new_value = {
+									"lat" : state.lat,
+									"lon" : state.lon,
+								};
+								for (var i = 0; i < history_tbl.length - 1; i++) {
+									var keys = Object.keys(history_tbl[i]);
+									for (var j = 0; j < keys.length
+										- max_count_tbl[i]; j++) {
+										delete history_tbl[i][keys[j]];
+										report_tbl[i][keys[j]] = null;
+									}
 								}
+								for (var i = 0; i < history_tbl.length - 1; i++) {
+									var keys = Object.keys(history_tbl[i]);
+									if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
+										history_tbl[i][new_key] = new_value;
+										report_tbl[i][new_key] = new_value;
+									} else {
+										break;
+									}
+									if (keys.length + 1 > max_count_tbl[i]) {
+										new_key = keys[0];
+										new_value = history_tbl[i][new_key];
+										delete history_tbl[i][new_key];
+										report_tbl[i][new_key] = null;
+									} else {
+										break;
+									}
+								}
+								state.history_1min = report_tbl[0];
+								state.history_10min = report_tbl[1];
+								state.history_100min = report_tbl[2];
+								state.history_1000min = report_tbl[3];
+								state.history_10000min = report_tbl[4];
 							}
-							for (var i = 0; i < history_tbl.length - 1; i++) {
-								var keys = Object.keys(history_tbl[i]);
-								if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
-									history_tbl[i][new_key] = new_value;
-									report_tbl[i][new_key] = new_value;
-								} else {
-									break;
-								}
-								if (keys.length + 1 > max_count_tbl[i]) {
-									new_key = keys[0];
-									new_value = history_tbl[i][new_key];
-									delete history_tbl[i][new_key];
-									report_tbl[i][new_key] = null;
-								} else {
-									break;
-								}
-							}
-							state.history_1min = report_tbl[0];
-							state.history_10min = report_tbl[1];
-							state.history_100min = report_tbl[2];
-							state.history_1000min = report_tbl[3];
-							state.history_10000min = report_tbl[4];
 
 							var cmd = {
 								"state" : {
