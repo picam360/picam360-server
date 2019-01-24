@@ -114,13 +114,7 @@ module.exports = {
 			if (ch < 8) {
 				return get_ads7828_value_single(ch, cnt);
 			} else {
-				var pos = get_ads7828_value_differential(ch - 8, cnt);
-				var neg = get_ads7828_value_differential(ch - 8 + 4, cnt);
-				if (pos > neg) {
-					return pos;
-				} else {
-					return -neg;
-				}
+				return get_ads7828_value_differential(ch - 8, cnt);
 			}
 		}
 
@@ -133,8 +127,8 @@ module.exports = {
 					// to your i2c address, debug provides REPL interface
 					setInterval(function() {
 						adc_values = [];
-						for (var i = 0; i < 12; i++) {
-							adc_values[i] = get_ads7828_value(i, 10);
+						for (var i = 0; i < 16; i++) {
+							adc_values[i] = get_ads7828_value(i, 1);
 						}
 
 						battery = 6 * 2.5 * adc_values[0] / (1 << 12);
