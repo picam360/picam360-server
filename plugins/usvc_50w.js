@@ -96,9 +96,11 @@ module.exports = {
 				value += (buff[0] << 8) + buff[1];
 			}
 			value /= cnt;
-			// console.log("ch" + ch + "=b" + config.toString(2) + ",buff0=" +
-			// buff[0].toString(2) + ",buff1=" + buff[1].toString(2) + ",v=" +
-			// value.toString(2));
+			if (options.ads7828_debug) {
+				console.log("ch" + ch + "=b" + config.toString(2) + ",buff0="
+					+ buff[0].toString(2) + ",buff1=" + buff[1].toString(2)
+					+ ",v=" + value.toString(2));
+			}
 			i2c1.closeSync();
 			return value;
 		}
@@ -117,9 +119,11 @@ module.exports = {
 				value += (buff[0] << 8) + buff[1];
 			}
 			value /= cnt;
-			// console.log("ch" + ch + "=b" + config.toString(2) + ",buff0=" +
-			// buff[0].toString(2) + ",buff1=" + buff[1].toString(2) + ",v=" +
-			// value.toString(2));
+			if (options.ads7828_debug) {
+				console.log("ch" + ch + "=b" + config.toString(2) + ",buff0="
+					+ buff[0].toString(2) + ",buff1=" + buff[1].toString(2)
+					+ ",v=" + value.toString(2));
+			}
 			i2c1.closeSync();
 			return value;
 		}
@@ -173,13 +177,14 @@ module.exports = {
 							skrew_ch1 = PWM_MIDDLE_US - PWM_MARGIN_MS;
 							skrew_ch3 = PWM_MIDDLE_US - PWM_MARGIN_MS;
 						}
-						// console.log(ch0.toFixed(3) + "V " + ch1.toFixed(3) +
-						// "V " +
-						// ch2.toFixed(3) + "V " + ch3.toFixed(3) + "V");
-						// console.log(ch0.toFixed(3) + "V " + ch1_ms.toFixed(3)
-						// + "ms "
-						// + ch2_ms.toFixed(3) + "ms " + ch3_ms.toFixed(3) +
-						// "ms");
+						if (options.adc_debug) {
+							console.log(ch0.toFixed(3) + "V " + ch1.toFixed(3)
+								+ "V " + ch2.toFixed(3) + "V " + ch3.toFixed(3)
+								+ "V");
+							console.log(ch0.toFixed(3) + "V "
+								+ ch1_ms.toFixed(3) + "ms " + ch2_ms.toFixed(3)
+								+ "ms " + ch3_ms.toFixed(3) + "ms");
+						}
 						{
 							north = plugin_host.get_vehicle_north();
 						}
@@ -222,11 +227,13 @@ module.exports = {
 					listener.connect(function() {
 						console.log('GPSD Connected');
 						listener.on('TPV', function(tpvData) {
-							// console.log(tpvData);
+							if (options.gps_debug) {
+								console.log(tpvData);
+							}
 							if (tpvData.lat && tpvData.lon) {
 								latitude = tpvData.lat;
 								longitude = tpvData.lon;
-							} else {
+							} else { // GPS_LOST
 								latitude = 0;
 								longitude = 0;
 							}
@@ -281,7 +288,10 @@ module.exports = {
 						if (!options.auto_mode) {
 							return;
 						}
-						if (latitude == 0 && longitude == 0) {
+						// reset pwm
+						rudder_pwm = PWM_MIDDLE_US;
+						skrew_pwm = PWM_MIDDLE_US;
+						if (latitude == 0 && longitude == 0) { // GPS_LOST
 							return;
 						}
 						if (0) {
@@ -531,11 +541,11 @@ module.exports = {
 								clientTokenGetCallback();
 								clientTokenGetCallback = null;
 							}
+						} // end of get
+						if (options.aws_iot_debug) {
+							console.log('received ' + stat + ' on ' + thingName
+								+ ':' + JSON.stringify(stateObject));
 						}
-						// console.log('received ' + stat + ' on ' + thingName +
-						// ':
-						// '
-						// + JSON.stringify(stateObject));
 					});
 				thing_shadow.on('delta', function(thingName, stateObject) {
 					delta_fnc(stateObject.state);
@@ -552,9 +562,6 @@ module.exports = {
 					.aws_iot_get(thing_shadow, client_id, function() {
 						// start sync
 						setInterval(function() {
-							if (latitude == 0 && longitude == 0) {
-								return;
-							}
 							var state = {
 								"lat" : latitude.toFixed(6),
 								"lon" : longitude.toFixed(6),
@@ -622,8 +629,10 @@ module.exports = {
 									"reported" : state
 								}
 							};
-							console
-								.log("report shadow: " + JSON.stringify(cmd));
+							if (options.aws_iot_debug) {
+								console.log("report shadow: "
+									+ JSON.stringify(cmd));
+							}
 							clientTokenUpdate = thing_shadow
 								.update(client_id, cmd);
 						}, (options.aws_iot_interval_sec || 10) * 1000);
@@ -635,7 +644,9 @@ module.exports = {
 			},
 			aws_iot_publish : function(thing_shadow, client_id, topic, state) {
 				var message = JSON.stringify(state);
-				console.log("publish: " + message);
+				if (options.aws_iot_debug) {
+					console.log("publish: " + message);
+				}
 				clientTokenPublish = thing_shadow.publish(topic, message);
 			},
 		};
