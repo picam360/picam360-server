@@ -1087,7 +1087,7 @@ async
 			});
 
 			plugin_host.add_watch(UPSTREAM_DOMAIN + "north", function(value) {
-				upstream_north = value;
+				upstream_north = parseFloat(value);
 			});
 
 			plugin_host.add_watch(UPSTREAM_DOMAIN + "info", function(value) {
