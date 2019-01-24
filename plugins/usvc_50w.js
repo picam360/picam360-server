@@ -28,10 +28,15 @@ module.exports = {
 		var heading = 0;
 		var rudder_pwm = 0;
 		var skrew_pwm = 0;
-		var mode_flag = [0, 0];
 		var adc_values = [];
-		var history = [];
 		var thruster_mode = 0;
+		var auto_mode = false;
+
+		var history_min = {};
+		var history_hour = {};
+		var history_day = {};
+		var history_week = {};
+		var history_month = {};
 
 		var waypoints_required = false;
 		var history_required = false;
@@ -43,6 +48,7 @@ module.exports = {
 		// aws_iot
 		var clientTokenUpdate;
 		var clientTokenGet;
+		var clientTokenGetCallback;
 
 		function set_skrew_pwm(idx, us, _fd) {
 			var need_to_close;
@@ -199,14 +205,6 @@ module.exports = {
 									next_waypoint_distance : next_waypoint_distance,
 									next_waypoint_idx : next_waypoint_idx,
 									next_waypoint_direction : next_waypoint_direction,
-									mode_flag : {
-										autonomous : parseInt(mode_flag[0])
-											? true
-											: false,
-										network : parseInt(mode_flag[1])
-											? true
-											: false,
-									},
 									rudder_pwm : rudder_pwm,
 									skrew_pwm : skrew_pwm,
 								};
@@ -215,7 +213,8 @@ module.exports = {
 									waypoints_required = false
 								}
 								if (history_required) {
-									status.history = history;
+									status.history = Object
+										.assign({}, history_min, history_hour, history_day, history_week, history_month);
 									history_required = false
 								}
 								return {
@@ -237,36 +236,6 @@ module.exports = {
 			init_options : function(_options) {
 				options = _options.usvc || {};
 				thruster_mode = options.default_thruster_mode || "SINGLE";
-				if (_options.aws_iot_enabled) {
-					// var AWS = require("aws-sdk");
-					//
-					// AWS.config.update({
-					// region : options.aws_region,
-					// });
-					//
-					// var docClient = new AWS.DynamoDB.DocumentClient();
-					//
-					// var params = {
-					// TableName : "asv_data",
-					// KeyConditionExpression : "device_id = :device_id",
-					// ExpressionAttributeValues : {
-					// ":device_id" : options.aws_iot_device_id
-					// },
-					// ScanIndexForward : false,
-					// Limit : 60,
-					// };
-					//
-					// docClient.query(params, function(err, data) {
-					// if (err) {
-					// console.error("Unable to query. Error:", JSON
-					// .stringify(err, null, 2));
-					// } else {
-					// console.log("DynamoDB Query succeeded. "
-					// + data.Items.length);
-					// history = data.Items;
-					// }
-					// });
-				}
 			},
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
@@ -315,35 +284,65 @@ module.exports = {
 				}
 			},
 			aws_iot_conneced : function(thingShadow, client_id) {
-				var reported_fnc = function(state) {
-					if (state.waypoints) {
+				var reported_fnc = function(state, is_delta) {
+					var report = {};
+					if (state.waypoints !== undefined) {
 						waypoints = state.waypoints;
+						report.waypoints = waypoints;
 					}
-					if (state.thruster_mode) {
+					if (state.thruster_mode !== undefined) {
 						thruster_mode = state.thruster_mode;
+						report.thruster_mode = thruster_mode;
 					}
+					if (state.next_waypoint_idx !== undefined) {
+						next_waypoint_idx = state.next_waypoint_idx;
+						report.next_waypoint_idx = next_waypoint_idx;
+					}
+					if (state.auto_mode !== undefined) {
+						auto_mode = state.auto_mode;
+						report.auto_mode = auto_mode;
+					}
+					return report;
 				}
 				var delta_fnc = function(state) {
-					reported_fnc(state);
-					var report = {
+					var report = reported_fnc(state, true);
+					var cmd = {
 						"state" : {
 							"desired" : null,
-							"reported" : {
-								"waypoints" : waypoints,
-								"thruster_mode" : thruster_mode
-							}
+							"reported" : report
 						}
 					};
-					clientTokenUpdate = thingShadow.update(client_id, report);
+					clientTokenUpdate = thingShadow.update(client_id, cmd);
 				}
 				thingShadow.on('status', function(thingName, stat, clientToken,
 					stateObject) {
 					if (clientToken == clientTokenGet) {
 						if (stateObject.state.reported) {
-							reported_fnc(stateObject.state.reported);
+							var state = stateObject.state.reported;
+							reported_fnc(state, false);
+
+							if (state.history_min) {
+								history_min = state.history_min;
+							}
+							if (state.history_hour) {
+								history_hour = state.history_hour;
+							}
+							if (state.history_day) {
+								history_day = state.history_day;
+							}
+							if (state.history_week) {
+								history_week = state.history_week;
+							}
+							if (state.history_month) {
+								history_month = state.history_month;
+							}
 						}
 						if (stateObject.state.delta) {
 							delta_fnc(stateObject.state.delta);
+						}
+						if (clientTokenGetCallback) {
+							clientTokenGetCallback();
+							clientTokenGetCallback = null;
 						}
 					}
 					// console.log('received ' + stat + ' on ' + thingName + ':
@@ -354,42 +353,74 @@ module.exports = {
 					delta_fnc(stateObject.state);
 				});
 				thingShadow.on('timeout', function(thingName, clientToken) {
+					if (clientToken == clientTokenGet) {
+						clientTokenGet = thingShadow.get(client_id);
+					}
 					console.log('received timeout : ' + clientToken);
 				});
 			},
 			aws_iot_registered : function(thingShadow, client_id) {
-				var interval_sec = options.aws_iot_interval_sec || 60;
-				clientTokenGet = thingShadow.get(client_id);
-				var fnc = function() {
-					if (latitude == 0 && longitude == 0) {
-						return;
-					}
-					var state = {
-						"latitude" : latitude,
-						"longitude" : longitude,
-						"heading" : heading,
-						"adc_values" : adc_values,
-					};
-					var report = {
-						"state" : {
-							"reported" : state
+				this.aws_iot_get(thingShadow, client_id, function() {
+					// start sync
+					setInterval(function() {
+						if (latitude == 0 && longitude == 0) {
+							return;
 						}
-					};
-					console.log("report shadow: " + JSON.stringify(report));
-					clientTokenUpdate = thingShadow.update(client_id, report);
+						var state = {
+							"latitude" : latitude,
+							"longitude" : longitude,
+							"heading" : heading,
+							"adc_values" : adc_values,
+						};
+						// update history
+						var history_tbl = [history_min, history_hour,
+							history_day, history_week, history_month];
+						var report_tbl = [{}, {}, {}, {}, {}];
+						var max_count_tbl = [60, 24, 30, 24, 24];
+						var interval_s_tbl = [60, 60 * 60, 60 * 60 * 24,
+							60 * 60 * 24 * 7, 60 * 60 * 24 * 7 * 4];
+						var new_key = parseInt(Date.now() / 1000);
+						var new_value = Object.assign({}, state);
+						for (var i = 0; i < history_tbl.length - 1; i++) {
+							var keys = Object.keys(history_tbl[i]);
+							if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
+								history_tbl[i][new_key] = new_value;
+								report_tbl[i][new_key] = new_value;
+							} else {
+								break;
+							}
+							if (keys.length + 1 > max_count_tbl[i]) {
+								new_key = keys[0];
+								new_value = history_tbl[i][new_key];
+								delete history_tbl[i][new_key];
+								report_tbl[i][new_key] = null;
+							} else {
+								break;
+							}
+						}
+						state.history_min = report_tbl[0];
+						state.history_hour = report_tbl[1];
+						state.history_day = report_tbl[2];
+						state.history_week = report_tbl[3];
+						state.history_month = report_tbl[4];
 
-					var message = JSON.stringify(state);
-					console.log("publish: " + message);
-					thingShadow.publish('asv_data', message);
-					// history.unshift({
-					// payload : record,
-					// timestamp : Date.now(),
-					// });
-					// history.pop();
-				};
-				fnc();
-				setInterval(fnc, interval_sec * 1000);
-			}
+						var cmd = {
+							"state" : {
+								"reported" : state
+							}
+						};
+						console.log("report shadow: " + JSON.stringify(cmd));
+						clientTokenUpdate = thingShadow.update(client_id, cmd);
+						// var message = JSON.stringify(state);
+						// console.log("publish: " + message);
+						// thingShadow.publish('asv_data', message);
+					}, (options.aws_iot_interval_sec || 10) * 1000);
+				});
+			},
+			aws_iot_get : function(thingShadow, client_id, callback) {
+				clientTokenGetCallback = callback;
+				clientTokenGet = thingShadow.get(client_id);
+			},
 		};
 		return plugin;
 	}
