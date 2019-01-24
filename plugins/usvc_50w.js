@@ -31,6 +31,7 @@ module.exports = {
 		var adc_values = [];
 		var thruster_mode = 0;
 		var auto_mode = false;
+		var battery = 0;
 
 		var history_min = {};
 		var history_hour = {};
@@ -66,7 +67,7 @@ module.exports = {
 			}
 		}
 
-		get_ads7828_value = function(ch, cnt) {
+		get_ads7828_value_single = function(ch, cnt) {
 			var ch2addr = [0x0, 0x4, 0x1, 0x5, 0x2, 0x6, 0x3, 0x7];
 			const
 			i2c1 = i2c.openSync(1);
@@ -88,6 +89,41 @@ module.exports = {
 			return value;
 		}
 
+		get_ads7828_value_differential = function(ch, cnt) {
+			var ch2addr = [0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7];
+			var i2c1 = i2c.openSync(1);
+			var config = 0x00 | (ch2addr[ch] << 4) | (0x03 << 2);
+			var value = 0;
+			var buff = new Buffer(2);
+			if (cnt <= 0) {
+				cnt = 1;
+			}
+			for (var i = 0; i < cnt; i++) {
+				i2c1.readI2cBlockSync(ADS7828_ADDRESS, config, 2, buff);
+				value += (buff[0] << 8) + buff[1];
+			}
+			value /= cnt;
+			// console.log("ch" + ch + "=b" + config.toString(2) + ",buff0=" +
+			// buff[0].toString(2) + ",buff1=" + buff[1].toString(2) + ",v=" +
+			// value.toString(2));
+			i2c1.closeSync();
+			return value;
+		}
+
+		get_ads7828_value = function(ch, cnt) {
+			if (ch < 8) {
+				return get_ads7828_value_single(ch, cnt);
+			} else {
+				var pos = get_ads7828_value_differential(ch - 8, cnt);
+				var neg = get_ads7828_value_differential(ch - 8 + 4, cnt);
+				if (pos > neg) {
+					return pos;
+				} else {
+					return -neg;
+				}
+			}
+		}
+
 		async
 			.waterfall([
 				function(callback) {
@@ -96,25 +132,20 @@ module.exports = {
 					// // point
 					// to your i2c address, debug provides REPL interface
 					setInterval(function() {
-						var ch0_raw = get_ads7828_value(0, 10);
-						var ch1_raw = get_ads7828_value(1, 10);
-						var ch2_raw = get_ads7828_value(2, 10);
-						var ch3_raw = get_ads7828_value(3, 10);
-						var ch4_raw = get_ads7828_value(4, 10);
-						var ch5_raw = get_ads7828_value(5, 10);
-						var ch6_raw = get_ads7828_value(6, 10);
-						var ch7_raw = get_ads7828_value(7, 10);
+						adc_values = [];
+						for (var i = 0; i < 12; i++) {
+							adc_values[i] = get_ads7828_value(i, 10);
+						}
 
-						adc_values = [ch0_raw, ch1_raw, ch2_raw, ch3_raw,
-							ch4_raw, ch5_raw, ch6_raw, ch7_raw];
+						battery = 6 * 2.5 * adc_values[0] / (1 << 12);
 
-						var ch0 = 6 * 2.5 * ch0_raw / (1 << 12);
-						var ch1 = 2.5 * ch1_raw / (1 << 12);
-						var ch2 = 2.5 * ch2_raw / (1 << 12);
-						var ch3 = 2.5 * ch3_raw / (1 << 12);
+						var ch1 = 2.5 * adc_values[1] / (1 << 12);
+						var ch2 = 2.5 * adc_values[2] / (1 << 12);
+						var ch3 = 2.5 * adc_values[3] / (1 << 12);
 						var ch1_ms = ch1 / 4 * 20000;
 						var ch2_ms = ch2 / 4 * 20000;
 						var ch3_ms = ch3 / 4 * 20000;
+
 						var skrew_ch0 = PWM_MIDDLE_MS;
 						var skrew_ch1 = PWM_MIDDLE_MS;
 						var skrew_ch2 = PWM_MIDDLE_MS;
@@ -360,62 +391,66 @@ module.exports = {
 				});
 			},
 			aws_iot_registered : function(thingShadow, client_id) {
-				this.aws_iot_get(thingShadow, client_id, function() {
-					// start sync
-					setInterval(function() {
-						if (latitude == 0 && longitude == 0) {
-							return;
-						}
-						var state = {
-							"latitude" : latitude,
-							"longitude" : longitude,
-							"heading" : heading,
-							"adc_values" : adc_values,
-						};
-						// update history
-						var history_tbl = [history_min, history_hour,
-							history_day, history_week, history_month];
-						var report_tbl = [{}, {}, {}, {}, {}];
-						var max_count_tbl = [60, 24, 30, 24, 24];
-						var interval_s_tbl = [60, 60 * 60, 60 * 60 * 24,
-							60 * 60 * 24 * 7, 60 * 60 * 24 * 7 * 4];
-						var new_key = parseInt(Date.now() / 1000);
-						var new_value = Object.assign({}, state);
-						for (var i = 0; i < history_tbl.length - 1; i++) {
-							var keys = Object.keys(history_tbl[i]);
-							if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
-								history_tbl[i][new_key] = new_value;
-								report_tbl[i][new_key] = new_value;
-							} else {
-								break;
+				this
+					.aws_iot_get(thingShadow, client_id, function() {
+						// start sync
+						setInterval(function() {
+							if (latitude == 0 && longitude == 0) {
+								return;
 							}
-							if (keys.length + 1 > max_count_tbl[i]) {
-								new_key = keys[0];
-								new_value = history_tbl[i][new_key];
-								delete history_tbl[i][new_key];
-								report_tbl[i][new_key] = null;
-							} else {
-								break;
+							var state = {
+								"latitude" : latitude,
+								"longitude" : longitude,
+								"heading" : heading,
+								"battery" : battery,
+								"adc_values" : adc_values,
+							};
+							// update history
+							var history_tbl = [history_min, history_hour,
+								history_day, history_week, history_month];
+							var report_tbl = [{}, {}, {}, {}, {}];
+							var max_count_tbl = [60, 24, 30, 24, 24];
+							var interval_s_tbl = [60, 60 * 60, 60 * 60 * 24,
+								60 * 60 * 24 * 7, 60 * 60 * 24 * 7 * 4];
+							var new_key = parseInt(Date.now() / 1000);
+							var new_value = Object.assign({}, state);
+							for (var i = 0; i < history_tbl.length - 1; i++) {
+								var keys = Object.keys(history_tbl[i]);
+								if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
+									history_tbl[i][new_key] = new_value;
+									report_tbl[i][new_key] = new_value;
+								} else {
+									break;
+								}
+								if (keys.length + 1 > max_count_tbl[i]) {
+									new_key = keys[0];
+									new_value = history_tbl[i][new_key];
+									delete history_tbl[i][new_key];
+									report_tbl[i][new_key] = null;
+								} else {
+									break;
+								}
 							}
-						}
-						state.history_min = report_tbl[0];
-						state.history_hour = report_tbl[1];
-						state.history_day = report_tbl[2];
-						state.history_week = report_tbl[3];
-						state.history_month = report_tbl[4];
+							state.history_min = report_tbl[0];
+							state.history_hour = report_tbl[1];
+							state.history_day = report_tbl[2];
+							state.history_week = report_tbl[3];
+							state.history_month = report_tbl[4];
 
-						var cmd = {
-							"state" : {
-								"reported" : state
-							}
-						};
-						console.log("report shadow: " + JSON.stringify(cmd));
-						clientTokenUpdate = thingShadow.update(client_id, cmd);
-						// var message = JSON.stringify(state);
-						// console.log("publish: " + message);
-						// thingShadow.publish('asv_data', message);
-					}, (options.aws_iot_interval_sec || 10) * 1000);
-				});
+							var cmd = {
+								"state" : {
+									"reported" : state
+								}
+							};
+							console
+								.log("report shadow: " + JSON.stringify(cmd));
+							clientTokenUpdate = thingShadow
+								.update(client_id, cmd);
+							// var message = JSON.stringify(state);
+							// console.log("publish: " + message);
+							// thingShadow.publish('asv_data', message);
+						}, (options.aws_iot_interval_sec || 10) * 1000);
+					});
 			},
 			aws_iot_get : function(thingShadow, client_id, callback) {
 				clientTokenGetCallback = callback;
