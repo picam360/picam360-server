@@ -19,8 +19,8 @@ module.exports = {
 		var PWM_MARGIN_MS = 100;
 
 		var i2c = null;
-		var sp_send = null;
 		var gps_arrived = false;
+		var gps_lost = true;
 		var latitude = 0;
 		var longitude = 0;
 		var north = 0;
@@ -38,8 +38,6 @@ module.exports = {
 		// downstream status
 		var waypoints_required = false;
 		var history_required = false;
-		var rudder_pwm_candidate = null;
-		var skrew_pwm_candidate = null;
 
 		// auto
 		var next_waypoint_distance = 0;
@@ -59,12 +57,17 @@ module.exports = {
 			low_gain_kv : 10,
 			low_gain_deg : 5,
 		};
+		var m_status = {};
 
 		// aws_iot
 		var clientTokenUpdate;
 		var clientTokenPublish;
 		var clientTokenGet;
 		var clientTokenGetCallback;
+
+		function toFixedFloat(value, c) {
+			return parseFloat(value.toFixed(c));
+		}
 
 		function set_skrew_pwm(idx, us, _fd) {
 			var need_to_close;
@@ -234,9 +237,9 @@ module.exports = {
 							if (tpvData.lat && tpvData.lon) {
 								latitude = tpvData.lat;
 								longitude = tpvData.lon;
+								gps_lost = false;
 							} else { // GPS_LOST
-								latitude = 0;
-								longitude = 0;
+								gps_lost = true;
 							}
 							gps_arrived = true;
 						});
@@ -250,19 +253,28 @@ module.exports = {
 				function(callback) {
 					plugin_host
 						.add_status(PLUGIN_NAME + ".status", function() {
+							//update status
+							m_status = {
+								gps_lost : gps_lost,
+								lat : toFixedFloat(latitude, 6),
+								lon : toFixedFloat(longitude, 6),
+								north : toFixedFloat(north, 3),
+								bat : toFixedFloat(battery, 3),
+								adc : adc_values,
+								next_waypoint_idx : options.next_waypoint_idx,
+								next_waypoint_distance : next_waypoint_distance,
+								rudder_pwm : rudder_pwm,
+								skrew_pwm : skrew_pwm,
+								auto_mode : options.auto_mode,
+								gain_kp : options.gain_kp,
+								gain_kv : options.gain_kv,
+								low_gain_kp : options.low_gain_kp,
+								low_gain_kv : options.low_gain_kv,
+								low_gain_deg : options.low_gain_deg,
+							};
 							if (gps_arrived) {
+								var status = Object.assign({}, m_status);
 								gps_arrived = false;
-								var status = {
-									lat : latitude,
-									lon : longitude,
-									north : north,
-									next_waypoint_distance : next_waypoint_distance,
-									next_waypoint_idx : options.next_waypoint_idx,
-									next_waypoint_direction : next_waypoint_direction,
-									rudder_pwm : rudder_pwm,
-									skrew_pwm : skrew_pwm,
-									auto_mode : options.auto_mode,
-								};
 								if (waypoints_required) {
 									status.waypoints = options.waypoints;
 									waypoints_required = false
@@ -294,7 +306,7 @@ module.exports = {
 						// reset pwm
 						rudder_pwm = PWM_MIDDLE_US;
 						skrew_pwm = PWM_MIDDLE_US;
-						if (latitude == 0 && longitude == 0) { // GPS_LOST
+						if (gps_lost) { // GPS_LOST
 							return;
 						}
 						if (0) {
@@ -442,36 +454,17 @@ module.exports = {
 					case "set_waypoints" :
 						var json_str = decodeURIComponent(split[1]);
 						var new_waypoints = JSON.parse(json_str);
-						var cmd = "set max_waypoint_num "
-							+ new_waypoints.length;
-						console.log(cmd);
-						sp_send(cmd, function(ret) {
-							for (var i = 0; i < new_waypoints.length; i++) {
-								var cmd = "set waypoint " + i + " "
-									+ new_waypoints[i].latitude.toFixed(6)
-									+ " "
-									+ new_waypoints[i].longitude.toFixed(6)
-									+ " " + new_waypoints[i].allowable_error;
-								console.log(cmd);
-								sp_send(cmd, function(ret, idx) {
-									if (idx == new_waypoints.length - 1) {
-										options.waypoints = new_waypoints;
-									}
-								}, i);
-							};
-						});
+						console.log(new_waypoints);
 						break;
-					case "set_autonomous" :
+					case "set_automode" :
 						var v = parseInt(split[1]);
-						sp_send("set autonomous " + v, function(ret) {
-							// console.log(ret);
-						});
+						options.auto_mode = v ? true : false;
 						break;
 					case "set_rudder_pwm" :
-						rudder_pwm_candidate = parseInt(split[1]);
+						rudder_pwm = parseInt(split[1]);
 						break;
 					case "set_skrew_pwm" :
-						skrew_pwm_candidate = parseInt(split[1]);
+						skrew_pwm = parseInt(split[1]);
 						break;
 					case "get_waypoints" :
 						waypoints_required = true;
@@ -486,6 +479,14 @@ module.exports = {
 				this.aws_client_id = client_id;
 				var reported_fnc = function(state, is_delta) {
 					var report = {};
+					if (state.lat !== undefined) {
+						latitude = state.lat;
+						report.lat = latitude;
+					}
+					if (state.lon !== undefined) {
+						longitude = state.lon;
+						report.lon = longitude;
+					}
 					if (state.waypoints !== undefined) {
 						options.waypoints = state.waypoints;
 						report.waypoints = options.waypoints;
@@ -595,26 +596,10 @@ module.exports = {
 					.aws_iot_get(thing_shadow, client_id, function() {
 						// start sync
 						setInterval(function() {
-							var state = {
-								"lat" : latitude.toFixed(6),
-								"lon" : longitude.toFixed(6),
-								"north" : north.toFixed(3),
-								"bat" : battery.toFixed(3),
-								"adc" : adc_values,
-								"next_waypoint_idx" : options.next_waypoint_idx,
-								"next_waypoint_distance" : next_waypoint_distance,
-								"rudder_pwm" : rudder_pwm,
-								"skrew_pwm" : skrew_pwm,
-								"auto_mode" : options.auto_mode,
-								"gain_kp" : options.gain_kp,
-								"gain_kv" : options.gain_kv,
-								"low_gain_kp" : options.low_gain_kp,
-								"low_gain_kv" : options.low_gain_kv,
-								"low_gain_deg" : options.low_gain_deg,
-							};
+							var state = Object.assign({}, m_status);
 							// update history
 							// care shadow size limited 8k
-							if (latitude == 0 && longitude == 0) { // GPS_LOST
+							if (gps_lost) { // GPS_LOST
 							} else {
 								var history_tbl = [history_1min, history_10min,
 									history_100min, history_1000min,
