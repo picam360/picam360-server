@@ -253,12 +253,12 @@ module.exports = {
 				function(callback) {
 					plugin_host
 						.add_status(PLUGIN_NAME + ".status", function() {
-							//update status
+							// update status
 							m_status = {
 								gps_lost : gps_lost,
 								lat : toFixedFloat(latitude, 6),
 								lon : toFixedFloat(longitude, 6),
-								north : toFixedFloat(north, 3),
+								heading : toFixedFloat(-north, 3), // heading_from_north_clockwise
 								bat : toFixedFloat(battery, 3),
 								adc : adc_values,
 								next_waypoint_idx : options.next_waypoint_idx,
@@ -307,6 +307,7 @@ module.exports = {
 						rudder_pwm = PWM_MIDDLE_US;
 						skrew_pwm = PWM_MIDDLE_US;
 						if (gps_lost) { // GPS_LOST
+							p_d_direction = 0;
 							return;
 						}
 						if (0) {
@@ -333,7 +334,7 @@ module.exports = {
 						next_waypoint_distance = Math.sqrt(d_lat_m * d_lat_m
 							+ d_lon_m * d_lon_m);
 						next_waypoint_direction = Math.atan2(d_lon_m, d_lat_m)
-							* 180 / Math.PI;
+							* 180 / Math.PI; // direction_from_north_clockwise
 						if (Math.abs(next_waypoint_distance) < (waypoint.tol || 5)) { // tol_is_Tolerance
 							// arrived
 							if (!waypoint_data) {
@@ -408,12 +409,17 @@ module.exports = {
 						}
 						// control
 						var sample_time_ms_dif = 200;
-						var d_direction = next_waypoint_direction - north;
+						var heading = -north; // heading_from_north_clockwise
+						var d_direction = next_waypoint_direction - heading;
 						if (d_direction < -180) {
 							d_direction += 2 * 180;
 						}
 						if (d_direction > 180) {
 							d_direction -= 2 * 180;
+						}
+						if (p_d_direction == 0) {
+							p_d_direction = d_direction;
+							return;
 						}
 						// pd
 						if (Math.abs(d_direction) < options.low_gain_deg) {
