@@ -1156,39 +1156,47 @@ async
 			}
 			callback(null);
 		},
-		function(callback){
-			//aws_iot
+		function(callback) {
+			// aws_iot
+			// need to after plugin loaded
+			// wrtc could conflict in connection establishing
 			if (options.aws_iot_enabled) {
-				var awsIot = require('aws-iot-device-sdk');
-				var thingShadow = awsIot
-					.thingShadow({
-						keyPath : 'certs/aws_iot/'
-							+ options.aws_iot_private_key,
-						certPath : 'certs/aws_iot/'
-							+ options.aws_iot_certificate,
-						caPath : 'certs/aws_iot/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem',
-						clientId : options.aws_iot_client_id,
-						host : options.aws_iot_host,
-					});
+				// making sure connection established
+				setTimeout(function() {
+					var awsIot = require('aws-iot-device-sdk');
+					var thingShadow = awsIot
+						.thingShadow({
+							keyPath : 'certs/aws_iot/'
+								+ options.aws_iot_private_key,
+							certPath : 'certs/aws_iot/'
+								+ options.aws_iot_certificate,
+							caPath : 'certs/aws_iot/VeriSign-Class 3-Public-Primary-Certification-Authority-G5.pem',
+							clientId : options.aws_iot_client_id,
+							host : options.aws_iot_host,
+						});
 
-				thingShadow.on('connect', function() {
-					console.log('Connected to AWS IOT.');
-
-					for (var i = 0; i < plugins.length; i++) {
-						if (plugins[i].aws_iot_conneced) {
-							plugins[i].aws_iot_conneced(thingShadow, options.aws_iot_client_id);
-						}
-					}
-					
 					thingShadow
-						.register(options.aws_iot_client_id, {}, function() {
+						.on('connect', function() {
+							console.log('Connected to AWS IOT.');
+
 							for (var i = 0; i < plugins.length; i++) {
-								if (plugins[i].aws_iot_registered) {
-									plugins[i].aws_iot_registered(thingShadow, options.aws_iot_client_id);
+								if (plugins[i].aws_iot_conneced) {
+									plugins[i]
+										.aws_iot_conneced(thingShadow, options.aws_iot_client_id);
 								}
 							}
+
+							thingShadow
+								.register(options.aws_iot_client_id, {}, function() {
+									for (var i = 0; i < plugins.length; i++) {
+										if (plugins[i].aws_iot_registered) {
+											plugins[i]
+												.aws_iot_registered(thingShadow, options.aws_iot_client_id);
+										}
+									}
+								});
 						});
-				});
+				}, 10000);
 			}
 			callback(null);
 		}], function(err, result) {
