@@ -12,11 +12,6 @@ module.exports = {
 		var DELIMITER = '\r\n';
 		var TIMEOUT_MS = 5000;
 		var ADS7828_ADDRESS = 0x48;
-		var SKREW_PINS = [17, 18, 27, 23];
-		var PWM_MIN_US = 1300;
-		var PWM_MIDDLE_US = 1500;
-		var PWM_MAX_US = 1700;
-		var PWM_MARGIN_MS = 100;
 
 		var i2c = null;
 		var gps_arrived = false;
@@ -25,7 +20,7 @@ module.exports = {
 		var longitude = 0;
 		var north = 0;
 		var rudder_pwm = 0;
-		var skrew_pwm = 0;
+		var thruster_pwm = 0;
 		var adc_values = [];
 		var battery = 0;
 
@@ -39,6 +34,11 @@ module.exports = {
 		var waypoints_required = false;
 		var history_required = false;
 
+		// propo
+		var m_ch1_us = 0;
+		var m_ch2_us = 0;
+		var m_ch3_us = 0;
+
 		// auto
 		var next_waypoint_distance = 0;
 		var next_waypoint_direction = 0;
@@ -48,6 +48,7 @@ module.exports = {
 		var options = {
 			thruster_mode : "SINGLE",
 			// auto
+			propo_enabled : false,
 			auto_mode : false,
 			waypoints : [],
 			next_waypoint_idx : 0,
@@ -56,6 +57,11 @@ module.exports = {
 			low_gain_kp : 40,
 			low_gain_kv : 10,
 			low_gain_deg : 5,
+			SKREW_PINS : [17, 18, 27, 23],
+			PWM_MIN_US : 1300,
+			PWM_MIDDLE_US : 1500,
+			PWM_MAX_US : 1700,
+			PWM_MARGIN_MS : 100,
 		};
 		var m_status = {};
 
@@ -69,7 +75,7 @@ module.exports = {
 			return parseFloat(value.toFixed(c));
 		}
 
-		function set_skrew_pwm(idx, us, _fd) {
+		function set_thruster_pwm(idx, us, _fd) {
 			var need_to_close;
 			var fd;
 			if (_fd == null) {
@@ -79,7 +85,7 @@ module.exports = {
 				fd = _fd;
 				need_to_close = false;
 			}
-			fs.writeSync(fd, sprintf("%d=%dus\n", SKREW_PINS[idx], us));
+			fs.writeSync(fd, sprintf("%d=%dus\n", options.SKREW_PINS[idx], us));
 			if (need_to_close) {
 				fs.closeSync(fd);
 			}
@@ -152,66 +158,102 @@ module.exports = {
 						for (var i = 0; i < 16; i++) {
 							adc_values[i] = get_ads7828_value(i, 1);
 						}
-
-						battery = 6 * 2.5 * adc_values[0] / (1 << 12);
-
-						var ch1 = 2.5 * adc_values[1] / (1 << 12);
-						var ch2 = 2.5 * adc_values[2] / (1 << 12);
-						var ch3 = 2.5 * adc_values[3] / (1 << 12);
-						var ch1_ms = ch1 / 4 * 20000;
-						var ch2_ms = ch2 / 4 * 20000;
-						var ch3_ms = ch3 / 4 * 20000;
-
-						var skrew_ch0 = PWM_MIDDLE_US;
-						var skrew_ch1 = PWM_MIDDLE_US;
-						var skrew_ch2 = PWM_MIDDLE_US;
-						var skrew_ch3 = PWM_MIDDLE_US;
-
-						if (ch1_ms > PWM_MIDDLE_US + PWM_MARGIN_MS) {
-							skrew_ch0 = PWM_MIDDLE_US + PWM_MARGIN_MS;
-							skrew_ch2 = PWM_MIDDLE_US + PWM_MARGIN_MS;
-						} else if (ch1_ms < PWM_MIDDLE_US - PWM_MARGIN_MS) {
-							skrew_ch0 = PWM_MIDDLE_US - PWM_MARGIN_MS;
-							skrew_ch2 = PWM_MIDDLE_US - PWM_MARGIN_MS;
+						{// battery
+							battery = 6 * 2.5 * adc_values[0] / (1 << 12);
 						}
-						if (ch2_ms > PWM_MIDDLE_US + PWM_MARGIN_MS) {
-							skrew_ch1 = PWM_MIDDLE_US + PWM_MARGIN_MS;
-							skrew_ch3 = PWM_MIDDLE_US + PWM_MARGIN_MS;
-						} else if (ch2_ms < PWM_MIDDLE_US - PWM_MARGIN_MS) {
-							skrew_ch1 = PWM_MIDDLE_US - PWM_MARGIN_MS;
-							skrew_ch3 = PWM_MIDDLE_US - PWM_MARGIN_MS;
-						}
-						if (options.adc_debug) {
-							console.log(ch0.toFixed(3) + "V " + ch1.toFixed(3)
-								+ "V " + ch2.toFixed(3) + "V " + ch3.toFixed(3)
-								+ "V");
-							console.log(ch0.toFixed(3) + "V "
-								+ ch1_ms.toFixed(3) + "ms " + ch2_ms.toFixed(3)
-								+ "ms " + ch3_ms.toFixed(3) + "ms");
-						}
-						{
+						{// north
 							north = plugin_host.get_vehicle_north();
 						}
-						// pwm output
-						if (!options.auto_mode) {
-							var fd = fs.openSync("/dev/pi-blaster", 'w');
-							if (1500 < ch3_ms && ch3_ms < 2000) {
-								set_skrew_pwm(0, skrew_ch0, fd);
-								set_skrew_pwm(1, skrew_ch1, fd);
-								set_skrew_pwm(2, skrew_ch2, fd);
-								set_skrew_pwm(3, skrew_ch3, fd);
-							} else {
-								set_skrew_pwm(0, PWM_MIDDLE_US, fd);
-								set_skrew_pwm(1, PWM_MIDDLE_US, fd);
-								set_skrew_pwm(2, PWM_MIDDLE_US, fd);
-								set_skrew_pwm(3, PWM_MIDDLE_US, fd);
+						if (options.propo_enabled) { // propo
+							var ch1 = 2.5 * adc_values[1] / (1 << 12);
+							var ch2 = 2.5 * adc_values[2] / (1 << 12);
+							var ch3 = 2.5 * adc_values[3] / (1 << 12);
+							var ch1_us = ch1 / 4 * 20000;
+							var ch2_us = ch2 / 4 * 20000;
+							var ch3_us = ch3 / 4 * 20000;
+
+							m_ch1_us = ((m_ch1_us * 9) + ch1_us) / 10;
+							m_ch2_us = ((m_ch2_us * 9) + ch2_us) / 10;
+							m_ch3_us = ((m_ch3_us * 9) + ch3_us) / 10;
+							if (options.propo_debug) {
+								console.log(ch1.toFixed(3) + "V "
+									+ ch2.toFixed(3) + "V " + ch3.toFixed(3)
+									+ "V");
+								console.log(ch1_us.toFixed(3) + "us "
+									+ ch2_us.toFixed(3) + "us "
+									+ ch3_us.toFixed(3) + "us");
+								console.log(m_ch1_us.toFixed(3) + "us "
+									+ m_ch2_us.toFixed(3) + "us "
+									+ m_ch3_us.toFixed(3) + "us");
 							}
-							fs.closeSync(fd);
-						} else {
+						}
+						// pwm output
+						function get_cutoff_us(value, ch_options) {
+							var min = (ch_options && ch_options.PWM_MIN_US)
+								|| options.PWM_MIN_US;
+							var mid = (ch_options && ch_options.PWM_MIDDLE_US)
+								|| options.PWM_MIDDLE_US;
+							var max = (ch_options && ch_options.PWM_MAX_US)
+								|| options.PWM_MAX_US;
+							if (value <= 0) {
+								value = mid;
+							}
+							if (value > max) {
+								value = max;
+							}
+							if (value < min) {
+								value = min;
+							}
+							return value;
+						}
+						function get_pwm_us(value, ch_options) {
+							var mid = (ch_options && ch_options.PWM_MIDDLE_US)
+								|| options.PWM_MIDDLE_US;
+							var inv = ch_options && ch_options.invert;
+							value = get_cutoff_us(value, ch_options);
+							if (inv) {
+								return -(value - mid) + mid;
+							} else {
+								return value;
+							}
+						}
+						if (options.thruster_mode == 'SINGLE') {
+							if (!options.auto_mode) {
+								if (1500 < m_ch3_us && m_ch3_us < 2000) {
+									rudder_pwm = m_ch1_us;
+									thruster_pwm = m_ch2_us;
+								} else {
+									rudder_pwm = 0;// to middle
+									thruster_pwm = 0;// to middle
+								}
+							}
 							var fd = fs.openSync("/dev/pi-blaster", 'w');
-							set_skrew_pwm(0, rudder_pwm, fd);
-							set_skrew_pwm(1, skrew_pwm, fd);
+							set_thruster_pwm(0, get_pwm_us(rudder_pwm, options.ch1), fd);
+							set_thruster_pwm(1, get_pwm_us(thruster_pwm, options.ch2), fd);
 							fs.closeSync(fd);
+						} else if (options.thruster_mode == 'DOUBLE') {
+
+							var thruster_ch0 = options.PWM_MIDDLE_US;
+							var thruster_ch1 = options.PWM_MIDDLE_US;
+							var thruster_ch2 = options.PWM_MIDDLE_US;
+							var thruster_ch3 = options.PWM_MIDDLE_US;
+
+							if (1500 < m_ch3_us && m_ch3_us < 2000) {
+								set_thruster_pwm(0, thruster_ch0, fd);
+								set_thruster_pwm(1, thruster_ch1, fd);
+								set_thruster_pwm(2, thruster_ch2, fd);
+								set_thruster_pwm(3, thruster_ch3, fd);
+							} else {
+								set_thruster_pwm(0, options.PWM_MIDDLE_US, fd);
+								set_thruster_pwm(1, options.PWM_MIDDLE_US, fd);
+								set_thruster_pwm(2, options.PWM_MIDDLE_US, fd);
+								set_thruster_pwm(3, options.PWM_MIDDLE_US, fd);
+							}
+						} else {
+							set_thruster_pwm(0, options.PWM_MIDDLE_US, fd);
+							set_thruster_pwm(1, options.PWM_MIDDLE_US, fd);
+							set_thruster_pwm(2, options.PWM_MIDDLE_US, fd);
+							set_thruster_pwm(3, options.PWM_MIDDLE_US, fd);
 						}
 					}, 200);
 					callback(null);
@@ -231,6 +273,9 @@ module.exports = {
 					listener.connect(function() {
 						console.log('GPSD Connected');
 						listener.on('TPV', function(tpvData) {
+							if (options.gps_test) {
+								tpvData = tpvData;
+							}
 							if (options.gps_debug) {
 								console.log(tpvData);
 							}
@@ -264,7 +309,7 @@ module.exports = {
 								next_waypoint_idx : options.next_waypoint_idx,
 								next_waypoint_distance : next_waypoint_distance,
 								rudder_pwm : rudder_pwm,
-								skrew_pwm : skrew_pwm,
+								thruster_pwm : thruster_pwm,
 								auto_mode : options.auto_mode,
 								gain_kp : options.gain_kp,
 								gain_kv : options.gain_kv,
@@ -304,8 +349,8 @@ module.exports = {
 							return;
 						}
 						// reset pwm
-						rudder_pwm = PWM_MIDDLE_US;
-						skrew_pwm = PWM_MIDDLE_US;
+						rudder_pwm = options.PWM_MIDDLE_US;
+						thruster_pwm = options.PWM_MIDDLE_US;
 						if (gps_lost) { // GPS_LOST
 							p_d_direction = 0;
 							return;
@@ -426,21 +471,23 @@ module.exports = {
 							rudder_pwm = options.low_gain_kp * d_direction
 								- options.low_gain_kv
 								* (d_direction - p_d_direction)
-								/ sample_time_ms_dif * 1000 + PWM_MIDDLE_US;
+								/ sample_time_ms_dif * 1000
+								+ options.PWM_MIDDLE_US;
 						} else {
 							rudder_pwm = options.gain_kp * d_direction
 								- options.gain_kv
 								* (d_direction - p_d_direction)
-								/ sample_time_ms_dif * 1000 + PWM_MIDDLE_US;
+								/ sample_time_ms_dif * 1000
+								+ options.PWM_MIDDLE_US;
 						}
 						// cut off
-						if (rudder_pwm < PWM_MIN_US) {
-							rudder_pwm = PWM_MIN_US;
+						if (rudder_pwm < options.PWM_MIN_US) {
+							rudder_pwm = options.PWM_MIN_US;
 						}
-						if (rudder_pwm > PWM_MAX_US) {
-							rudder_pwm = PWM_MAX_US;
+						if (rudder_pwm > options.PWM_MAX_US) {
+							rudder_pwm = options.PWM_MAX_US;
 						}
-						skrew_pwm = PWM_MAX_US;
+						thruster_pwm = options.PWM_MAX_US;
 						p_d_direction = d_direction;
 					}, 200);
 					callback(null);
@@ -469,8 +516,8 @@ module.exports = {
 					case "set_rudder_pwm" :
 						rudder_pwm = parseInt(split[1]);
 						break;
-					case "set_skrew_pwm" :
-						skrew_pwm = parseInt(split[1]);
+					case "set_thruster_pwm" :
+						thruster_pwm = parseInt(split[1]);
 						break;
 					case "get_waypoints" :
 						waypoints_required = true;
