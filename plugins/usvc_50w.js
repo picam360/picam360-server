@@ -42,8 +42,10 @@ module.exports = {
 		// auto
 		var next_waypoint_distance = 0;
 		var next_waypoint_direction = 0;
-		var p_d_direction = 0;
+		var p_d_direction = undefined;
 		var waypoint_data = null;
+		var m_last_sample_time_ms;
+		var m_last_heading;
 
 		var options = {
 			thruster_mode : "SINGLE",
@@ -365,7 +367,7 @@ module.exports = {
 						rudder_pwm = options.PWM_MIDDLE_US;
 						thruster_pwm = options.PWM_MIDDLE_US;
 						if (gps_lost) { // GPS_LOST
-							p_d_direction = 0;
+							p_d_direction = undefined;
 							return;
 						}
 						if (0) {
@@ -470,8 +472,16 @@ module.exports = {
 							return;
 						}
 						// control
-						var sample_time_ms_dif = 200;
+						var sample_time_ms = Date.now() / 1000;
+						var sample_time_ms_dif;
 						var heading = -north; // heading_from_north_clockwise
+						if (heading == m_last_heading) {
+							return;//skip
+						}else{
+							sample_time_ms_dif = sample_time_ms - last_sample_time_ms;
+							m_last_heading = heading;
+							m_last_sample_time_ms = sample_time_ms;
+						}
 						var d_direction = next_waypoint_direction - heading;
 						if (d_direction < -180) {
 							d_direction += 2 * 180;
@@ -479,7 +489,7 @@ module.exports = {
 						if (d_direction > 180) {
 							d_direction -= 2 * 180;
 						}
-						if (p_d_direction == 0) {
+						if (p_d_direction === undefined) {
 							p_d_direction = d_direction;
 							return;
 						}
@@ -680,6 +690,7 @@ module.exports = {
 								var new_value = {
 									"lat" : state.lat,
 									"lon" : state.lon,
+									"bat" : state.bat,
 								};
 								for (var i = 0; i < history_tbl.length - 1; i++) {
 									var keys = Object.keys(history_tbl[i]);
