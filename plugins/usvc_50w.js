@@ -15,7 +15,7 @@ module.exports = {
 
 		var i2c = null;
 		var gps_arrived = false;
-		var gps_lost = true;
+		var gps_valid = false;
 		var latitude = 0;
 		var longitude = 0;
 		var north = 0;
@@ -332,9 +332,9 @@ module.exports = {
 							if (tpvData.lat && tpvData.lon) {
 								latitude = tpvData.lat;
 								longitude = tpvData.lon;
-								gps_lost = false;
+								gps_valid = true;
 							} else { // GPS_LOST
-								gps_lost = true;
+								gps_valid = false;
 							}
 							gps_arrived = true;
 						});
@@ -350,7 +350,7 @@ module.exports = {
 						.add_status(PLUGIN_NAME + ".status", function() {
 							// update status
 							m_status = {
-								gps_lost : gps_lost,
+								gps : gps_valid,
 								lat : toFixedFloat(latitude, 6),
 								lon : toFixedFloat(longitude, 6),
 								heading : toFixedFloat(-north, 3), // heading_from_north_clockwise
@@ -358,8 +358,8 @@ module.exports = {
 								adc : adc_values,
 								next_waypoint_idx : options.next_waypoint_idx,
 								next_waypoint_distance : next_waypoint_distance,
-								rudder_pwm : rudder_pwm,
-								thruster_pwm : thruster_pwm,
+								rudder_pwm : toFixedFloat(rudder_pwm, 0),
+								thruster_pwm : toFixedFloat(thruster_pwm, 0),
 								auto_mode : options.auto_mode,
 								gain_kp : options.gain_kp,
 								gain_kv : options.gain_kv,
@@ -401,7 +401,7 @@ module.exports = {
 						// reset pwm
 						rudder_pwm = options.PWM_MIDDLE_US;
 						thruster_pwm = options.PWM_MIDDLE_US;
-						if (gps_lost) { // GPS_LOST
+						if (!gps_valid) { // GPS_LOST
 							p_d_direction = undefined;
 							return;
 						}
@@ -727,9 +727,9 @@ module.exports = {
 								60 * 1000, 60 * 10000];
 							var new_key = parseInt(Date.now() / 1000);
 							var new_value;
-							if (gps_lost) { // GPS_LOST
+							if (!gps_valid) { // GPS_LOST
 								new_value = {
-									"gps_lost" : true,
+									"gps" : false,
 									"bat" : state.bat,
 								};
 							} else {
