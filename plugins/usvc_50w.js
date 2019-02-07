@@ -72,7 +72,7 @@ module.exports = {
 		var clientTokenGetCallback;
 
 		function toFixedFloat(value, c) {
-			return parseFloat(value.toFixed(c));
+			return parseFloat(value ? value.toFixed(c) : 0);
 		}
 
 		function set_thruster_pwm(idx, us, _fd) {
@@ -568,6 +568,11 @@ module.exports = {
 						var json_str = decodeURIComponent(split[1]);
 						var new_waypoints = JSON.parse(json_str);
 						console.log(new_waypoints);
+						options.waypoints = new_waypoints;
+						plugin
+							.aws_iot_update(plugin.aws_thing_shadow, plugin.aws_client_id, {
+								waypoints : options.waypoints
+							});
 						break;
 					case "set_automode" :
 						var v = parseInt(split[1]);
@@ -770,23 +775,25 @@ module.exports = {
 							state.history_1000min = report_tbl[3];
 							state.history_10000min = report_tbl[4];
 
-							var cmd = {
-								"state" : {
-									"reported" : state
-								}
-							};
-							if (options.aws_iot_debug) {
-								console.log("report shadow: "
-									+ JSON.stringify(cmd));
-							}
-							clientTokenUpdate = thing_shadow
-								.update(client_id, cmd);
+							plugin
+								.aws_iot_update(thing_shadow, client_id, state);
 						}, (options.aws_iot_interval_sec || 10) * 1000);
 					});
 			},
 			aws_iot_get : function(thing_shadow, client_id, callback) {
 				clientTokenGetCallback = callback;
 				clientTokenGet = thing_shadow.get(client_id);
+			},
+			aws_iot_update : function(thing_shadow, client_id, state) {
+				var cmd = {
+					"state" : {
+						"reported" : state
+					}
+				};
+				clientTokenUpdate = thing_shadow.update(client_id, cmd);
+				if (options.aws_iot_debug) {
+					console.log("report shadow: " + JSON.stringify(cmd));
+				}
 			},
 			aws_iot_publish : function(thing_shadow, client_id, topic, state) {
 				var message = JSON.stringify(state);
