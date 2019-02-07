@@ -187,10 +187,16 @@ module.exports = {
 									m_ch_us[i] = ((m_ch_us[i] * 9) + ch_us) / 10;
 								}
 								if (options.propo_debug) {
-									debug_str += "ch" + i + "="
-										+ ch_v.toFixed(3) + "V,"
-										+ ch_us.toFixed() + "us,"
-										+ (m_ch_us[i] ? m_ch_us[i].toFixed():"****") + "us;";
+									debug_str += "ch"
+										+ i
+										+ "="
+										+ ch_v.toFixed(3)
+										+ "V,"
+										+ ch_us.toFixed()
+										+ "us,"
+										+ (m_ch_us[i]
+											? m_ch_us[i].toFixed()
+											: "****") + "us;";
 								}
 							}
 							if (options.propo_debug) {
@@ -253,12 +259,12 @@ module.exports = {
 							var thr_chr;
 							var thr_ch_ext0;
 							var thr_ch_ext1;
-							if (options.thruster_angle){
+							if (options.thruster_angle) {
 								thr_chl = 2;
 								thr_chr = 3;
 								thr_ch_ext0 = 0;
 								thr_ch_ext1 = 1;
-							}else{
+							} else {
 								thr_chl = 0;
 								thr_chr = 1;
 								thr_ch_ext0 = 2;
@@ -274,16 +280,20 @@ module.exports = {
 							set_thruster_pwm(thr_ch_ext0, options.PWM_MIDDLE_US, fd);
 							set_thruster_pwm(thr_ch_ext1, options.PWM_MIDDLE_US, fd);
 						} else if (options.thruster_mode == 'QUAD') {
-							var thr_chv_us = thruster_pwm
-								* cos(Math.PI * p_d_direction / 180);
-							var thr_chh_us = thruster_pwm
-								* sin(Math.PI * p_d_direction / 180);
-							var rudder_delta = (rudder_pwm || options.PWM_MIDDLE_US)
-								- options.PWM_MIDDLE_US;
-							var thr_ch0_us = thr_chv_us - rudder_delta / 2;
-							var thr_ch1_us = thr_chv_us + rudder_delta / 2;
-							var thr_ch2_us = thr_chh_us - rudder_delta / 2;
-							var thr_ch3_us = thr_chh_us + rudder_delta / 2;
+							var rudder = rudder_pwm - options.PWM_MIDDLE_US;
+							var thruster = thruster_pwm - options.PWM_MIDDLE_US;
+							var angle = 180 * rudder
+								/ (options.PWM_MAX_US - options.PWM_MIN_US);//-90:+90
+							var thr_chv_us = thruster
+								* Math.cos(Math.PI * angle / 180)
+								+ options.PWM_MIDDLE_US;
+							var thr_chh_us = thruster
+								* Math.sin(Math.PI * angle / 180)
+								+ options.PWM_MIDDLE_US;
+							var thr_ch0_us = thr_chv_us;
+							var thr_ch1_us = thr_chv_us;
+							var thr_ch2_us = thr_chh_us;
+							var thr_ch3_us = thr_chh_us;
 
 							set_thruster_pwm(0, thr_ch0_us, fd);
 							set_thruster_pwm(1, thr_ch1_us, fd);
