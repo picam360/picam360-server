@@ -283,7 +283,7 @@ module.exports = {
 							var rudder = rudder_pwm - options.PWM_MIDDLE_US;
 							var thruster = thruster_pwm - options.PWM_MIDDLE_US;
 							var angle = 180 * rudder
-								/ (options.PWM_MAX_US - options.PWM_MIN_US);//-90:+90
+								/ (options.PWM_MAX_US - options.PWM_MIN_US);// -90:+90
 							var thr_chv_us = thruster
 								* Math.cos(Math.PI * angle / 180)
 								+ options.PWM_MIDDLE_US;
@@ -718,52 +718,57 @@ module.exports = {
 							var state = Object.assign({}, m_status);
 							// update history
 							// care shadow size limited 8k
+							var history_tbl = [history_1min, history_10min,
+								history_100min, history_1000min,
+								history_10000min];
+							var report_tbl = [{}, {}, {}, {}, {}];
+							var max_count_tbl = [5, 5, 5, 5, 5];// max25nodes30days
+							var interval_s_tbl = [60, 60 * 10, 60 * 100,
+								60 * 1000, 60 * 10000];
+							var new_key = parseInt(Date.now() / 1000);
+							var new_value;
 							if (gps_lost) { // GPS_LOST
+								new_value = {
+									"gps_lost" : true,
+									"bat" : state.bat,
+								};
 							} else {
-								var history_tbl = [history_1min, history_10min,
-									history_100min, history_1000min,
-									history_10000min];
-								var report_tbl = [{}, {}, {}, {}, {}];
-								var max_count_tbl = [5, 5, 5, 5, 5];// max25nodes30days
-								var interval_s_tbl = [60, 60 * 10, 60 * 100,
-									60 * 1000, 60 * 10000];
-								var new_key = parseInt(Date.now() / 1000);
-								var new_value = {
+								new_value = {
 									"lat" : state.lat,
 									"lon" : state.lon,
 									"bat" : state.bat,
 								};
-								for (var i = 0; i < history_tbl.length - 1; i++) {
-									var keys = Object.keys(history_tbl[i]);
-									for (var j = 0; j < keys.length
-										- max_count_tbl[i]; j++) {
-										delete history_tbl[i][keys[j]];
-										report_tbl[i][keys[j]] = null;
-									}
-								}
-								for (var i = 0; i < history_tbl.length - 1; i++) {
-									var keys = Object.keys(history_tbl[i]);
-									if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
-										history_tbl[i][new_key] = new_value;
-										report_tbl[i][new_key] = new_value;
-									} else {
-										break;
-									}
-									if (keys.length + 1 > max_count_tbl[i]) {
-										new_key = keys[0];
-										new_value = history_tbl[i][new_key];
-										delete history_tbl[i][new_key];
-										report_tbl[i][new_key] = null;
-									} else {
-										break;
-									}
-								}
-								state.history_1min = report_tbl[0];
-								state.history_10min = report_tbl[1];
-								state.history_100min = report_tbl[2];
-								state.history_1000min = report_tbl[3];
-								state.history_10000min = report_tbl[4];
 							}
+							for (var i = 0; i < history_tbl.length - 1; i++) {
+								var keys = Object.keys(history_tbl[i]);
+								for (var j = 0; j < keys.length
+									- max_count_tbl[i]; j++) {
+									delete history_tbl[i][keys[j]];
+									report_tbl[i][keys[j]] = null;
+								}
+							}
+							for (var i = 0; i < history_tbl.length - 1; i++) {
+								var keys = Object.keys(history_tbl[i]);
+								if (new_key - (keys[keys.length - 1] || 0) > interval_s_tbl[i]) {
+									history_tbl[i][new_key] = new_value;
+									report_tbl[i][new_key] = new_value;
+								} else {
+									break;
+								}
+								if (keys.length + 1 > max_count_tbl[i]) {
+									new_key = keys[0];
+									new_value = history_tbl[i][new_key];
+									delete history_tbl[i][new_key];
+									report_tbl[i][new_key] = null;
+								} else {
+									break;
+								}
+							}
+							state.history_1min = report_tbl[0];
+							state.history_10min = report_tbl[1];
+							state.history_100min = report_tbl[2];
+							state.history_1000min = report_tbl[3];
+							state.history_10000min = report_tbl[4];
 
 							var cmd = {
 								"state" : {
