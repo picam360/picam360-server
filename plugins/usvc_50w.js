@@ -37,6 +37,10 @@ module.exports = {
 		// propo
 		var m_ch_us = [];
 
+		// manual
+		var m_manual_rudder_pwm = undefined;
+		var m_manual_thruster_pwm = undefined;
+
 		// auto
 		var next_waypoint_distance = 0;
 		var next_waypoint_direction = 0;
@@ -225,6 +229,9 @@ module.exports = {
 						function get_invert_pwm_us(value, ch_options, bln) {
 							var mid = (ch_options && ch_options.PWM_MIDDLE_US)
 								|| options.PWM_MIDDLE_US;
+							if (value === undefined) {
+								return mid;
+							}
 							if (bln) {
 								return -(value - mid) + mid;
 							} else {
@@ -242,18 +249,35 @@ module.exports = {
 								&& m_ch_us[3] < 2000) {
 								rudder_pwm = get_pwm_us(m_ch_us[1], options.propo[1]);
 								thruster_pwm = get_pwm_us(m_ch_us[2], options.propo[2]);
+							} else if (options.manual_enabled) {
+								rudder_pwm = get_pwm_us(m_manual_rudder_pwm, options.propo[1]);
+								thruster_pwm = get_pwm_us(m_manual_thruster_pwm, options.propo[2]);
+								if (options.manual_debug) {
+									console.log("manual : rud "
+										+ m_manual_rudder_pwm + " : thr "
+										+ m_manual_thruster_pwm);
+								}
 							} else {
 								rudder_pwm = undefined;// to middle
 								thruster_pwm = undefined;// to middle
 							}
 						}
 						if (options.thruster_mode == 'SINGLE') {
+							var ch0_us = get_pwm_us(rudder_pwm, options.ch[0]);
+							var ch1_us = get_pwm_us(thruster_pwm, options.ch[1]);
+							var ch2_us = options.PWM_MIDDLE_US;
+							var ch3_us = options.PWM_MIDDLE_US;
 							var fd = fs.openSync("/dev/pi-blaster", 'w');
-							set_thruster_pwm(0, get_pwm_us(rudder_pwm, options.ch[0]), fd);
-							set_thruster_pwm(1, get_pwm_us(thruster_pwm, options.ch[1]), fd);
-							set_thruster_pwm(2, options.PWM_MIDDLE_US, fd);
-							set_thruster_pwm(3, options.PWM_MIDDLE_US, fd);
+							set_thruster_pwm(0, ch0_us, fd);
+							set_thruster_pwm(1, ch1_us, fd);
+							set_thruster_pwm(2, ch2_us, fd);
+							set_thruster_pwm(3, ch3_us, fd);
 							fs.closeSync(fd);
+							if (options.single_debug) {
+								console.log("single : " + ch0_us + " us, "
+									+ ch1_us + " us, " + ch2_us + " us, "
+									+ ch3_us + " us;");
+							}
 						} else if (options.thruster_mode == 'DOUBLE') {
 							var thr_chl;
 							var thr_chr;
@@ -579,10 +603,10 @@ module.exports = {
 						options.auto_mode = v ? true : false;
 						break;
 					case "set_rudder_pwm" :
-						rudder_pwm = parseInt(split[1]);
+						m_manual_rudder_pwm = parseInt(split[1]);
 						break;
 					case "set_thruster_pwm" :
-						thruster_pwm = parseInt(split[1]);
+						m_manual_thruster_pwm = parseInt(split[1]);
 						break;
 					case "get_waypoints" :
 						waypoints_required = true;
