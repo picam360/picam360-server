@@ -598,6 +598,10 @@ module.exports = {
 								waypoints : options.waypoints
 							});
 						break;
+					case "set_next_waypoint_idx" :
+						var v = parseInt(split[1]);
+						options.next_waypoint_idx = v;
+						break;
 					case "set_automode" :
 						var v = parseInt(split[1]);
 						options.auto_mode = v ? true : false;
