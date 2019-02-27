@@ -560,14 +560,16 @@ module.exports = {
 						// pd
 						var rudder_pwm_mid = options.PWM_MIDDLE_US;
 						if (Math.abs(d_direction) < options.low_gain_deg) {
-							rudder_pwm = options.low_gain_kp * d_direction
+							rudder_pwm = options.low_gain_kp
+								* (d_direction * Math.PI / 180)
 								- options.low_gain_kv
-								* (d_direction - p_d_direction)
+								* ((d_direction - p_d_direction) * Math.PI / 180)
 								/ sample_time_ms_dif * 1000 + rudder_pwm_mid;
 						} else {
-							rudder_pwm = options.gain_kp * d_direction
+							rudder_pwm = options.gain_kp
+								* (d_direction * Math.PI / 180)
 								- options.gain_kv
-								* (d_direction - p_d_direction)
+								* ((d_direction - p_d_direction) * Math.PI / 180)
 								/ sample_time_ms_dif * 1000 + rudder_pwm_mid;
 						}
 						thruster_pwm = options.PWM_MAX_US;// will_be_cut_off_by_options.ch[2].PWM_MAX_US
