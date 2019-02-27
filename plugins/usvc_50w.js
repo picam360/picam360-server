@@ -46,7 +46,7 @@ module.exports = {
 		var next_waypoint_direction = 0;
 		var p_d_direction = undefined;
 		var waypoint_data = null;
-		var m_last_sample_time_ms;
+		var m_last_sample_time_ms = 0;
 		var m_last_heading;
 
 		var options = {
@@ -537,8 +537,12 @@ module.exports = {
 						if (heading == m_last_heading) {
 							return;// skip
 						} else {
+							if (m_last_sample_time_ms == 0) {
+								m_last_sample_time_ms = sample_time_ms;
+								return;
+							}
 							sample_time_ms_dif = sample_time_ms
-								- last_sample_time_ms;
+								- m_last_sample_time_ms;
 							m_last_heading = heading;
 							m_last_sample_time_ms = sample_time_ms;
 						}
