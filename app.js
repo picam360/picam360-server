@@ -97,8 +97,8 @@ async
 				}
 			}
 			var tmp_conf_filepath = "/tmp/picam360-server.conf.json";
-			var cmd = "grep -v -e '^\s*#' " + conf_filepath + " > "
-				+ tmp_conf_filepath;
+			var cmd = "sudo rm " + tmp_conf_filepath + "; grep -v -e '^\s*#' "
+				+ conf_filepath + " > " + tmp_conf_filepath;
 			child_process.exec(cmd, function() {
 				console.log("load config file : " + conf_filepath);
 				options = JSON

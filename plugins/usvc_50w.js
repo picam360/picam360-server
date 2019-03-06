@@ -303,6 +303,13 @@ module.exports = {
 							set_thruster_pwm(thr_chr, thr_chr_us, fd);
 							set_thruster_pwm(thr_ch_ext0, options.PWM_MIDDLE_US, fd);
 							set_thruster_pwm(thr_ch_ext1, options.PWM_MIDDLE_US, fd);
+							if (options.double_debug) {
+								console.log("double : "
+									+ options.thruster_angle + " deg, "
+									+ thr_chl_us + " us, " + thr_chr_us
+									+ " us, " + options.PWM_MIDDLE_US + " us, "
+									+ options.PWM_MIDDLE_US + " us;");
+							}
 						} else if (options.thruster_mode == 'QUAD') {
 							var rudder = rudder_pwm - options.PWM_MIDDLE_US;
 							var thruster = thruster_pwm - options.PWM_MIDDLE_US;
