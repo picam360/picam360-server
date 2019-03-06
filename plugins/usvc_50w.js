@@ -330,6 +330,12 @@ module.exports = {
 							set_thruster_pwm(1, thr_ch1_us, fd);
 							set_thruster_pwm(2, thr_ch2_us, fd);
 							set_thruster_pwm(3, thr_ch3_us, fd);
+							if (options.quad_debug) {
+								console.log("quad : " + angle + " deg, "
+									+ thr_ch0_us + " us, " + thr_ch1_us
+									+ " us, " + thr_ch2_us + " us, "
+									+ thr_ch3_us + " us;");
+							}
 						} else {
 							set_thruster_pwm(0, options.PWM_MIDDLE_US, fd);
 							set_thruster_pwm(1, options.PWM_MIDDLE_US, fd);
