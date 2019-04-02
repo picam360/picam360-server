@@ -35,12 +35,6 @@ Building picam360-server from Scratch
 
 UNIX/Mac OSX/
 ^^^^^^^^^^^^^
-
-First of all, you need to set TARGET_ARCH env variable.
-You need to type appropriate commend in below.::
- $ export TARGET_ARCH=armv6l # raspi 1,zero
- $ export TARGET_ARCH=armv7l # raspi 2,3,3+
- $ export TARGET_ARCH=arm64 # jetson
  
 You need to have a C++ compiler (supporting C++11) and a ``cmake``, a ``make`` installed.
 Run the ``cmake /path/to/CMakeList.txt`` in the source directory of picam360-server.
