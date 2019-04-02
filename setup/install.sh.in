@@ -1,5 +1,7 @@
 #!/bin/bash
 
+systemctl stop picam360-server.service
+
 chmod +x setup/picam360-server
 cp setup/picam360-server ${CMAKE_INSTALL_PREFIX}/bin
 cp setup/picam360-server.service /etc/systemd/system/
