@@ -6,6 +6,7 @@ module.exports = {
 		var sprintf = require('sprintf-js').sprintf;
 		var SerialPort = require('serialport');
 		var gpsd = require('node-gpsd');
+		var child_process = require('child_process');
 
 		var PLUGIN_NAME = "usvc";
 		var COM_PORT = "/dev/ttyACM0";
@@ -168,6 +169,10 @@ module.exports = {
 								msg += " ch" + i + " : " + adc_values[i];
 							}
 							console.log(msg);
+							if (options.auto_mode) {
+								child_process.execSync("echo " + msg
+									+ " >> adc_log");
+							}
 						}
 						{// battery
 							battery = 6 * 2.5 * adc_values[0] / (1 << 12);
