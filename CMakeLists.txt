@@ -10,8 +10,8 @@ if(NOT NODE_PATH)
 endif()
 
 add_custom_target(git_clone_www ALL
-	COMMAND git clone https://github.com/picam360/picam360-viewer.git www
-	COMMENT "git clone https://github.com/picam360/picam360-viewer.git www"
+	COMMAND git clone --depth 1 https://github.com/picam360/picam360-viewer.git www
+	COMMENT "git clone --depth 1 https://github.com/picam360/picam360-viewer.git www"
 )
 
 add_custom_target(git_submodule_update ALL
