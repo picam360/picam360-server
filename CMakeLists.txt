@@ -9,6 +9,11 @@ if(NOT NODE_PATH)
 	message(FATAL_ERROR "can not find node. please install node")
 endif()
 
+add_custom_target(git_clone_www ALL
+	COMMAND git clone https://github.com/picam360/picam360-viewer.git www
+	COMMENT "git clone https://github.com/picam360/picam360-viewer.git www"
+)
+
 add_custom_target(git_submodule_update ALL
 	COMMAND git submodule update -i
 	COMMENT "git submodule update -i"
