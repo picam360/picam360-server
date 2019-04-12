@@ -267,7 +267,17 @@ module.exports = {
 								thruster_pwm = undefined;// to middle
 							}
 						}
-						if (options.thruster_mode == 'SINGLE') {
+						if (options.thruster_mode == 'DRIVER') {
+							var thruster_mode;
+							var range = (options.PWM_MAX_US - options.PWM_MIN_US) / 2;
+							var ch0_us = get_pwm_us(rudder_pwm, options);
+							var ch1_us = get_pwm_us(thruster_pwm, options);
+							var cmd = "upstream.usv_driver.set_thrust "
+								+ ((ch1_us - options.PWM_MIDDLE_US) / range * 100)
+								+ ","
+								+ ((ch0_us - options.PWM_MIDDLE_US) / range * 100);
+							plugin_host.send_command(cmd);
+						} else if (options.thruster_mode == 'SINGLE') {
 							var ch0_us = get_pwm_us(rudder_pwm, options.ch[0]);
 							var ch1_us = get_pwm_us(thruster_pwm, options.ch[1]);
 							var ch2_us = options.PWM_MIDDLE_US;
