@@ -169,10 +169,33 @@ module.exports = {
 								msg += " ch" + i + " : " + adc_values[i];
 							}
 							console.log(msg);
-							if (options.auto_mode) {
-								child_process.execSync("echo " + msg
-									+ " >> adc_log");
+						}
+						if (options.auto_mode && options.adc_log) {
+							function isExistFile(file) {
+								try {
+									fs.statSync(file);
+									return true
+								} catch (err) {
+									if (err.code === 'ENOENT')
+										return false
+								}
 							}
+							if (!isExistFile("adc_log")) {
+								var msg = "t,lat,lon";
+								for (var i = 0; i < 16; i++) {
+									msg += ",ch" + i;
+								}
+								child_process.execSync('echo "' + msg
+									+ '" >> adc_log');
+							}
+
+							var msg = parseInt(Date.now() / 1000) + ","
+								+ latitude + "," + longitude;
+							for (var i = 0; i < 16; i++) {
+								msg += "," + adc_values[i];
+							}
+							child_process.execSync('echo "' + msg
+								+ '" >> adc_log');
 						}
 						{// battery
 							battery = 6 * 2.5 * adc_values[0] / (1 << 12);
