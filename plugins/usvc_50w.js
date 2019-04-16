@@ -17,13 +17,13 @@ module.exports = {
 		var i2c = null;
 		var gps_arrived = false;
 		var gps_valid = false;
-		var latitude = 0;
-		var longitude = 0;
-		var north = 0;
-		var rudder_pwm = 0;
-		var thruster_pwm = 0;
-		var adc_values = [];
-		var battery = 0;
+		var m_latitude = 0;
+		var m_longitude = 0;
+		var m_north = 0;
+		var m_rudder_pwm = 0;
+		var m_thruster_pwm = 0;
+		var m_adc_values = [];
+		var m_battery = 0;
 
 		var history_1min = {};
 		var history_10min = {};
@@ -43,18 +43,15 @@ module.exports = {
 		var m_manual_thruster_pwm = undefined;
 
 		// auto
-		var next_waypoint_distance = 0;
-		var next_waypoint_direction = 0;
-		var p_d_direction = undefined;
-		var waypoint_data = null;
-		var m_last_sample_time_ms = 0;
-		var m_last_heading;
+		var m_next_waypoint_distance = 0;
+		var m_target_heading = 0;
 
 		var options = {
 			thruster_mode : "SINGLE",
 			// auto
 			propo_enabled : false,
 			auto_mode : false,
+			heading_lock : true,
 			waypoints : [],
 			next_waypoint_idx : 0,
 			gain_kp : 160,
@@ -159,14 +156,14 @@ module.exports = {
 					// // point
 					// to your i2c address, debug provides REPL interface
 					setInterval(function() {
-						adc_values = [];
+						m_adc_values = [];
 						for (var i = 0; i < 16; i++) {
-							adc_values[i] = get_ads7828_value(i, 1);
+							m_adc_values[i] = get_ads7828_value(i, 1);
 						}
 						if (options.adc_debug) {
 							var msg = "adc";
 							for (var i = 0; i < 16; i++) {
-								msg += " ch" + i + " : " + adc_values[i];
+								msg += " ch" + i + " : " + m_adc_values[i];
 							}
 							console.log(msg);
 						}
@@ -190,23 +187,23 @@ module.exports = {
 							}
 
 							var msg = parseInt(Date.now() / 1000) + ","
-								+ latitude + "," + longitude;
+								+ m_latitude + "," + m_longitude;
 							for (var i = 0; i < 16; i++) {
-								msg += "," + adc_values[i];
+								msg += "," + m_adc_values[i];
 							}
 							child_process.execSync('echo "' + msg
 								+ '" >> adc_log');
 						}
 						{// battery
-							battery = 6 * 2.5 * adc_values[0] / (1 << 12);
+							m_battery = 6 * 2.5 * m_adc_values[0] / (1 << 12);
 						}
 						{// north
-							north = plugin_host.get_vehicle_north();
+							m_north = plugin_host.get_vehicle_north();
 						}
 						if (options.propo_enabled) { // propo
 							var debug_str = "";
 							for (var i = 1; i <= 3; i++) {
-								var ch_v = 2.5 * adc_values[i] / (1 << 12);
+								var ch_v = 2.5 * m_adc_values[i] / (1 << 12);
 								var ch_us = ch_v / 4 * 20000;
 
 								if (m_ch_us[i] === undefined) {
@@ -275,34 +272,40 @@ module.exports = {
 						if (!options.auto_mode) {
 							if (options.propo_enabled && 1500 < m_ch_us[3]
 								&& m_ch_us[3] < 2000) {
-								rudder_pwm = get_pwm_us(m_ch_us[1], options.propo[1]);
-								thruster_pwm = get_pwm_us(m_ch_us[2], options.propo[2]);
+								if (!options.heading_lock) {
+									m_rudder_pwm = get_pwm_us(m_ch_us[1], options.propo[1]);
+								}
+								m_thruster_pwm = get_pwm_us(m_ch_us[2], options.propo[2]);
 							} else if (options.manual_enabled) {
-								rudder_pwm = get_pwm_us(m_manual_rudder_pwm, options.propo[1]);
-								thruster_pwm = get_pwm_us(m_manual_thruster_pwm, options.propo[2]);
+								if (!options.heading_lock) {
+									m_rudder_pwm = get_pwm_us(m_manual_rudder_pwm, options.propo[1]);
+								}
+								m_thruster_pwm = get_pwm_us(m_manual_thruster_pwm, options.propo[2]);
 								if (options.manual_debug) {
 									console.log("manual : rud "
 										+ m_manual_rudder_pwm + " : thr "
 										+ m_manual_thruster_pwm);
 								}
 							} else {
-								rudder_pwm = undefined;// to middle
-								thruster_pwm = undefined;// to middle
+								if (!options.heading_lock) {
+									m_rudder_pwm = undefined;// to middle
+								}
+								m_thruster_pwm = undefined;// to middle
 							}
 						}
 						if (options.thruster_mode == 'DRIVER') {
 							var thruster_mode;
 							var range = (options.PWM_MAX_US - options.PWM_MIN_US) / 2;
-							var ch0_us = get_pwm_us(rudder_pwm, options);
-							var ch1_us = get_pwm_us(thruster_pwm, options);
+							var ch0_us = get_pwm_us(m_rudder_pwm, options);
+							var ch1_us = get_pwm_us(m_thruster_pwm, options);
 							var cmd = "upstream.usv_driver.set_thrust "
 								+ ((ch1_us - options.PWM_MIDDLE_US) / range * 100)
 								+ ","
 								+ ((ch0_us - options.PWM_MIDDLE_US) / range * 100);
 							plugin_host.send_command(cmd);
 						} else if (options.thruster_mode == 'SINGLE') {
-							var ch0_us = get_pwm_us(rudder_pwm, options.ch[0]);
-							var ch1_us = get_pwm_us(thruster_pwm, options.ch[1]);
+							var ch0_us = get_pwm_us(m_rudder_pwm, options.ch[0]);
+							var ch1_us = get_pwm_us(m_thruster_pwm, options.ch[1]);
 							var ch2_us = options.PWM_MIDDLE_US;
 							var ch3_us = options.PWM_MIDDLE_US;
 							var fd = fs.openSync("/dev/pi-blaster", 'w');
@@ -332,10 +335,10 @@ module.exports = {
 								thr_ch_ext0 = 2;
 								thr_ch_ext1 = 3;
 							}
-							var rudder_delta = (rudder_pwm || options.PWM_MIDDLE_US)
+							var rudder_delta = (m_rudder_pwm || options.PWM_MIDDLE_US)
 								- options.PWM_MIDDLE_US;
-							var thr_chl_us = thruster_pwm - rudder_delta;
-							var thr_chr_us = thruster_pwm + rudder_delta;
+							var thr_chl_us = m_thruster_pwm - rudder_delta;
+							var thr_chr_us = m_thruster_pwm + rudder_delta;
 
 							set_thruster_pwm(thr_chl, thr_chl_us, fd);
 							set_thruster_pwm(thr_chr, thr_chr_us, fd);
@@ -349,8 +352,9 @@ module.exports = {
 									+ options.PWM_MIDDLE_US + " us;");
 							}
 						} else if (options.thruster_mode == 'QUAD') {
-							var rudder = rudder_pwm - options.PWM_MIDDLE_US;
-							var thruster = thruster_pwm - options.PWM_MIDDLE_US;
+							var rudder = m_rudder_pwm - options.PWM_MIDDLE_US;
+							var thruster = m_thruster_pwm
+								- options.PWM_MIDDLE_US;
 							var angle = 180 * rudder
 								/ (options.PWM_MAX_US - options.PWM_MIN_US);// -90:+90
 							var thr_chv_us = thruster
@@ -405,8 +409,8 @@ module.exports = {
 								console.log(tpvData);
 							}
 							if (tpvData.lat && tpvData.lon) {
-								latitude = tpvData.lat;
-								longitude = tpvData.lon;
+								m_latitude = tpvData.lat;
+								m_longitude = tpvData.lon;
 								gps_valid = true;
 							} else { // GPS_LOST
 								gps_valid = false;
@@ -426,15 +430,15 @@ module.exports = {
 							// update status
 							m_status = {
 								gps : gps_valid,
-								lat : toFixedFloat(latitude, 6),
-								lon : toFixedFloat(longitude, 6),
-								heading : toFixedFloat(-north, 3), // heading_from_north_clockwise
-								bat : toFixedFloat(battery, 3),
-								adc : adc_values,
+								lat : toFixedFloat(m_latitude, 6),
+								lon : toFixedFloat(m_longitude, 6),
+								heading : toFixedFloat(-m_north, 3), // heading_from_north_clockwise
+								bat : toFixedFloat(m_battery, 3),
+								adc : m_adc_values,
 								next_waypoint_idx : options.next_waypoint_idx,
-								next_waypoint_distance : next_waypoint_distance,
-								rudder_pwm : toFixedFloat(rudder_pwm, 0),
-								thruster_pwm : toFixedFloat(thruster_pwm, 0),
+								next_waypoint_distance : m_next_waypoint_distance,
+								rudder_pwm : toFixedFloat(m_rudder_pwm, 0),
+								thruster_pwm : toFixedFloat(m_thruster_pwm, 0),
 								auto_mode : options.auto_mode,
 								gain_kp : options.gain_kp,
 								gain_kv : options.gain_kv,
@@ -468,22 +472,80 @@ module.exports = {
 					callback(null);
 				},
 				function(callback) {
+					// heading lock
+					var p_d_direction = undefined;
+					var last_sample_time_ms = 0;
+					var last_heading;
+					setInterval(function() {
+						if (!options.heading_lock) {
+							return;
+						}
+						// control
+						var sample_time_ms = Date.now() / 1000;
+						var sample_time_ms_dif;
+						var heading = -m_north; // heading_from_north_clockwise
+						if (heading == last_heading) {
+							return;// skip
+						} else {
+							if (last_sample_time_ms == 0) {
+								last_sample_time_ms = sample_time_ms;
+								return;
+							}
+							sample_time_ms_dif = sample_time_ms
+								- last_sample_time_ms;
+							last_heading = heading;
+							last_sample_time_ms = sample_time_ms;
+						}
+						var d_direction = m_target_heading - heading;
+						if (d_direction < -180) {
+							d_direction += 2 * 180;
+						}
+						if (d_direction > 180) {
+							d_direction -= 2 * 180;
+						}
+						if (p_d_direction === undefined) {
+							p_d_direction = d_direction;
+							return;
+						}
+						// pd
+						var rudder_pwm_mid = options.PWM_MIDDLE_US;
+						if (Math.abs(d_direction) < options.low_gain_deg) {
+							m_rudder_pwm = options.low_gain_kp
+								* (d_direction * Math.PI / 180)
+								- options.low_gain_kv
+								* ((d_direction - p_d_direction) * Math.PI / 180)
+								/ sample_time_ms_dif * 1000 + rudder_pwm_mid;
+						} else {
+							m_rudder_pwm = options.gain_kp
+								* (d_direction * Math.PI / 180)
+								- options.gain_kv
+								* ((d_direction - p_d_direction) * Math.PI / 180)
+								/ sample_time_ms_dif * 1000 + rudder_pwm_mid;
+						}
+						p_d_direction = d_direction;
+						if (options.heading_lock_debug) {
+							console.log("rud " + m_rudder_pwm + " : thr "
+								+ m_thruster_pwm + " : head " + heading
+								+ " : target " + m_target_heading);
+						}
+					}, 200);
+				},
+				function(callback) {
 					// auto operation
+					var waypoint_data = null;
 					setInterval(function() {
 						if (!options.auto_mode) {
 							return;
 						}
+						options.heading_lock = true;
 						// reset pwm
-						rudder_pwm = options.PWM_MIDDLE_US;
-						thruster_pwm = options.PWM_MIDDLE_US;
+						m_thruster_pwm = options.PWM_MIDDLE_US;
 						if (!gps_valid) { // GPS_LOST
-							p_d_direction = undefined;
 							return;
 						}
-						if (0) {
-							if (options.next_waypoint_idx >= options.waypoints.length) {
-								options.next_waypoint_idx = 0;
-							}
+						// back to start
+						if (options.next_waypoint_idx >= options.waypoints.length) {
+							options.next_waypoint_idx = 0;
 						}
 						if (!options.waypoints[options.next_waypoint_idx]) {
 							return;
@@ -494,18 +556,20 @@ module.exports = {
 						var equator_r_km = 6378.137;
 						var lat_deg2m = earth_r_km * Math.PI / 180 * 1000;
 						var lon_deg2m = equator_r_km
-							* Math.cos(latitude * Math.PI / 180) * Math.PI
+							* Math.cos(m_latitude * Math.PI / 180) * Math.PI
 							/ 180 * 1000;
-						var d_lat_deg = waypoint.lat - latitude;
-						var d_lon_deg = waypoint.lon - longitude;
+						var d_lat_deg = waypoint.lat - m_latitude;
+						var d_lon_deg = waypoint.lon - m_longitude;
 						var d_lat_m = d_lat_deg * lat_deg2m;
 						var d_lon_m = d_lon_deg * lon_deg2m;
 
-						next_waypoint_distance = Math.sqrt(d_lat_m * d_lat_m
+						m_next_waypoint_distance = Math.sqrt(d_lat_m * d_lat_m
 							+ d_lon_m * d_lon_m);
-						next_waypoint_direction = Math.atan2(d_lon_m, d_lat_m)
-							* 180 / Math.PI; // direction_from_north_clockwise
-						if (Math.abs(next_waypoint_distance) < (waypoint.tol || 5)) { // tol_is_Tolerance
+						m_target_heading = Math.atan2(d_lon_m, d_lat_m) * 180
+							/ Math.PI; // direction_from_north_clockwise
+						m_thruster_pwm = options.PWM_MAX_US;// will_be_cut_off_by_options.ch[2].PWM_MAX_US
+
+						if (Math.abs(m_next_waypoint_distance) < (waypoint.tol || 5)) { // tol_is_Tolerance
 							// arrived
 							if (options.auto_debug) {
 								console.log("arrived at : "
@@ -544,8 +608,8 @@ module.exports = {
 									}
 									var value = get_ads7828_value(params.ch, params.cnt);
 									var state = {
-										"lat" : latitude,
-										"lon" : longitude,
+										"lat" : m_latitude,
+										"lon" : m_longitude,
 										"value" : value,
 									};
 									plugin
@@ -581,55 +645,6 @@ module.exports = {
 							waypoint_data = null;
 							return;
 						}
-						// control
-						var sample_time_ms = Date.now() / 1000;
-						var sample_time_ms_dif;
-						var heading = -north; // heading_from_north_clockwise
-						if (heading == m_last_heading) {
-							return;// skip
-						} else {
-							if (m_last_sample_time_ms == 0) {
-								m_last_sample_time_ms = sample_time_ms;
-								return;
-							}
-							sample_time_ms_dif = sample_time_ms
-								- m_last_sample_time_ms;
-							m_last_heading = heading;
-							m_last_sample_time_ms = sample_time_ms;
-						}
-						var d_direction = next_waypoint_direction - heading;
-						if (d_direction < -180) {
-							d_direction += 2 * 180;
-						}
-						if (d_direction > 180) {
-							d_direction -= 2 * 180;
-						}
-						if (p_d_direction === undefined) {
-							p_d_direction = d_direction;
-							return;
-						}
-						// pd
-						var rudder_pwm_mid = options.PWM_MIDDLE_US;
-						if (Math.abs(d_direction) < options.low_gain_deg) {
-							rudder_pwm = options.low_gain_kp
-								* (d_direction * Math.PI / 180)
-								- options.low_gain_kv
-								* ((d_direction - p_d_direction) * Math.PI / 180)
-								/ sample_time_ms_dif * 1000 + rudder_pwm_mid;
-						} else {
-							rudder_pwm = options.gain_kp
-								* (d_direction * Math.PI / 180)
-								- options.gain_kv
-								* ((d_direction - p_d_direction) * Math.PI / 180)
-								/ sample_time_ms_dif * 1000 + rudder_pwm_mid;
-						}
-						thruster_pwm = options.PWM_MAX_US;// will_be_cut_off_by_options.ch[2].PWM_MAX_US
-						p_d_direction = d_direction;
-						if (options.auto_debug) {
-							console.log("rud " + rudder_pwm + " : thr "
-								+ thruster_pwm + " : head " + heading
-								+ " : nw_dir " + next_waypoint_direction);
-						}
 					}, 200);
 					callback(null);
 				}], function(err, result) {
@@ -664,10 +679,23 @@ module.exports = {
 						options.auto_mode = v ? true : false;
 						break;
 					case "set_rudder_pwm" :
-						m_manual_rudder_pwm = parseInt(split[1]);
 						break;
-					case "set_thruster_pwm" :
-						m_manual_thruster_pwm = parseInt(split[1]);
+					case "set_thruster" :
+						var range = (options.PWM_MAX_US - options.PWM_MIN_US) / 2;
+						m_manual_thruster_pwm = parseInt(split[1] * range)
+							+ options.PWM_MIDDLE_US;
+						if (!options.heading_lock) {
+							m_manual_rudder_pwm = parseInt(split[2] * range)
+								+ options.PWM_MIDDLE_US;
+						} else {
+							m_target_heading += split[2] * 10;
+							if (m_target_heading < -180) {
+								m_target_heading += 2 * 180;
+							}
+							if (m_target_heading > 180) {
+								m_target_heading -= 2 * 180;
+							}
+						}
 						break;
 					case "get_waypoints" :
 						waypoints_required = true;
@@ -683,12 +711,12 @@ module.exports = {
 				var reported_fnc = function(state, is_delta) {
 					var report = {};
 					if (state.lat !== undefined) {
-						latitude = state.lat;
-						report.lat = latitude;
+						m_latitude = state.lat;
+						report.lat = m_latitude;
 					}
 					if (state.lon !== undefined) {
-						longitude = state.lon;
-						report.lon = longitude;
+						m_longitude = state.lon;
+						report.lon = m_longitude;
 					}
 					if (state.waypoints !== undefined) {
 						options.waypoints = state.waypoints;
