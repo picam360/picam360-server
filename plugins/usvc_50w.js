@@ -301,7 +301,8 @@ module.exports = {
 							var cmd = "upstream.usv_driver.set_thrust "
 								+ ((ch1_us - options.PWM_MIDDLE_US) / range * 100)
 								+ ","
-								+ ((ch0_us - options.PWM_MIDDLE_US) / range * 100);
+								+ ((ch0_us - options.PWM_MIDDLE_US) / range * 100)
+								+ "," + m_target_heading;
 							plugin_host.send_command(cmd);
 						} else if (options.thruster_mode == 'SINGLE') {
 							var ch0_us = get_pwm_us(m_rudder_pwm, options.ch[0]);
@@ -682,18 +683,24 @@ module.exports = {
 						break;
 					case "set_thruster" :
 						var range = (options.PWM_MAX_US - options.PWM_MIN_US) / 2;
-						m_manual_thruster_pwm = parseInt(split[1] * range)
-							+ options.PWM_MIDDLE_US;
-						if (!options.heading_lock) {
-							m_manual_rudder_pwm = parseInt(split[2] * range)
+						if (split.length > 1 && !isNaN(split[1])) {
+							m_manual_thruster_pwm = parseInt(split[1] * range
+								/ 100)
 								+ options.PWM_MIDDLE_US;
-						} else {
-							m_target_heading += split[2] * 10;
-							if (m_target_heading < -180) {
-								m_target_heading += 2 * 180;
-							}
-							if (m_target_heading > 180) {
-								m_target_heading -= 2 * 180;
+						}
+						if (split.length > 2 && !isNaN(split[2])) {
+							if (!options.heading_lock) {
+								m_manual_rudder_pwm = parseInt(split[2] * range
+									/ 100)
+									+ options.PWM_MIDDLE_US;
+							} else {
+								m_target_heading += split[2] / 100 * 45;
+								if (m_target_heading < -180) {
+									m_target_heading += 2 * 180;
+								}
+								if (m_target_heading > 180) {
+									m_target_heading -= 2 * 180;
+								}
 							}
 						}
 						break;
