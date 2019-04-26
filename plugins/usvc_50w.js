@@ -530,6 +530,7 @@ module.exports = {
 								+ " : target " + m_target_heading);
 						}
 					}, 200);
+					callback(null);
 				},
 				function(callback) {
 					// auto operation
