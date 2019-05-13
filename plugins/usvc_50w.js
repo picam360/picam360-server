@@ -19,11 +19,16 @@ module.exports = {
 		var gps_valid = false;
 		var m_latitude = 0;
 		var m_longitude = 0;
+		var m_speed_kmps = 0;
 		var m_north = 0;
 		var m_rudder_pwm = 0;
 		var m_thruster_pwm = 0;
 		var m_adc_values = [];
 		var m_battery = 0;
+		var m_battery_sens = 0;
+		var m_solar_sens = 0;
+		var m_battery_amp = 0;
+		var m_solar_amp = 0;
 
 		var history_1min = {};
 		var history_10min = {};
@@ -195,7 +200,34 @@ module.exports = {
 								+ '" >> adc_log');
 						}
 						{// battery
-							m_battery = 6 * 2.5 * m_adc_values[0] / (1 << 12);
+							var lpf_gain = 0.02;
+							var battery_sens = 6 * 2.5 * m_adc_values[0]
+								/ (1 << 12);
+							var solar_sens = 6 * 2.5 * m_adc_values[1]
+								/ (1 << 12);
+							var out_v = 6 * 2.5 * m_adc_values[2] / (1 << 12);
+							if (m_battery_sens < 5) {
+								m_battery_sens = battery_sens;
+							} else {
+								m_battery_sens = battery_sens * lpf_gain
+									+ m_battery_sens * (1.0 - lpf_gain);
+							}
+							if (m_solar_sens < 5) {
+								m_solar_sens = out_v;
+							} else {
+								m_solar_sens = solar_sens * lpf_gain
+									+ m_solar_sens * (1.0 - lpf_gain);
+							}
+							if (m_battery < 5) {
+								m_battery = out_v;
+							} else {
+								m_battery = out_v * lpf_gain + m_battery
+									* (1.0 - lpf_gain);
+							}
+							m_battery_amp = (m_battery_sens - m_battery) / 0.01
+								- (options.bamp_offset || 0);
+							m_solar_amp = (m_solar_sens - m_battery) / 0.01
+								- (options.samp_offset || 0);
 						}
 						{// north
 							m_north = plugin_host.get_vehicle_north();
@@ -410,6 +442,27 @@ module.exports = {
 								console.log(tpvData);
 							}
 							if (tpvData.lat && tpvData.lon) {
+								// speed
+								var earth_r_km = 6356.752;
+								var equator_r_km = 6378.137;
+								var lat_deg2m = earth_r_km * Math.PI / 180
+									* 1000;
+								var lon_deg2m = equator_r_km
+									* Math.cos(m_latitude * Math.PI / 180)
+									* Math.PI / 180 * 1000;
+								var d_lat_deg = tpvData.lat - m_latitude;
+								var d_lon_deg = tpvData.lon - m_longitude;
+								var d_lat_m = d_lat_deg * lat_deg2m;
+								var d_lon_m = d_lon_deg * lon_deg2m;
+								var speed_kmps = Math.sqrt(d_lat_m * d_lat_m
+									+ d_lon_m * d_lon_m) / 1000;
+								if (gps_valid && speed_kmps < 100) {
+									var lpf_gain = 0.2;
+									m_speed_kmps = speed_kmps * lpf_gain
+										+ m_speed_kmps * (1.0 - lpf_gain);
+								}
+
+								// update
 								m_latitude = tpvData.lat;
 								m_longitude = tpvData.lon;
 								gps_valid = true;
@@ -433,8 +486,11 @@ module.exports = {
 								gps : gps_valid,
 								lat : toFixedFloat(m_latitude, 6),
 								lon : toFixedFloat(m_longitude, 6),
+								spd : toFixedFloat(m_speed_kmps, 3),
 								heading : toFixedFloat(-m_north, 3), // heading_from_north_clockwise
 								bat : toFixedFloat(m_battery, 3),
+								bamp : toFixedFloat(m_battery_amp, 3),
+								samp : toFixedFloat(m_solar_amp, 3),
 								adc : m_adc_values,
 								next_waypoint_idx : options.next_waypoint_idx,
 								next_waypoint_distance : m_next_waypoint_distance,
