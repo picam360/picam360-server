@@ -45,7 +45,7 @@ module.exports = {
 		var m_ch_us = [];
 
 		// manual
-		var m_manual_rudder = 0;
+		var m_manual_target_heading = 0;
 		var m_manual_thruster = 0;
 
 		// auto
@@ -58,7 +58,6 @@ module.exports = {
 			// auto
 			propo_enabled : false,
 			operation_mode : "STANBY",
-			heading_lock : false,
 			waypoints : [],
 			next_waypoint_idx : 0,
 			gain_kp : 160,
@@ -296,24 +295,16 @@ module.exports = {
 						if (options.operation_mode == "MANUAL") {
 							if (options.propo_enabled && 1500 < m_ch_us[3]
 								&& m_ch_us[3] < 2000) {
-								if (!options.heading_lock) {
-									m_rudder = get_per_from_pwm(m_ch_us[1], options.propo[1]);
-								}
 								m_thruster = get_per_from_pwm(m_ch_us[2], options.propo[2]);
 							} else if (options.manual_enabled) {
-								if (!options.heading_lock) {
-									m_rudder = m_manual_rudder;
-								}
 								m_thruster = m_manual_thruster;
+								m_target_heading = m_manual_target_heading;
 								if (options.manual_debug) {
 									console.log("manual : rud "
 										+ m_manual_rudder + " : thr "
 										+ m_manual_thruster);
 								}
 							} else {
-								if (!options.heading_lock) {
-									m_rudder = 0;
-								}
 								m_thruster = 0;
 							}
 						}
@@ -479,65 +470,6 @@ module.exports = {
 					callback(null);
 				},
 				function(callback) {
-					// heading lock
-					var p_d_direction = undefined;
-					var last_sample_time_ms = 0;
-					var last_heading;
-					setInterval(function() {
-						if (!options.heading_lock) {
-							return;
-						}
-						// control
-						var sample_time_ms = Date.now() / 1000;
-						var sample_time_ms_dif;
-						var heading = -m_north; // heading_from_north_clockwise
-						if (heading == last_heading) {
-							return;// skip
-						} else {
-							if (last_sample_time_ms == 0) {
-								last_sample_time_ms = sample_time_ms;
-								return;
-							}
-							sample_time_ms_dif = sample_time_ms
-								- last_sample_time_ms;
-							last_heading = heading;
-							last_sample_time_ms = sample_time_ms;
-						}
-						var d_direction = m_target_heading - heading;
-						if (d_direction < -180) {
-							d_direction += 2 * 180;
-						}
-						if (d_direction > 180) {
-							d_direction -= 2 * 180;
-						}
-						if (p_d_direction === undefined) {
-							p_d_direction = d_direction;
-							return;
-						}
-						// pd
-						if (Math.abs(d_direction) < options.low_gain_deg) {
-							m_rudder = options.low_gain_kp
-								* (d_direction * Math.PI / 180)
-								- options.low_gain_kv
-								* ((d_direction - p_d_direction) * Math.PI / 180)
-								/ sample_time_ms_dif * 1000;
-						} else {
-							m_rudder = options.gain_kp
-								* (d_direction * Math.PI / 180)
-								- options.gain_kv
-								* ((d_direction - p_d_direction) * Math.PI / 180)
-								/ sample_time_ms_dif * 1000;
-						}
-						p_d_direction = d_direction;
-						if (options.heading_lock_debug) {
-							console.log("rud " + m_rudder + " : thr "
-								+ m_thruster + " : head " + heading
-								+ " : target " + m_target_heading);
-						}
-					}, 200);
-					callback(null);
-				},
-				function(callback) {
 					// auto operation
 					var waypoint_data = null;
 					setInterval(function() {
@@ -547,7 +479,6 @@ module.exports = {
 						} else {
 							return;
 						}
-						options.heading_lock = true;
 						// reset pwm
 						m_thruster = 0;
 						if (!gps_valid) { // GPS_LOST
@@ -592,6 +523,12 @@ module.exports = {
 							+ d_lon_m * d_lon_m);
 						m_target_heading = Math.atan2(d_lon_m, d_lat_m) * 180
 							/ Math.PI; // direction_from_north_clockwise
+						if (m_target_heading < -180) {
+							m_target_heading += 2 * 180;
+						}
+						if (m_target_heading > 180) {
+							m_target_heading -= 2 * 180;
+						}
 
 						switch (options.operation_mode) {
 							case "WAYPOINT" :
@@ -752,19 +689,17 @@ module.exports = {
 					case "set_thruster" :
 						var range = (options.PWM_MAX_US - options.PWM_MIN_US) / 2;
 						if (split.length > 1 && !isNaN(split[1])) {
-							m_manual_thruster = parseFloat(split[1]);
+							m_manual_thruster = Math.max(-100, Math
+								.min(parseFloat(split[1]), 100));
 						}
 						if (split.length > 2 && !isNaN(split[2])) {
-							if (!options.heading_lock) {
-								m_manual_rudder = parseFloat(split[2]);
-							} else {
-								m_target_heading += split[2] / 100 * 45;
-								if (m_target_heading < -180) {
-									m_target_heading += 2 * 180;
-								}
-								if (m_target_heading > 180) {
-									m_target_heading -= 2 * 180;
-								}
+							m_manual_target_heading = m_target_heading
+								+ split[2] / 100 * 45;
+							if (m_manual_target_heading < -180) {
+								m_manual_target_heading += 2 * 180;
+							}
+							if (m_manual_target_heading > 180) {
+								m_manual_target_heading -= 2 * 180;
 							}
 						}
 						break;
