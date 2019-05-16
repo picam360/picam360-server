@@ -19,7 +19,7 @@ module.exports = {
 		var gps_valid = false;
 		var m_latitude = 0;
 		var m_longitude = 0;
-		var m_speed_kmps = 0;
+		var m_speed_kmph = 0;
 		var m_north = 0;
 		var m_rudder = 0;
 		var m_thruster = 0;
@@ -393,12 +393,12 @@ module.exports = {
 								var d_lon_deg = tpvData.lon - m_longitude;
 								var d_lat_m = d_lat_deg * lat_deg2m;
 								var d_lon_m = d_lon_deg * lon_deg2m;
-								var speed_kmps = Math.sqrt(d_lat_m * d_lat_m
-									+ d_lon_m * d_lon_m) / 1000;
-								if (gps_valid && speed_kmps < 100) {
+								var speed_kmph = Math.sqrt(d_lat_m * d_lat_m
+									+ d_lon_m * d_lon_m) / 1000 * 3600;
+								if (gps_valid && speed_kmph < 100) {
 									var lpf_gain = 0.2;
-									m_speed_kmps = speed_kmps * lpf_gain
-										+ m_speed_kmps * (1.0 - lpf_gain);
+									m_speed_kmph = speed_kmph * lpf_gain
+										+ m_speed_kmph * (1.0 - lpf_gain);
 								}
 
 								// update
@@ -425,7 +425,7 @@ module.exports = {
 								gps : gps_valid,
 								lat : toFixedFloat(m_latitude, 6),
 								lon : toFixedFloat(m_longitude, 6),
-								spd : toFixedFloat(m_speed_kmps, 3),
+								spd : toFixedFloat(m_speed_kmph, 3),
 								heading : toFixedFloat(-m_north, 3), // heading_from_north_clockwise
 								bat : toFixedFloat(m_battery, 3),
 								bamp : toFixedFloat(m_battery_amp, 3),
