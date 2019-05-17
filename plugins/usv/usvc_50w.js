@@ -292,7 +292,8 @@ module.exports = {
 								/ (max - min) * 100;
 							return Math.max(-100, Math.min(value, 100));
 						}
-						if (options.operation_mode == "MANUAL") {
+						if (options.operation_mode == "MANUAL"||
+							options.operation_mode == "EMERGENCY") {
 							if (options.propo_enabled && 1500 < m_ch_us[3]
 								&& m_ch_us[3] < 2000) {
 								m_thruster = get_per_from_pwm(m_ch_us[2], options.propo[2]);
@@ -320,7 +321,8 @@ module.exports = {
 									plugin_host.send_command(cmd);
 									break;
 								}
-								case "MANUAL" : {
+								case "MANUAL" :
+								case "EMERGENCY" : {
 									var cmd = "upstream.usv_driver.set_thrust "
 										+ m_thruster + "," + m_rudder + ","
 										+ m_target_heading + ",1";
@@ -658,6 +660,7 @@ module.exports = {
 						options.next_waypoint_idx = v;
 						break;
 					case "set_operation_mode" :
+						plugin_host.send_command("upstream.usv_driver.set_emergency_mode 0");
 						switch (split[1].toUpperCase()) {
 							case "WAYPOINT" :
 								options.operation_mode = "WAYPOINT";
@@ -670,6 +673,10 @@ module.exports = {
 								break;
 							case "MANUAL" :
 								options.operation_mode = "MANUAL";
+								break;
+							case "EMERGENCY" :
+								options.operation_mode = "EMERGENCY";
+								plugin_host.send_command("upstream.usv_driver.set_emergency_mode 1");
 								break;
 							case "STANBY" :
 							default :
