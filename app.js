@@ -901,6 +901,12 @@ async
 							}
 						}
 					}
+				} else if (split[0] == "set_stereo") {
+					var id = rtp.get_frame_id(conn);
+					if (id) {
+						var cmd = CAPTURE_DOMAIN + value + " id=" + id;
+						plugin_host.send_command(cmd, conn);
+					}
 				} else if (split[0] == "snap") {
 					var id = rtp.get_frame_id(conn);
 					if (id) {
