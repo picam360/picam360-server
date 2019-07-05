@@ -341,7 +341,8 @@ async
 											target_fps = watcher.fps + step;
 										}
 										target_fps = Math
-											.min(Math.max(target_fps, options.min_fps || 1), options.max_fps || 15);
+											.min(Math
+												.max(target_fps, options.min_fps || 1), options.max_fps || 15);
 										var cmd = UPSTREAM_DOMAIN
 											+ "set_fps -i " + watcher.frame_id
 											+ " -f " + target_fps;
@@ -803,7 +804,7 @@ async
 											.setRequestHeader('Authorization', 'Token token=mzi9vncbbo');
 
 										http.onerror = function(e) {
-											util.error('Error _ping', e);
+											console.log('Error _ping : ' + e);
 										};
 										http.onreadystatechange = function() {
 											if (http.readyState !== 4) {
