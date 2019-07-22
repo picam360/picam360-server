@@ -174,16 +174,22 @@ async
 					tmp_latency : 0,
 					tmp_time : 0,
 					frame_id : upstream_next_frame_id,
+					frame_mode : options.frame_mode,
+					frame_width : options.frame_width,
+					frame_height : options.frame_height,
+					frame_encode : options.frame_encode,
+					frame_fps : options.frame_fps,
+					frame_bitrate : options.frame_bitrate,
 					timeout : false,
 					is_init : false
 				};
 				var init_con = function() {
 					watcher.is_init = true;
-					var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", options.frame_mode
-						|| "WINDOW", options.frame_width || 512, options.frame_height || 512, options.frame_encode
-						|| "h264", options.frame_fps || 5);
-					if (options.frame_bitrate) {
-						create_frame_cmd += " -k " + options.frame_bitrate;
+					var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", watcher.frame_mode
+						|| "WINDOW", watcher.frame_width || 512, watcher.frame_height || 512, watcher.frame_encode
+						|| "h264", watcher.frame_fps || 5);
+					if (watcher.frame_bitrate) {
+						create_frame_cmd += " -k " + watcher.frame_bitrate;
 					}
 					console.log(create_frame_cmd);
 					plugin_host
@@ -217,7 +223,25 @@ async
 								var split = cmd.split('\"');
 								var id = split[1];
 								var value = split[3].split(' ');
-								if (value[0] == "ping") {
+								if (value[0] == "frame_mode") {
+									watcher.frame_mode = value[1];
+									return;
+								} else if (value[0] == "frame_width") {
+									watcher.frame_width = value[1];
+									return;
+								} else if (value[0] == "frame_height") {
+									watcher.frame_height = value[1];
+									return;
+								} else if (value[0] == "frame_fps") {
+									watcher.frame_fps = value[1];
+									return;
+								} else if (value[0] == "frame_encode") {
+									watcher.frame_encode = value[1];
+									return;
+								} else if (value[0] == "frame_bitrate") {
+									watcher.frame_bitrate = value[1];
+									return;
+								} else if (value[0] == "ping") {
 									var status = "<picam360:status name=\"pong\" value=\""
 										+ value[1]
 										+ " "
