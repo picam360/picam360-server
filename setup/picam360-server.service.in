@@ -2,7 +2,7 @@
 Description = picam360-server daemon
 
 [Service]
-ExecStart = /bin/bash ${CMAKE_INSTALL_PREFIX}/bin/picam360-server
+ExecStart = /bin/bash @CMAKE_INSTALL_PREFIX@/bin/picam360-server
 Restart = always
 Type = simple
 

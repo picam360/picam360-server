@@ -1,5 +1,5 @@
 #!/bin/bash
 
 ARCH=`uname -m`
-cd /var/www/picam360-server/$ARCH/
-${NODE_PATH} app.js -c ${CMAKE_INSTALL_PREFIX}/etc/picam360-server.conf
+cd /var/www/picam360-server/${ARCH}/
+@NODE_PATH@ app.js -c @CMAKE_INSTALL_PREFIX@/etc/picam360-server.conf

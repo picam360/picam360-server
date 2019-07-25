@@ -2,24 +2,26 @@
 
 systemctl stop picam360-server.service
 
+ARCH=`uname -m`
+
 chmod +x setup/picam360-server
-cp setup/picam360-server ${CMAKE_INSTALL_PREFIX}/bin
+cp setup/picam360-server @CMAKE_INSTALL_PREFIX@/bin
 cp setup/picam360-server.service /etc/systemd/system/
 
-if [ ! -d "/var/www/picam360-server/$ENV{ARCH}/" ]; then
-	mkdir -p /var/www/picam360-server/$ENV{ARCH}/
+if [ ! -d "/var/www/picam360-server/${ARCH}/" ]; then
+	mkdir -p /var/www/picam360-server/${ARCH}/
 fi
-cp ./*.js /var/www/picam360-server/$ENV{ARCH}/
-rsync -av certs /var/www/picam360-server/$ENV{ARCH}/
-rsync -av node_modules /var/www/picam360-server/$ENV{ARCH}/
-rsync -av plugins /var/www/picam360-server/$ENV{ARCH}/
-rsync -av --exclude=".*" www /var/www/picam360-server/$ENV{ARCH}/
+cp ./*.js /var/www/picam360-server/${ARCH}/
+rsync -av certs /var/www/picam360-server/${ARCH}/
+rsync -av node_modules /var/www/picam360-server/${ARCH}/
+rsync -av plugins /var/www/picam360-server/${ARCH}/
+rsync -av --exclude=".*" www /var/www/picam360-server/${ARCH}/
 
-if [ ! -f "${CMAKE_INSTALL_PREFIX}/etc/picam360-server.conf" ]; then
-	cp config.json.tmp ${CMAKE_INSTALL_PREFIX}/etc/picam360-server.conf
+if [ ! -f "@CMAKE_INSTALL_PREFIX@/etc/picam360-server.conf" ]; then
+	cp config.json.tmp @CMAKE_INSTALL_PREFIX@/etc/picam360-server.conf
 fi
-if [ ! -f "/var/www/picam360-server/$ENV{ARCH}/www/config.json" ]; then
-	cp www/config.json.tmp /var/www/picam360-server/$ENV{ARCH}/www/config.json
+if [ ! -f "/var/www/picam360-server/${ARCH}/www/config.json" ]; then
+	cp www/config.json.tmp /var/www/picam360-server/${ARCH}/www/config.json
 fi
 
 systemctl daemon-reload

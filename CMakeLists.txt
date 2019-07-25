@@ -26,7 +26,7 @@ add_custom_target(npm_install ALL
 	
 #install
 set(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY true)
-configure_file( setup/picam360-server.in setup/picam360-server )
-configure_file( setup/picam360-server.service.in setup/picam360-server.service )
-configure_file( setup/install.sh.in setup/install.sh )
+configure_file( setup/picam360-server.in setup/picam360-server @ONLY )
+configure_file( setup/picam360-server.service.in setup/picam360-server.service @ONLY )
+configure_file( setup/install.sh.in setup/install.sh @ONLY )
 install(CODE "execute_process(COMMAND bash -x setup/install.sh)")
