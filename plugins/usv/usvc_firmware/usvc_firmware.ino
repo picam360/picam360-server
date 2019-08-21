@@ -635,7 +635,7 @@ void control() {
 			set_pwm_passthrough(false);
 		} else if (660 < ch3 && ch3 < 690) { // 3.3V
 			mode_flag.propo = 0;
-		} else if (ch3 < 75) { // 0V , pwm 1ms
+		} else if (ch3 < 50) { // 0V , pwm 1ms
 			if (mode_flag.propo == 1) {
 				if (sample_time_ms - last_propo_changed_time_ms < 2000) {
 				} else {
@@ -646,7 +646,7 @@ void control() {
 				set_pwm_passthrough(false);
 				last_propo_changed_time_ms = sample_time_ms;
 			}
-		} else if (80 < ch3) { // pwm 2ms
+		} else if (55 < ch3) { // pwm 2ms
 			if (mode_flag.propo == 0) {
 				if (sample_time_ms - last_propo_changed_time_ms < 2000) {
 					propo_count++;
