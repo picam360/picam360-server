@@ -36,7 +36,8 @@ class RTCAudioSourceAlsa {
 	 // Buffer size = numChannels * formatByteSize * periodSize
 	 // Example: 2 Bytes (AlsaFormat.S16_LE) * 2 (numChannels) * 32
 		// (periodSize) = 128 Bytes
-	 captureInstance.on("audio", (samples) => {
+	 captureInstance.on("audio", (_samples) => {
+		const samples = new Int16Array(_samples.buffer, 0, _samples.byteLength / 2);
 	    const data = {
 	        samples,
 	        sampleRate,
