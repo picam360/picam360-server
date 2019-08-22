@@ -38,6 +38,13 @@ class RTCAudioSourceAlsa {
 		// (periodSize) = 128 Bytes
 	 captureInstance.on("audio", (_samples) => {
 		const samples = new Int16Array(_samples.buffer, 0, _samples.byteLength / 2);
+		if(true){//swap
+	        for (let i = 0; i < numberOfFrames; i++) {
+	        	var tmp = samples[i * channelCount + 0];
+	        	samples[i * channelCount + 0] = samples[i * channelCount + 1];
+	        	samples[i * channelCount + 1] = tmp;
+	        }
+		}
 	    const data = {
 	        samples,
 	        sampleRate,
