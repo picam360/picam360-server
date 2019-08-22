@@ -3,17 +3,16 @@ const AlsaCapture = require("alsa-capture");
 
 const { RTCAudioSource } = require('wrtc').nonstandard;
 
-
 class RTCAudioSourceAlsa {
   constructor(options = {}) {
     options = {
-      frequency: 440,
       channelCount: 1,
       sampleRate: 48000,
       ...options
     };
   // default values for the options object
 
+    var sources = {};
     const {
       device,
       channelCount,
@@ -22,7 +21,6 @@ class RTCAudioSourceAlsa {
     
     const bitsPerSample = 16;
     const numberOfFrames = sampleRate / 100;
-    const source = new RTCAudioSource();
     
     const captureInstance = new AlsaCapture({
         channels: channelCount,
@@ -46,15 +44,24 @@ class RTCAudioSourceAlsa {
 	        channelCount,
 	        numberOfFrames
 	      };
-	    source.onData(data);
+	    for (var uuid in sources) {
+	    	sources[uuid].onData(data);
+	    }
 	 });
 
     this.close = () => {
         captureInstance.close();
     };
 
-    this.createTrack = () => {
+    this.createTrack = (uuid) => {
+      const source = new RTCAudioSource();
+      sources[uuid] = source;
       return source.createTrack();
+    };
+
+    this.deleteTrack = (uuid) => {
+      delete sources[uuid];
+      return;
     };
   }
 }

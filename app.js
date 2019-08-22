@@ -87,6 +87,7 @@ var GC_THRESH = 16 * 1024 * 1024; // 16MB
 var capture_if;
 var capture_process;
 var m_request_call = "";
+var m_audio_source = null;
 
 var http = null;
 
@@ -112,7 +113,19 @@ async.waterfall([
 		});
 	},
 	function(callback) { // exit sequence
+		function cleanup(){
+			if(m_audio_source){
+				console.log('audio close');
+				m_audio_source.close();
+				m_audio_source = null;
+			}
+		}
+		process.on('uncaughtException', (err) => {
+			cleanup();
+			throw err;
+		});
 		process.on('SIGINT', function() {
+			cleanup();
 			console.log("exit process done");
 			process.exit();
 		});
@@ -791,14 +804,15 @@ async.waterfall([
 					});
 					pc_map[request.src] = pc;
 					
-					var audio_source = null;
-					if (options.audio_device) {
+					if (options.audio_device && !m_audio_source) {
 						console.log('audio opened');
-						audio_source = new RTCAudioSourceAlsa({
+						m_audio_source = new RTCAudioSourceAlsa({
 							channelCount: 2,
 							device: options.audio_device,
 						});
-						var track = audio_source.createTrack();
+					}
+					if(m_audio_source){
+						var track = m_audio_source.createTrack(request.src);
 						pc.addTrack(track);
 					}
 
@@ -865,10 +879,8 @@ async.waterfall([
 								console.log('peer connection closed');
 								pc.close();
 								dc.close();
-								if (audio_source) {
-									console.log('audio closed');
-									audio_source.close();
-									audio_source = null;
+								if (m_audio_source) {
+									m_audio_source.deleteTrack(request.src);
 								}
 								break;
 						}
