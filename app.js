@@ -835,8 +835,13 @@ async.waterfall([
 								if (!Array.isArray(data)) {
 									data = [data];
 								}
-								for (var i = 0; i < data.length; i++) {
-									dc.send(Uint8Array.from(data[i]).buffer);
+								try {
+									for (var i = 0; i < data.length; i++) {
+										dc.send(Uint8Array.from(data[i]).buffer);
+									}
+								} catch (e) {
+									console.log('error on dc.send');
+									this.close();
 								}
 							}
 							close() {
