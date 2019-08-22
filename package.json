@@ -13,13 +13,14 @@
   "diskusage": "*",
   "sprintf-js": "*",
   "uuid": "*",
-  "wrtc": "https://github.com/picam360/node-webrtc/tarball/master",
-  "peerjs": "https://github.com/picam360/peerjs/tarball/master",
+  "wrtc": "^0.4.1",
   "xmlhttprequest": "^1.8.0",
   "serialport": "^6.2.0",
   "aws-sdk" : "*",
   "aws-iot-device-sdk" : "*",
   "i2c-bus" : "*",
+  "alsa-capture" : "*",
+  "eventemitter3" : "*",
   "node-gpsd" : "*"
  }
 }

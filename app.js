@@ -14,6 +14,7 @@ var xmlhttprequest = require('xmlhttprequest');
 global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
 var EventEmitter = require('eventemitter3');
 var util = require('util');
+var RTCAudioSourceAlsa = require("./alsaaudio.js");
 
 var UPSTREAM_DOMAIN = "upstream.";
 var SERVER_DOMAIN = "";
@@ -781,13 +782,14 @@ async.waterfall([
 					sig.start_ping();
 				});
 				sig.onrequestoffer = function(request) {
-					var RTCAudioSourceSineWave = require("./sinwaveaudio.js");
-					var source = new RTCAudioSourceSineWave({
-						channelCount: 2,
-						panning: 50
-					});
-					var track = source.createTrack();
-					pc.addTrack(track);
+					if(options.audio_device){
+						var source = new RTCAudioSourceAlsa({
+							channelCount: 2,
+							device: options.audio_device,
+						});
+						var track = source.createTrack();
+						pc.addTrack(track);
+					}
 
 					var dc = pc.createDataChannel('data');
 					dc.onopen = function() {
