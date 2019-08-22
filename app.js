@@ -774,20 +774,25 @@ async.waterfall([
 			};
 			var Signaling = require("./signaling.js").Signaling;
 			var connect = function() {
-				var pc = new global.window.RTCPeerConnection({
-					sdpSemantics: 'unified-plan'
-				});
+				var pc_map = {};
 				var sig = new Signaling(sig_options);
 				sig.connect(function() {
 					sig.start_ping();
 				});
 				sig.onrequestoffer = function(request) {
-					if(options.audio_device){
-						var source = new RTCAudioSourceAlsa({
+					var pc = new global.window.RTCPeerConnection({
+						sdpSemantics: 'unified-plan'
+					});
+					pc_map[request.src] = pc;
+					
+					var audio_source = null;
+					if (options.audio_device) {
+						console.log('audio opened');
+						audio_source = new RTCAudioSourceAlsa({
 							channelCount: 2,
 							device: options.audio_device,
 						});
-						var track = source.createTrack();
+						var track = audio_source.createTrack();
 						pc.addTrack(track);
 					}
 
@@ -795,33 +800,37 @@ async.waterfall([
 					dc.onopen = function() {
 						console.log('Data channel connection success');
 						class DataChannel extends EventEmitter {
-						    constructor() {
-						    	super();
-						        var self = this;
+							constructor() {
+								super();
+								var self = this;
 								this.peerConnection = pc;
-						    	dc.addEventListener('message', function(data){
-						    		self.emit('data', Buffer.from(new Uint8Array(data.data)));
-						    	});
+								dc.addEventListener('message', function(data) {
+									self.emit('data', Buffer.from(new Uint8Array(data.data)));
+								});
 							}
-							send(data){
+							send(data) {
+								if(dc.readyState != 'open'){
+									return;
+								}
 								if (!Array.isArray(data)) {
 									data = [data];
 								}
-								for(var i=0;i<data.length;i++){
+								for (var i = 0; i < data.length; i++) {
 									dc.send(Uint8Array.from(data[i]).buffer);
 								}
 							}
-							close(){
+							close() {
+								dc.close();
 								pc.close();
 							}
 						}
 						var conn = new DataChannel();
 						rtp.add_watcher(conn);
+						dc.onclose = function() {
+							console.log('Data channel closed');
+							rtp.remove_watcher(conn);
+						};
 					}
-					dc.onclose = function() {
-						console.log('Data channel closed');
-						rtp.remove_watcher(dc);
-					};
 
 					pc.createOffer().then(function(sdp) {
 						console.log('setLocalDescription');
@@ -838,12 +847,36 @@ async.waterfall([
 							// All ICE candidates have been sent
 						}
 					};
+					pc.onconnectionstatechange = function(event) {
+						console.log('peer connection state changed : ' + pc.connectionState);
+						switch (pc.connectionState) {
+							case "connected":
+								// The connection has become fully connected
+								break;
+							case "disconnected":
+							case "failed":
+							case "closed":
+								console.log('peer connection closed');
+								pc.close();
+								dc.close();
+								if (audio_source) {
+									console.log('audio closed');
+									audio_source.close();
+									audio_source = null;
+								}
+								break;
+						}
+					}
 				};
 				sig.onanswer = function(answer) {
-					pc.setRemoteDescription(answer.payload.sdp);
+					if(pc_map[answer.src]){
+						pc_map[answer.src].setRemoteDescription(answer.payload.sdp);
+					}
 				};
 				sig.oncandidate = function(candidate) {
-					pc.addIceCandidate(candidate.payload.ice);
+					if(pc_map[candidate.src]){
+						pc_map[candidate.src].addIceCandidate(candidate.payload.ice);
+					}
 				};
 				sig.onclose = function(e) {
 					connect();
