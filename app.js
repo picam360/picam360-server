@@ -769,8 +769,13 @@ async.waterfall([
 				port: SIGNALING_PORT,
 				secure: SIGNALING_SECURE,
 				key: P2P_API_KEY,
-				debug: options.debug || 0,
 				local_peer_id: uuid,
+				iceServers : [
+	                         	{"urls": "stun:stun.l.google.com:19302"},
+	                        	{"urls": "stun:stun1.l.google.com:19302"},
+	                        	{"urls": "stun:stun2.l.google.com:19302"},
+	                        ],
+	        	debug: options.debug || 0,
 			};
 			var Signaling = require("./signaling.js").Signaling;
 			var connect = function() {
@@ -781,7 +786,8 @@ async.waterfall([
 				});
 				sig.onrequestoffer = function(request) {
 					var pc = new global.window.RTCPeerConnection({
-						sdpSemantics: 'unified-plan'
+						sdpSemantics: 'unified-plan',
+						iceServers: sig_options.iceServers,
 					});
 					pc_map[request.src] = pc;
 					
