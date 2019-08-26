@@ -904,7 +904,7 @@ async.waterfall([
 					}
 				};
 				sig.oncandidate = function(candidate) {
-					if(pc_map[candidate.src]){
+					if(pc_map[candidate.src] && candidate.payload.ice.candidate){
 						pc_map[candidate.src].addIceCandidate(candidate.payload.ice);
 					}
 				};
