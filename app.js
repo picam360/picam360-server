@@ -790,6 +790,13 @@ async.waterfall([
 	                        ],
 	        	debug: options.debug || 0,
 			};
+			if (options.turn_server) {
+				options.iceServers.push({
+					urls: 'turn:turn.picam360.com:3478',
+					username: "picam360",
+					credential: "picam360"
+				});
+			}
 			var Signaling = require("./signaling.js").Signaling;
 			var connect = function() {
 				var pc_map = {};
