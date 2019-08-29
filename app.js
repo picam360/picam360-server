@@ -185,7 +185,7 @@ async.waterfall([
 				mode: options.frame_mode || "WINDOW",
 				width: options.frame_width || 512,
 				height: options.frame_height || 512,
-				encode: (options.frame_encode == 'webrtc') ? 'i420' : options.frame_encode || "h264",
+				encode: options.frame_encode || "h264",
 				fps: options.frame_fps || 5,
 				bitrate: options.frame_bitrate,
 			};
@@ -205,8 +205,9 @@ async.waterfall([
 			};
 			var init_con = function() {
 				conn.attr.is_init = true;
+				var encode = (conn.frame_info.encode == 'webrtc') ? 'i420' : conn.frame_info.encode;
 				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", 
-						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , conn.frame_info.encode, conn.frame_info.fps);
+						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , encode, conn.frame_info.fps);
 				if (conn.frame_info.bitrate) {
 					create_frame_cmd += " -k " + conn.frame_info.bitrate;
 				}
@@ -552,7 +553,7 @@ async.waterfall([
 									need_to_send = rtp
 										.push_frame_queue(server_key, conn);
 								}
-								if (options.frame_encode == 'webrtc') {
+								if (conn.frame_info.encode == 'webrtc')  {
 									const {
 										width,
 										height
@@ -841,11 +842,11 @@ async.waterfall([
 							device: options.audio_device,
 						});
 					}
-					if (m_audio_source) {
+					if (m_audio_source) { // audio
 						var track = m_audio_source.createTrack(request.src);
 						pc.addTransceiver(track);
 					}
-					if (options.frame_encode == 'webrtc') {
+					{ // video
 						console.log('video opened');
 						video_source = new global.window.nonstandard.RTCVideoSource();
 						var track = video_source.createTrack();
