@@ -21,6 +21,7 @@
   "i2c-bus" : "*",
   "alsa-capture" : "*",
   "eventemitter3" : "*",
-  "node-gpsd" : "*"
+  "node-gpsd" : "*",
+  "uuid-parse" : "*"
  }
 }

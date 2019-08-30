@@ -15,6 +15,7 @@ global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
 var EventEmitter = require('eventemitter3');
 var util = require('util');
 var RTCAudioSourceAlsa = require("./alsaaudio.js");
+var uuidParse = require('uuid-parse');
 
 var UPSTREAM_DOMAIN = "upstream.";
 var SERVER_DOMAIN = "";
@@ -485,6 +486,7 @@ async.waterfall([
 						if (codec) { // EOI
 							var conn;
 							var server_key;
+							var uuid;
 							if (codec == "H264" || codec == "H265" || codec == "I420") {
 								var sei = false;
 								var nal_type = -1;
@@ -517,6 +519,8 @@ async.waterfall([
 											conn = rtp.get_conn(_split[2]);
 										} else if (_split[0] == "server_key") {
 											server_key = _split[2];
+										} else if (_split[0] == "uuid") {
+											uuid = _split[2];
 										}
 									}
 
@@ -572,6 +576,12 @@ async.waterfall([
 										for (var i = 1; i < active_frame.length - 1; i++) {
 											i420Frame.data.set(active_frame[i].slice(12), cur);
 											cur += active_frame[i].length - 12;
+										}
+										{//uuid injection
+											var bytes = uuidParse.parse(uuid);
+											for(var i=0;i<bytes.length;i++){
+												i420Frame.data[i] = bytes[i];
+											}
 										}
 										conn.add_frame(i420Frame);
 										var _active_frame = [active_frame[0], active_frame[active_frame.length - 1]];
