@@ -579,8 +579,15 @@ async.waterfall([
 										}
 										{//uuid injection
 											var bytes = uuidParse.parse(uuid);
+											var u_offset = 1.0 * width * height;
+											var v_offset = 1.25 * width * height;
 											for(var i=0;i<bytes.length;i++){
-												i420Frame.data[i] = bytes[i];
+												i420Frame.data[i*2+0] = bytes[i];
+												i420Frame.data[i*2+1] = bytes[i];
+												i420Frame.data[i*2+0+width] = bytes[i];
+												i420Frame.data[i*2+1+width] = bytes[i];
+												i420Frame.data[u_offset + i] = 127;
+												i420Frame.data[v_offset + i] = 127;
 											}
 										}
 										conn.add_frame(i420Frame);
