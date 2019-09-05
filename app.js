@@ -76,7 +76,7 @@ var watches = [];
 var statuses = [];
 var filerequest_list = [];
 
-var upstream_next_frame_id = 0;
+var upstream_last_frame_id = 0;
 var upstream_info = "";
 var upstream_menu = "";
 var upstream_quaternion = [0, 0, 0, 1.0];
@@ -182,7 +182,7 @@ async.waterfall([
 			}
 			
 			conn.frame_info = {
-				id: upstream_next_frame_id,
+				id: 0,
 				mode: options.frame_mode || "WINDOW",
 				width: options.frame_width || 512,
 				height: options.frame_height || 512,
@@ -213,6 +213,12 @@ async.waterfall([
 					create_frame_cmd += " -k " + conn.frame_info.bitrate;
 				}
 				console.log(create_frame_cmd);
+				plugin_host.on_upstream_last_frame_id_changed = function(value) {
+					conn.frame_info.id = value;
+					console.log("get frame_id : " + conn.frame_info.id);
+					
+					plugin_host.on_upstream_last_frame_id_changed = null;
+				}
 				plugin_host
 					.send_command(UPSTREAM_DOMAIN + create_frame_cmd, conn);
 
@@ -594,7 +600,7 @@ async.waterfall([
 										var _active_frame = [active_frame[0], active_frame[active_frame.length - 1]];
 										rtp.sendpacket(conn, _active_frame);
 									} else {
-										console.log("warning : image blocken");
+										console.log("warning : image blocken : " + image_size + "," + i420Frame.data.length);
 									}
 								} else {
 									rtp.sendpacket(conn, active_frame);
@@ -1188,12 +1194,15 @@ async.waterfall([
 		plugin_host.add_status = function(name, callback) {
 			statuses[name] = callback;
 		};
-
-		plugin_host.add_watch(UPSTREAM_DOMAIN + "next_frame_id", function(
+		
+		plugin_host.add_watch(UPSTREAM_DOMAIN + "last_frame_id", function(
 			value) {
-			if (upstream_next_frame_id != value) {
-				upstream_next_frame_id = value;
-				console.log("next_frame_id updted : " + value);
+			if (upstream_last_frame_id != value) {
+				upstream_last_frame_id = value;
+				if(plugin_host.on_upstream_last_frame_id_changed) {
+					plugin_host.on_upstream_last_frame_id_changed(value);
+				}
+				console.log("last_frame_id updted : " + value);
 			}
 		});
 
