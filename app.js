@@ -356,35 +356,39 @@ async.waterfall([
 							attr.tmp_latency = 0;
 							attr.tmp_time = now;
 
-							var target_latency = (attr.latency + attr.min_latency) / 2;
-							var stack_fps = (attr.frame_queue.length - (j + 1)) /
-								target_latency;
-							var target_fps;
-							var offset = (options.latency_offset_msec || 200) / 1000;
-							var step = options.fps_step || 1;
-							if (attr.latency > (attr.min_latency + offset) *
-								(1 + offset)) {
-								target_fps = attr.fps - step;
-							} else if (stack_fps > attr.fps *
-								(1 + offset)) {
-								target_fps = attr.fps - step;
+							if (conn.frame_info.encode == 'webrtc') {
+								//fps control in webrtc
 							} else {
-								target_fps = attr.fps + step;
+								var target_latency = (attr.latency + attr.min_latency) / 2;
+								var stack_fps = (attr.frame_queue.length - (j + 1)) /
+									target_latency;
+								var target_fps;
+								var offset = (options.latency_offset_msec || 200) / 1000;
+								var step = options.fps_step || 1;
+								if (attr.latency > (attr.min_latency + offset) *
+									(1 + offset)) {
+									target_fps = attr.fps - step;
+								} else if (stack_fps > attr.fps *
+									(1 + offset)) {
+									target_fps = attr.fps - step;
+								} else {
+									target_fps = attr.fps + step;
+								}
+								target_fps = Math
+									.min(Math
+										.max(target_fps, options.min_fps || 1), options.max_fps || 15);
+								var cmd = UPSTREAM_DOMAIN +
+									"set_fps -i " + conn.frame_info.id +
+									" -f " + target_fps;
+								// console.log("fps:" + attr.fps
+								// + ",latency:" + attr.latency
+								// + ",min_latency:" +
+								// attr.min_latency
+								// + ",stack_fps:" + stack_fps
+								// + ",target_fps:" + target_fps);
+								plugin_host
+									.send_command(cmd, conn);
 							}
-							target_fps = Math
-								.min(Math
-									.max(target_fps, options.min_fps || 1), options.max_fps || 15);
-							var cmd = UPSTREAM_DOMAIN +
-								"set_fps -i " + conn.frame_info.id +
-								" -f " + target_fps;
-							// console.log("fps:" + attr.fps
-							// + ",latency:" + attr.latency
-							// + ",min_latency:" +
-							// attr.min_latency
-							// + ",stack_fps:" + stack_fps
-							// + ",target_fps:" + target_fps);
-							plugin_host
-								.send_command(cmd, conn);
 						}
 					}
 					attr.frame_queue = attr.frame_queue
@@ -583,7 +587,7 @@ async.waterfall([
 											i420Frame.data.set(active_frame[i].slice(12), cur);
 											cur += active_frame[i].length - 12;
 										}
-										{//uuid injection
+										{// uuid injection
 											var bytes = uuidParse.parse(uuid);
 											var u_offset = 1.0 * width * height;
 											var v_offset = 1.25 * width * height;
