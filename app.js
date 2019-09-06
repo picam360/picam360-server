@@ -412,6 +412,11 @@ async.waterfall([
 		// image from upstream
 		rtp
 			.set_callback(9004, function(pack) {
+				var sequencenumber = pack.GetSequenceNumber();
+				if(rtp.last_sequencenumber + 1 != sequencenumber){
+					console.log("packet lost : " + rtp.last_sequencenumber + " - " + sequencenumber);
+				}
+				rtp.last_sequencenumber = sequencenumber;
 				if (pack.GetPayloadType() == PT_STATUS) {
 					var data_len = pack.GetPacketLength();
 					var header_len = pack.GetHeaderLength();
