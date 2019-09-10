@@ -949,9 +949,9 @@ async.waterfall([
 //							}
 							//bitrate
 							if(lines[i].startsWith('m=video 9')){
-								if (options.frame_bitrate) {
+								if (options.webrtc_bitrate) {
 									lines[i] = lines[i] + '\r\n' +
-											'b=AS:' + options.frame_bitrate;
+											'b=AS:' + options.webrtc_bitrate;
 								}
 							}
 						}
