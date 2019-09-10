@@ -609,7 +609,7 @@ async.waterfall([
 										var _active_frame = [active_frame[0], active_frame[active_frame.length - 1]];
 										rtp.sendpacket(conn, _active_frame);
 									} else {
-										console.log("warning : image blocken : " + image_size + "," + i420Frame.data.length);
+										console.log("warning : image broken : " + image_size + "," + i420Frame.data.length);
 									}
 								} else {
 									rtp.sendpacket(conn, active_frame);
@@ -932,6 +932,25 @@ async.waterfall([
 					pc.createOffer().then(function(sdp) {
 						console.log('setLocalDescription');
 						pc.setLocalDescription(sdp);
+						var lines = sdp.sdp.split('\r\n');
+						for(var i=0;i<lines.length;i++){
+//							//h264
+//							if(lines[i].startsWith('a=rtpmap:96 VP8/90000')){
+//								lines[i] = lines[i].replace(
+//										'a=rtpmap:96 VP8/90000',
+//										'a=rtpmap:107 H264/90000\r\n' +
+//										'a=rtpmap:96 VP8/90000');
+//							}
+//							//vp9
+//							if(lines[i].startsWith('m=video 9')){
+//								lines[i] = lines[i].replace(
+//										'm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 127',
+//										'm=video 9 UDP/TLS/RTP/SAVPF 107 98 96 97 99 100 101 127\r\n' +
+//										'b=AS:20000');
+//							}
+						}
+						sdp.sdp = lines.join('\r\n');
+
 						sig.offer(request.src, sdp);
 					}).catch(function(err) {
 						console.log('failed offering:' +
