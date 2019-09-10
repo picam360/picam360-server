@@ -945,9 +945,15 @@ async.waterfall([
 //							if(lines[i].startsWith('m=video 9')){
 //								lines[i] = lines[i].replace(
 //										'm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 127',
-//										'm=video 9 UDP/TLS/RTP/SAVPF 107 98 96 97 99 100 101 127\r\n' +
-//										'b=AS:20000');
+//										'm=video 9 UDP/TLS/RTP/SAVPF 107 98 96 97 99 100 101 127');
 //							}
+							//bitrate
+							if(lines[i].startsWith('m=video 9')){
+								if (options.frame_bitrate) {
+									lines[i] = lines[i] + '\r\n' +
+											'b=AS:' + options.frame_bitrate;
+								}
+							}
 						}
 						sdp.sdp = lines.join('\r\n');
 
