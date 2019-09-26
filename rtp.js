@@ -152,30 +152,42 @@ function set_callback(port, callback) {
 // @_packet : Buffer
 function sendpacket(stream, packets) {
 	if (!Array.isArray(packets)) {
-		packets = [packets];
-	}
-	var sum = 0;
-	var split = [];
-	for (var i = 0; i < packets.length; i++) {
-		sum += packets[i].length;
-		if (sum > 64 * 1024) {
-			if (stream.peerConnection) {
-				stream.send(split);
-			} else {
-				stream.emit("data", split);
-			}
-			split = [];
-			sum = packets[i].length;
-		}
-		split.push(packets[i]);
-	}
-	if (split.length > 0) {
 		if (stream.peerConnection) {
-			stream.send(split);
+			stream.send(packets);
 		} else {
-			stream.emit("data", split);
+			stream.emit("data", packets);
+		}
+		return;
+	}
+	for (var i = 0; i < packets.length; i++) {
+		if (stream.peerConnection) {
+			stream.send(packets[i]);
+		} else {
+			stream.emit("data", packets[i]);
 		}
 	}
+//	var sum = 0;
+//	var split = [];
+//	for (var i = 0; i < packets.length; i++) {
+//		sum += packets[i].length;
+//		if (sum > 64 * 1024) {
+//			if (stream.peerConnection) {
+//				stream.send(split);
+//			} else {
+//				stream.emit("data", split);
+//			}
+//			split = [];
+//			sum = packets[i].length;
+//		}
+//		split.push(packets[i]);
+//	}
+//	if (split.length > 0) {
+//		if (stream.peerConnection) {
+//			stream.send(split);
+//		} else {
+//			stream.emit("data", split);
+//		}
+//	}
 }
 
 exports.PacketHeader = PacketHeader;
