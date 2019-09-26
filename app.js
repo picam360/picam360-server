@@ -170,8 +170,7 @@ async.waterfall([
 			if (conn.peerConnection) { // webrtc
 				ip = " via webrtc";
 			} else {
-				ip = (conn.request.headers['x-forwarded-for'] || conn.request.connection.remoteAddress) +
-					" via websocket";
+				ip = " via websocket";
 			}
 			if (rtp_rx_conns.length >= 2) { // exceed client
 				console.log("exceeded_num_of_clients : " + ip);
@@ -229,11 +228,7 @@ async.waterfall([
 					if (conn.attr.timeout) {
 						console.log("timeout");
 						rtp.remove_conn(conn);
-						if (conn.peerConnection) { // webrtc
-							conn.close();
-						} else {
-							conn.disconnect(true);
-						}
+						conn.close();
 					} else {
 						conn.attr.timeout = true;
 					}
@@ -782,17 +777,57 @@ async.waterfall([
 	},
 	function(callback) {
 		// websocket
-		var io = require("socket.io").listen(http);
-		io.sockets.on("connection", function(socket) {
-			rtp.add_conn(socket);
-			socket.on("connected", function() {});
-			socket.on("disconnect", function() {
-				rtp.remove_conn(socket);
-			});
-			socket.on("error", function(event) {
-				console.log("error : " + event);
-			});
+		var WebSocket = require("ws");
+		var server = new WebSocket.Server({ server : http });
+
+		server.on("connection", dc => {
+			class DataChannel extends EventEmitter {
+				constructor() {
+					super();
+					var self = this;
+					dc.on('message', function(data) {
+						self.emit('data', data);
+					});
+					dc.on('close', function(event) {
+						self.close();
+					});
+				}
+				send(data) {
+					if (dc.readyState != 1) {
+						return;
+					}
+					if (!Array.isArray(data)) {
+						data = [data];
+					}
+					try {
+						for (var i = 0; i < data.length; i++) {
+							dc.send(data[i]);
+						}
+					} catch (e) {
+						console.log('error on dc.send');
+						this.close();
+					}
+				}
+				close() {
+					dc.close();
+					console.log('WebSocket closed');
+					rtp.remove_conn(this);
+				}
+			}
+			var conn = new DataChannel();
+			rtp.add_conn(conn);
 		});
+//		var io = require("socket.io").listen(http);
+//		io.sockets.on("connection", function(socket) {
+//			rtp.add_conn(socket);
+//			socket.on("connected", function() {});
+//			socket.on("disconnect", function() {
+//				rtp.remove_conn(socket);
+//			});
+//			socket.on("error", function(event) {
+//				console.log("error : " + event);
+//			});
+//		});
 		callback(null);
 	},
 	function(callback) {
@@ -919,14 +954,12 @@ async.waterfall([
 							close() {
 								dc.close();
 								pc.close();
+								console.log('Data channel closed');
+								rtp.remove_conn(this);
 							}
 						}
 						var conn = new DataChannel();
 						rtp.add_conn(conn);
-						dc.onclose = function() {
-							console.log('Data channel closed');
-							rtp.remove_conn(conn);
-						};
 					}
 
 					pc.createOffer().then(function(sdp) {
