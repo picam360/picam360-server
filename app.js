@@ -497,7 +497,24 @@ async.waterfall([
 							var conn;
 							var server_key;
 							var uuid;
-							if (codec == "H264" || codec == "H265" || codec == "I420") {
+							if (codec == "MJPEG"){
+								if (active_frame[0][header_len + 2] == 0xFF && active_frame[0][header_len + 3] == 0xE1) { // xmp
+									var frame_info = String.fromCharCode.apply("", active_frame[0].subarray(header_len + 6), 0);
+									var split = frame_info.split(' ');
+									for (var i = 0; i < split.length; i++) {
+										var separator = (/[=,\"]/);
+										var _split = split[i]
+											.split(separator);
+										if (_split[0] == "frame_id") {
+											conn = rtp.get_conn(_split[2]);
+										} else if (_split[0] == "server_key") {
+											server_key = _split[2];
+										} else if (_split[0] == "uuid") {
+											uuid = _split[2];
+										}
+									}
+								}								
+							} else if (codec == "H264" || codec == "H265" || codec == "I420") {
 								var sei = false;
 								var nal_type = -1;
 								if (codec == "H264") {
