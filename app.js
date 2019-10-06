@@ -972,11 +972,10 @@ async.waterfall([
 								dc.close();
 								pc.close();
 								console.log('Data channel closed');
-								rtp.remove_conn(this);
 							}
 						}
-						var conn = new DataChannel();
-						rtp.add_conn(conn);
+						dc.DataChannel = new DataChannel();
+						rtp.add_conn(dc.DataChannel);
 					}
 
 					pc.createOffer().then(function(sdp) {
@@ -1033,6 +1032,9 @@ async.waterfall([
 								dc.close();
 								if (m_audio_source) {
 									m_audio_source.deleteTrack(request.src);
+								}
+								if(dc.DataChannel){
+									rtp.remove_conn(dc.DataChannel);
 								}
 								break;
 						}
