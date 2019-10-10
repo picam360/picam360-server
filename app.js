@@ -411,6 +411,12 @@ async.waterfall([
 				if(rtp.last_sequencenumber + 1 != sequencenumber){
 					console.log("packet lost : " + rtp.last_sequencenumber + " - " + sequencenumber);
 				}
+				if ((sequencenumber % 100) == 0) {
+					var latency = new Date().getTime() / 1000 -
+						(pack.GetTimestamp() + pack.GetSsrc() / 1E6);
+					console.log("packet latency : seq=" + sequencenumber +
+						", latency=" + latency + "sec");
+				}
 				rtp.last_sequencenumber = sequencenumber;
 				if (pack.GetPayloadType() == PT_STATUS) {
 					var data_len = pack.GetPacketLength();
@@ -457,12 +463,6 @@ async.waterfall([
 						}
 					}
 				} else if (pack.GetPayloadType() == PT_CAM_BASE) {
-					if (options.latency_debug) {
-						var latency = new Date().getTime() / 1000 -
-							(pack.GetTimestamp() + pack.GetSsrc() / 1E6);
-						console.log("seq:" + pack.GetSequenceNumber() +
-							":latency:" + latency);
-					}
 					var data_len = pack.GetPacketLength();
 					var header_len = pack.GetHeaderLength();
 					var data = pack.GetPacketData();
