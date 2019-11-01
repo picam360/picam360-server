@@ -206,11 +206,11 @@ async.waterfall([
 			var init_con = function() {
 				conn.attr.is_init = true;
 				var encode = (conn.frame_info.encode == 'webrtc') ? 'i420' : conn.frame_info.encode;
-				var create_frame_cmd = sprintf("create_frame -m %s -w %d -h %d -s %s -f %d", 
-						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , encode, conn.frame_info.fps);
-				if (conn.frame_info.bitrate) {
-					create_frame_cmd += " -k " + conn.frame_info.bitrate;
-				}
+				var create_frame_cmd = sprintf("create_vostream %s width=%d height=%d|%s_tegra_encoder|rtp", 
+						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , encode);
+//				if (conn.frame_info.bitrate) {
+//					create_frame_cmd += " -k " + conn.frame_info.bitrate;
+//				}
 				console.log(create_frame_cmd);
 				plugin_host.on_upstream_last_frame_id_changed = function(value) {
 					conn.frame_info.id = value;
@@ -311,86 +311,6 @@ async.waterfall([
 				var conn = rtp_rx_conns[i];
 				rtp.sendpacket(conn, pack_list);
 			}
-		}
-
-		rtp.push_frame_queue = function(server_key, conn) {
-			var now = new Date().getTime();
-			conn.attr.frame_queue.push({
-				server_key: server_key,
-				base_time: now
-			});
-		}
-
-		rtp.pop_frame_queue = function(server_key, conn) {
-			var now = new Date().getTime();
-			var attr = conn.attr;
-			for (var j = 0; j < attr.frame_queue.length; j++) {
-				if (attr.frame_queue[j].server_key == server_key) {
-					attr.frame_num++; { // latency
-						var value = (now - attr.frame_queue[j].base_time) / 1000.0;
-						attr.tmp_latency += attr.latency;
-					} { // fps
-						if (attr.tmp_time == 0) {
-							attr.tmp_time = now;
-						} else if (attr.frame_num -
-							attr.tmp_num > 5) {
-							var frame_num = attr.frame_num -
-								attr.tmp_num;
-							var fps = frame_num * 1000 /
-								(now - attr.tmp_time);
-							attr.fps = attr.fps * 0.9 + fps *
-								0.1;
-							var latency = attr.tmp_latency /
-								frame_num;
-							attr.latency = attr.latency * 0.9 +
-								value * 0.1;
-							if (attr.latency < attr.min_latency) {
-								attr.min_latency = attr.latency;
-							}
-							attr.tmp_num = attr.frame_num;
-							attr.tmp_latency = 0;
-							attr.tmp_time = now;
-
-							if (conn.frame_info.encode == 'webrtc') {
-								//fps control in webrtc
-							} else {
-								var target_latency = (attr.latency + attr.min_latency) / 2;
-								var stack_fps = (attr.frame_queue.length - (j + 1)) /
-									target_latency;
-								var target_fps;
-								var offset = (options.latency_offset_msec || 200) / 1000;
-								var step = options.fps_step || 1;
-								if (attr.latency > (attr.min_latency + offset) *
-									(1 + offset)) {
-									target_fps = attr.fps - step;
-								} else if (stack_fps > attr.fps *
-									(1 + offset)) {
-									target_fps = attr.fps - step;
-								} else {
-									target_fps = attr.fps + step;
-								}
-								target_fps = Math
-									.min(Math
-										.max(target_fps, options.min_fps || 1), options.max_fps || 15);
-								var cmd = UPSTREAM_DOMAIN +
-									"set_fps -i " + conn.frame_info.id +
-									" -f " + target_fps;
-								// console.log("fps:" + attr.fps
-								// + ",latency:" + attr.latency
-								// + ",min_latency:" +
-								// attr.min_latency
-								// + ",stack_fps:" + stack_fps
-								// + ",target_fps:" + target_fps);
-								plugin_host
-									.send_command(cmd, conn);
-							}
-						}
-					}
-					attr.frame_queue = attr.frame_queue
-						.slice(j + 1);
-				}
-			}
-			return false;
 		}
 
 		rtp.p2p_num_of_members = function() {
@@ -495,7 +415,6 @@ async.waterfall([
 						}
 						if (codec) { // EOI
 							var conn;
-							var server_key;
 							var uuid;
 							if (codec == "MJPEG"){
 								if (active_frame[0][header_len + 2] == 0xFF && active_frame[0][header_len + 3] == 0xE1) { // xmp
@@ -507,8 +426,6 @@ async.waterfall([
 											.split(separator);
 										if (_split[0] == "frame_id") {
 											conn = rtp.get_conn(_split[2]);
-										} else if (_split[0] == "server_key") {
-											server_key = _split[2];
 										} else if (_split[0] == "uuid") {
 											uuid = _split[2];
 										}
@@ -544,8 +461,6 @@ async.waterfall([
 											.split(separator);
 										if (_split[0] == "frame_id") {
 											conn = rtp.get_conn(_split[2]);
-										} else if (_split[0] == "server_key") {
-											server_key = _split[2];
 										} else if (_split[0] == "uuid") {
 											uuid = _split[2];
 										}
@@ -580,10 +495,6 @@ async.waterfall([
 							}
 							// image to downstream
 							if (conn) {
-								if (server_key) {
-									need_to_send = rtp
-										.push_frame_queue(server_key, conn);
-								}
 								if (conn.frame_info.encode == 'webrtc')  {
 									const {
 										width,
@@ -1083,21 +994,17 @@ async.waterfall([
 					key: split[2],
 					conn: conn
 				});
-			} else if (split[0] == "set_view_quaternion") {
+			} else if (split[0] == "set_vostream_param") {
 				var id = conn.frame_info.id;
 				if (id) {
 					var cmd = CAPTURE_DOMAIN + value + " id=" + id;
 					plugin_host.send_command(cmd, conn);
 
-					var server_key;
 					var split = value.split(' ');
 					for (var i = 0; i < split.length; i++) {
 						var separator = (/[=,\"]/);
 						var _split = split[i].split(separator);
-						if (_split[0] == "server_key") {
-							server_key = _split[1];
-							rtp.pop_frame_queue(server_key, conn);
-						} else if (_split[0] == "quat") {
+						if (_split[0] == "view_quat") {
 							m_view_quaternion = [parseFloat(_split[1]),
 								parseFloat(_split[2]),
 								parseFloat(_split[3]),
@@ -1105,12 +1012,6 @@ async.waterfall([
 							];
 						}
 					}
-				}
-			} else if (split[0] == "set_stereo") {
-				var id = conn.frame_info.id;
-				if (id) {
-					var cmd = CAPTURE_DOMAIN + value + " id=" + id;
-					plugin_host.send_command(cmd, conn);
 				}
 			} else if (split[0] == "snap") {
 				var id = conn.frame_info.id;
