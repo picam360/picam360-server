@@ -288,7 +288,7 @@ async.waterfall([
 					clearInterval(rtp_rx_conns[i].timer);
 
 					plugin_host
-						.send_command(UPSTREAM_DOMAIN + "delete_frame -i " +
+						.send_command(UPSTREAM_DOMAIN + "delete_vostream -i " +
 							rtp_rx_conns[i].frame_info.id, conn);
 					rtp_rx_conns.splice(i, 1);
 				}
@@ -1251,7 +1251,7 @@ async.waterfall([
 		});
 
 		// delete all frame
-		plugin_host.send_command(UPSTREAM_DOMAIN + "delete_frame -i *");
+		plugin_host.send_command(UPSTREAM_DOMAIN + "delete_vostream -i *");
 
 		callback(null);
 	},
