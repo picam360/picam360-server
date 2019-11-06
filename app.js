@@ -205,9 +205,12 @@ async.waterfall([
 			};
 			var init_con = function() {
 				conn.attr.is_init = true;
-				var encode = (conn.frame_info.encode == 'webrtc') ? 'i420' : conn.frame_info.encode;
-				var create_frame_cmd = sprintf("create_vostream %s width=%d height=%d|%s_tegra_encoder|rtp", 
-						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , encode);
+				if(!options['encodes'] || !options['encodes'][conn.frame_info.encode]){
+					console.log("no encode definition : " + conn.frame_info.encode);
+					return;
+				}
+				var create_frame_cmd = sprintf("create_vostream %s width=%d height=%d|%s|rtp", 
+						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , options['encodes'][conn.frame_info.encode]);
 //				if (conn.frame_info.bitrate) {
 //					create_frame_cmd += " -k " + conn.frame_info.bitrate;
 //				}
