@@ -209,11 +209,16 @@ async.waterfall([
 					console.log("no encode definition : " + conn.frame_info.encode);
 					return;
 				}
-				var create_frame_cmd = sprintf("create_vostream %s width=%d height=%d|%s|rtp", 
-						conn.frame_info.mode, conn.frame_info.width, conn.frame_info.height , options['encodes'][conn.frame_info.encode]);
-//				if (conn.frame_info.bitrate) {
-//					create_frame_cmd += " -k " + conn.frame_info.bitrate;
-//				}
+				var vars = {
+						width : conn.frame_info.width,
+						height : conn.frame_info.height,
+						bitrate : conn.frame_info.bitrate,
+				}
+				var create_frame_cmd = sprintf("create_vostream %s width=${width} height=${height}|%s|rtp", 
+						conn.frame_info.mode, options['encodes'][conn.frame_info.encode]);
+				for(var key in vars){
+					create_frame_cmd = create_frame_cmd.replace(new RegExp('\\${' + key +'}', "g"), vars[key]);
+				}
 				console.log(create_frame_cmd);
 				plugin_host.on_upstream_last_frame_id_changed = function(value) {
 					conn.frame_info.id = value;
@@ -912,9 +917,9 @@ async.waterfall([
 //							}
 							//bitrate
 							if(lines[i].startsWith('m=video 9')){
-								if (options.webrtc_bitrate) {
+								if (options.frame_bitrate) {
 									lines[i] = lines[i] + '\r\n' +
-											'b=AS:' + options.webrtc_bitrate;
+											'b=AS:' + options.frame_bitrate;
 								}
 							}
 						}
