@@ -26,6 +26,8 @@ var PT_CMD = 101;
 var PT_FILE = 102;
 var PT_CAM_BASE = 110;
 var PT_AUDIO_BASE = 120;
+var OSTREAM_PORT_START = 9100;
+var OSTREAM_PORT_END = 9199;
 
 var SIGNALING_HOST = "peer.picam360.com";
 // var SIGNALING_HOST = "test-peer-server.herokuapp.com";
@@ -75,6 +77,7 @@ var cmd_list = [];
 var watches = [];
 var statuses = [];
 var filerequest_list = [];
+var m_port_index = 0;
 
 var upstream_last_frame_id = 0;
 var upstream_info = "";
@@ -188,6 +191,7 @@ async.waterfall([
 				encode: options.frame_encode || "h264",
 				fps: options.frame_fps || 5,
 				bitrate: options.frame_bitrate,
+				port: ((m_port_index++)%(OSTREAM_PORT_END - OSTREAM_PORT_START + 1)) + OSTREAM_PORT_START,
 			};
 
 			conn.attr = {
@@ -209,15 +213,10 @@ async.waterfall([
 					console.log("no encode definition : " + conn.frame_info.encode);
 					return;
 				}
-				var vars = {
-						width : conn.frame_info.width,
-						height : conn.frame_info.height,
-						bitrate : conn.frame_info.bitrate,
-				}
-				var create_frame_cmd = sprintf("create_vostream %s width=${width} height=${height}|%s|rtp", 
+				var create_frame_cmd = sprintf("create_vostream %s width=${width} height=${height}|%s|rtp port=${port}", 
 						conn.frame_info.mode, options['encodes'][conn.frame_info.encode]);
-				for(var key in vars){
-					create_frame_cmd = create_frame_cmd.replace(new RegExp('\\${' + key +'}', "g"), vars[key]);
+				for(var key in conn.frame_info){
+					create_frame_cmd = create_frame_cmd.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
 				}
 				console.log(create_frame_cmd);
 				plugin_host.on_upstream_last_frame_id_changed = function(value) {
@@ -286,6 +285,70 @@ async.waterfall([
 						init_con();
 					}
 				});
+			// image to downstream
+			rtp
+				.set_callback(conn.frame_info.port, function(pack) {
+					if (pack.GetPayloadType() != PT_CAM_BASE) {
+						return;
+					}
+					
+					var sequencenumber = pack.GetSequenceNumber();
+					if(conn.last_sequencenumber + 1 != sequencenumber){
+						console.log("packet lost : " + conn.last_sequencenumber + " - " + sequencenumber);
+					}
+					if ((sequencenumber % 100) == 0) {
+						var latency = new Date().getTime() / 1000 -
+							(pack.GetTimestamp() + pack.GetSsrc() / 1E6);
+						console.log("packet latency : seq=" + sequencenumber +
+							", latency=" + latency + "sec");
+					}
+					conn.last_sequencenumber = sequencenumber;
+					var data_len = pack.GetPacketLength();
+					var header_len = pack.GetHeaderLength();
+					var data = pack.GetPacketData();
+					if (conn.frame_info.encode != 'webrtc')  {
+						rtp.sendpacket(conn, data);
+					}else{
+						const {
+							width,
+							height
+						} = conn.frame_info;
+						const i420Frame = {
+							width,
+							height,
+							data: new Uint8ClampedArray(1.5 * width * height)
+						};
+						var image_size = 0;
+						for (var i = 1; i < active_frame.length - 1; i++) {
+							image_size += active_frame[i].length - 12;
+						}
+						if(image_size == i420Frame.data.length){
+							var cur = 0;
+							for (var i = 1; i < active_frame.length - 1; i++) {
+								i420Frame.data.set(active_frame[i].slice(12), cur);
+								cur += active_frame[i].length - 12;
+							}
+							{// uuid injection
+								var bytes = uuidParse.parse(uuid);
+								var u_offset = 1.0 * width * height;
+								var v_offset = 1.25 * width * height;
+								for(var i=0;i<bytes.length;i++){
+									i420Frame.data[i*2+0] = bytes[i];
+									i420Frame.data[i*2+1] = bytes[i];
+									i420Frame.data[i*2+0+width] = bytes[i];
+									i420Frame.data[i*2+1+width] = bytes[i];
+									i420Frame.data[u_offset + i] = 127;
+									i420Frame.data[v_offset + i] = 127;
+								}
+							}
+							conn.add_frame(i420Frame);
+							var _active_frame = [active_frame[0], active_frame[active_frame.length - 1]];
+							rtp.sendpacket(conn, _active_frame);
+						} else {
+							console.log("warning : image broken : " + image_size + "," + i420Frame.data.length);
+						}
+					}
+				});
 		}
 
 		rtp.remove_conn = function(conn) {
@@ -332,18 +395,12 @@ async.waterfall([
 			return value;
 		}
 
-		// image from upstream
+		// parse status
 		rtp
 			.set_callback(9004, function(pack) {
 				var sequencenumber = pack.GetSequenceNumber();
 				if(rtp.last_sequencenumber + 1 != sequencenumber){
 					console.log("packet lost : " + rtp.last_sequencenumber + " - " + sequencenumber);
-				}
-				if ((sequencenumber % 100) == 0) {
-					var latency = new Date().getTime() / 1000 -
-						(pack.GetTimestamp() + pack.GetSsrc() / 1E6);
-					console.log("packet latency : seq=" + sequencenumber +
-						", latency=" + latency + "sec");
 				}
 				rtp.last_sequencenumber = sequencenumber;
 				if (pack.GetPayloadType() == PT_STATUS) {
@@ -388,177 +445,6 @@ async.waterfall([
 							if (name && watches[name]) {
 								watches[name](value);
 							}
-						}
-					}
-				} else if (pack.GetPayloadType() == PT_CAM_BASE) {
-					var data_len = pack.GetPacketLength();
-					var header_len = pack.GetHeaderLength();
-					var data = pack.GetPacketData();
-					// rtp.sendpacket_all([data]);
-					// return;
-					if (!active_frame) {
-						if ((data[header_len] == 0xFF && data[header_len + 1] == 0xD8) ||
-							(data[header_len] == 0x4E && data[header_len + 1] == 0x41) ||
-							(data[header_len] == 0x48 && data[header_len + 1] == 0x45) ||
-							(data[header_len] == 0x49 && data[header_len + 1] == 0x34)) { // SOI
-							active_frame = [];
-							// console.log("new_frame");
-						}
-					}
-					if (active_frame) {
-						active_frame.push(data);
-						var codec = null;
-						if (data[data_len - 2] == 0xFF &&
-							data[data_len - 1] == 0xD9) {
-							codec = "MJPEG";
-						} else if (data[data_len - 2] == 0x4C &&
-							data[data_len - 1] == 0x55) {
-							codec = "H264";
-						} else if (data[data_len - 2] == 0x56 &&
-							data[data_len - 1] == 0x43) {
-							codec = "H265";
-						} else if (data[data_len - 2] == 0x32 &&
-							data[data_len - 1] == 0x30) {
-							codec = "I420";
-						}
-						if (codec) { // EOI
-							var conn;
-							var uuid;
-							if (codec == "MJPEG"){
-								if (active_frame[0][header_len + 2] == 0xFF && active_frame[0][header_len + 3] == 0xE1) { // xmp
-									var frame_info = String.fromCharCode.apply("", active_frame[0].subarray(header_len + 6), 0);
-									var split = frame_info.split(' ');
-									for (var i = 0; i < split.length; i++) {
-										var separator = (/[=,\"]/);
-										var _split = split[i]
-											.split(separator);
-										if (_split[0] == "frame_id") {
-											conn = rtp.get_conn(_split[2]);
-										} else if (_split[0] == "uuid") {
-											uuid = _split[2];
-										}
-									}
-								}								
-							} else if (codec == "H264" || codec == "H265" || codec == "I420") {
-								var sei = false;
-								var nal_type = -1;
-								if (codec == "H264") {
-									nal_type = active_frame[0][header_len + 2 + 4] & 0x1f;
-									if (nal_type == 6) { // sei
-										sei = true;
-									}
-								} else if (codec == "H265") {
-									nal_type = (active_frame[0][header_len + 2 + 4] & 0x7e) >> 1;
-									if (nal_type == 40) { // sei
-										sei = true;
-									}
-								} else if (codec == "I420") {
-									nal_type = (active_frame[0][header_len + 2 + 4] & 0x7e) >> 1;
-									if (nal_type == 40) { // sei
-										sei = true;
-									}
-								}
-								if (sei) { // sei
-									var str = String.fromCharCode
-										.apply("", active_frame[0]
-											.subarray(header_len + 2 + 4), 0);
-									var split = str.split(' ');
-									for (var i = 0; i < split.length; i++) {
-										var separator = (/[=,\"]/);
-										var _split = split[i]
-											.split(separator);
-										if (_split[0] == "frame_id") {
-											conn = rtp.get_conn(_split[2]);
-										} else if (_split[0] == "uuid") {
-											uuid = _split[2];
-										}
-									}
-
-									if (options.debug == "stream") {
-										var nal_len = 0;
-										var _nal_len = 0;
-										for (var i = 1; i < active_frame.length - 1; i++) {
-											if (i == 1) {
-												nal_len = active_frame[i][header_len + 0] << 24 |
-													active_frame[i][header_len + 1] << 16 |
-													active_frame[i][header_len + 2] << 8 |
-													active_frame[i][header_len + 3];
-												_nal_len += active_frame[i].length - 4 - 12;
-
-												// nal header 1byte
-												if (codec == "H264") {
-													nal_type = active_frame[i][header_len + 4] & 0x1f;
-												} else if (codec == "H265") {
-													nal_type = (active_frame[i][header_len + 4] & 0x7e) >> 1;
-												}
-											} else {
-												_nal_len += active_frame[i].length - 12;
-											}
-										}
-										console.log("nal_len:" + nal_len +
-											"," + _nal_len + ":nal_type:" +
-											nal_type);
-									}
-								}
-							}
-							// image to downstream
-							if (conn) {
-								if (conn.frame_info.encode == 'webrtc')  {
-									const {
-										width,
-										height
-									} = conn.frame_info;
-									const i420Frame = {
-										width,
-										height,
-										data: new Uint8ClampedArray(1.5 * width * height)
-									};
-									var image_size = 0;
-									for (var i = 1; i < active_frame.length - 1; i++) {
-										image_size += active_frame[i].length - 12;
-									}
-									if(image_size == i420Frame.data.length){
-										var cur = 0;
-										for (var i = 1; i < active_frame.length - 1; i++) {
-											i420Frame.data.set(active_frame[i].slice(12), cur);
-											cur += active_frame[i].length - 12;
-										}
-										{// uuid injection
-											var bytes = uuidParse.parse(uuid);
-											var u_offset = 1.0 * width * height;
-											var v_offset = 1.25 * width * height;
-											for(var i=0;i<bytes.length;i++){
-												i420Frame.data[i*2+0] = bytes[i];
-												i420Frame.data[i*2+1] = bytes[i];
-												i420Frame.data[i*2+0+width] = bytes[i];
-												i420Frame.data[i*2+1+width] = bytes[i];
-												i420Frame.data[u_offset + i] = 127;
-												i420Frame.data[v_offset + i] = 127;
-											}
-										}
-										conn.add_frame(i420Frame);
-										var _active_frame = [active_frame[0], active_frame[active_frame.length - 1]];
-										rtp.sendpacket(conn, _active_frame);
-									} else {
-										console.log("warning : image broken : " + image_size + "," + i420Frame.data.length);
-									}
-								} else {
-									rtp.sendpacket(conn, active_frame);
-								}
-							} else {
-								console.log("warning : no conn");
-							}
-
-							active_frame = null;
-							// console.log("active_frame");
-							num_of_frame++;
-							var endTime = new Date();
-							var diff_sec = (endTime - startTime) / 1000;
-							var frame_sec = (((fps != 0) ? 1.0 / fps : 0) * 0.9 + diff_sec * 0.1);
-							fps = (frame_sec != 0) ? 1.0 / frame_sec : 0;
-							// console.log("fps : " + fps);
-
-							startTime = new Date();
 						}
 					}
 				} else if (pack.GetPayloadType() == PT_AUDIO_BASE) {
@@ -753,17 +639,6 @@ async.waterfall([
 			var conn = new DataChannel();
 			rtp.add_conn(conn);
 		});
-//		var io = require("socket.io").listen(http);
-//		io.sockets.on("connection", function(socket) {
-//			rtp.add_conn(socket);
-//			socket.on("connected", function() {});
-//			socket.on("disconnect", function() {
-//				rtp.remove_conn(socket);
-//			});
-//			socket.on("error", function(event) {
-//				console.log("error : " + event);
-//			});
-//		});
 		callback(null);
 	},
 	function(callback) {
@@ -902,20 +777,20 @@ async.waterfall([
 						pc.setLocalDescription(sdp);
 						var lines = sdp.sdp.split('\r\n');
 						for(var i=0;i<lines.length;i++){
-//							//h264
-//							if(lines[i].startsWith('a=rtpmap:96 VP8/90000')){
-//								lines[i] = lines[i].replace(
-//										'a=rtpmap:96 VP8/90000',
-//										'a=rtpmap:107 H264/90000\r\n' +
-//										'a=rtpmap:96 VP8/90000');
-//							}
-//							//vp9
-//							if(lines[i].startsWith('m=video 9')){
-//								lines[i] = lines[i].replace(
-//										'm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 127',
-//										'm=video 9 UDP/TLS/RTP/SAVPF 107 98 96 97 99 100 101 127');
-//							}
-							//bitrate
+// //h264
+// if(lines[i].startsWith('a=rtpmap:96 VP8/90000')){
+// lines[i] = lines[i].replace(
+// 'a=rtpmap:96 VP8/90000',
+// 'a=rtpmap:107 H264/90000\r\n' +
+// 'a=rtpmap:96 VP8/90000');
+// }
+// //vp9
+// if(lines[i].startsWith('m=video 9')){
+// lines[i] = lines[i].replace(
+// 'm=video 9 UDP/TLS/RTP/SAVPF 96 97 98 99 100 101 127',
+// 'm=video 9 UDP/TLS/RTP/SAVPF 107 98 96 97 99 100 101 127');
+// }
+							// bitrate
 							if(lines[i].startsWith('m=video 9')){
 								if (options.frame_bitrate) {
 									lines[i] = lines[i] + '\r\n' +
