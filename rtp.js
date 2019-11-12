@@ -71,7 +71,7 @@ function set_callback(port, callback) {
 	});
 
 	var marker = 0;
-	var packet = null;
+	var pack = null;
 	var xmp = false;
 	var xmp_len = 0;
 	var xmp_pos = 0;
