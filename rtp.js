@@ -31,6 +31,13 @@ function PacketHeader(pack) {
 		},
 		GetPayloadType : function() {
 			return payloadtype;
+		},
+		GetPayloadLength : function() {
+			return packetlength - self.GetHeaderLength();
+		},
+		GetPayload : function() {
+			return new Uint8Array(pack, self.GetHeaderLength(), self
+				.GetPayloadLength());
 		}
 	};
 	return self;
