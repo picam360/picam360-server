@@ -43,8 +43,8 @@ function build_packet(data, pt) {
 	var pack = new Buffer(raw_header_len + header_len + data.length);
 	pack[0] = 0xFF;
 	pack[1] = 0xE1;
-	pack[2] = (pack.length >> 0) & 0xFF;
-	pack[3] = (pack.length >> 8) & 0xFF;
+	pack[2] = (pack.length >> 8) & 0xFF;//network(big) endian
+	pack[3] = (pack.length >> 0) & 0xFF;//network(big) endian
 	pack[4] = 0x72; // r
 	pack[5] = 0x74; // t
 	pack[6] = 0x70; // p

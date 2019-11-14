@@ -81,10 +81,10 @@ function set_callback(port, callback) {
 			for (var i = 0; i < data_len; i++) {
 				if (xmp) {
 					if (xmp_pos == 2) {
-						xmp_len = buff[i];
+						xmp_len = buff[i] << 8;//network(big) endian
 						xmp_pos++;
 					} else if (xmp_pos == 3) {
-						xmp_len += buff[i] << 8;
+						xmp_len += buff[i] << 0;//network(big) endian
 						xmp_pos++;
 					} else if (xmp_pos == 4) {
 						if (buff[i] == 0x72) {// r
