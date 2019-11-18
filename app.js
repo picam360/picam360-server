@@ -79,7 +79,6 @@ var statuses = [];
 var filerequest_list = [];
 var m_port_index = 0;
 
-var upstream_last_frame_id = 0;
 var upstream_info = "";
 var upstream_menu = "";
 var upstream_quaternion = [0, 0, 0, 1.0];
@@ -213,20 +212,15 @@ async.waterfall([
 					console.log("no encode definition : " + conn.frame_info.encode);
 					return;
 				}
-				var create_frame_cmd = sprintf("create_vostream %s width=${width} height=${height}|%s|rtp port=${port}", 
+				var o_str = sprintf('mixer!%s width=${width} height=${height}!%s!rtp port=${port}', 
 						conn.frame_info.mode, options['encodes'][conn.frame_info.encode]);
 				for(var key in conn.frame_info){
-					create_frame_cmd = create_frame_cmd.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
+					o_str = o_str.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
 				}
-				console.log(create_frame_cmd);
-				plugin_host.on_upstream_last_frame_id_changed = function(value) {
-					conn.frame_info.id = value;
-					console.log("get frame_id : " + conn.frame_info.id);
-					
-					plugin_host.on_upstream_last_frame_id_changed = null;
-				}
-				plugin_host
-					.send_command(UPSTREAM_DOMAIN + create_frame_cmd, conn);
+				conn.frame_info.id = uuidv1();
+				var cmd = sprintf('create_vostream -u %s -o \\"%s\\"', conn.frame_info.id, o_str);
+				console.log(cmd);
+				plugin_host.send_command(UPSTREAM_DOMAIN + cmd, conn);
 
 				rtcp.add_connection(conn);
 				rtp_rx_conns.push(conn);
@@ -393,9 +387,10 @@ async.waterfall([
 						rtp_rx_conns[i].attr.ip);
 					clearInterval(rtp_rx_conns[i].timer);
 
+					var cmd = sprintf('delete_vostream -u %s', conn.frame_info.id);
+					console.log(cmd);
 					plugin_host
-						.send_command(UPSTREAM_DOMAIN + "delete_vostream -i " +
-							rtp_rx_conns[i].frame_info.id, conn);
+						.send_command(UPSTREAM_DOMAIN + cmd, conn);
 					rtp_rx_conns.splice(i, 1);
 				}
 			}
@@ -505,13 +500,11 @@ async.waterfall([
 		setInterval(function() {
 			if (cmd2upstream_list.length) {
 				var value = cmd2upstream_list.shift();
-				var cmd = "<picam360:command id=\"" + rtcp_command_id +
+				var cmd = "<picam360:command id=\"" + (++rtcp_command_id) +
 					"\" value=\"" + value + "\" />";
 				var pack = rtcp
 					.build_packet(new Buffer(cmd, 'ascii'), PT_CMD);
 				rtcp.sendpacket(pack, 9005, "127.0.0.1");
-
-				rtcp_command_id++;
 			}
 		}, 20);
 		// status to downstream
@@ -915,7 +908,7 @@ async.waterfall([
 			} else if (split[0] == "set_vostream_param") {
 				var id = conn.frame_info.id;
 				if (id) {
-					var cmd = CAPTURE_DOMAIN + value + " id=" + id;
+					var cmd = CAPTURE_DOMAIN + value + " -u " + id;
 					plugin_host.send_command(cmd, conn);
 
 					var split = value.split(' ');
@@ -1099,17 +1092,6 @@ async.waterfall([
 		plugin_host.add_status = function(name, callback) {
 			statuses[name] = callback;
 		};
-		
-		plugin_host.add_watch(UPSTREAM_DOMAIN + "last_frame_id", function(
-			value) {
-			if (upstream_last_frame_id != value) {
-				upstream_last_frame_id = value;
-				if(plugin_host.on_upstream_last_frame_id_changed) {
-					plugin_host.on_upstream_last_frame_id_changed(value);
-				}
-				console.log("last_frame_id updted : " + value);
-			}
-		});
 
 		plugin_host.add_watch(UPSTREAM_DOMAIN + "quaternion", function(
 			value) {
@@ -1169,7 +1151,9 @@ async.waterfall([
 		});
 
 		// delete all frame
-		plugin_host.send_command(UPSTREAM_DOMAIN + "delete_vostream -i *");
+		var cmd = 'delete_vostream -a';
+		console.log(cmd);
+		plugin_host.send_command(UPSTREAM_DOMAIN + cmd);
 
 		callback(null);
 	},
