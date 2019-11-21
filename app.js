@@ -218,7 +218,7 @@ async.waterfall([
 					o_str = o_str.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
 				}
 				conn.frame_info.id = uuidv1();
-				var cmd = sprintf('create_vostream -u %s -o \\"%s\\"', conn.frame_info.id, o_str);
+				var cmd = sprintf('build_vstream -u %s -s \\"%s\\"', conn.frame_info.id, o_str);
 				console.log(cmd);
 				plugin_host.send_command(UPSTREAM_DOMAIN + cmd, conn);
 
@@ -387,7 +387,7 @@ async.waterfall([
 						rtp_rx_conns[i].attr.ip);
 					clearInterval(rtp_rx_conns[i].timer);
 
-					var cmd = sprintf('delete_vostream -u %s', conn.frame_info.id);
+					var cmd = sprintf('destroy_vstream -u %s', conn.frame_info.id);
 					console.log(cmd);
 					plugin_host
 						.send_command(UPSTREAM_DOMAIN + cmd, conn);
@@ -905,7 +905,7 @@ async.waterfall([
 					key: split[2],
 					conn: conn
 				});
-			} else if (split[0] == "set_vostream_param") {
+			} else if (split[0] == "set_vstream_param") {
 				var id = conn.frame_info.id;
 				if (id) {
 					var cmd = CAPTURE_DOMAIN + value + " -u " + id;
@@ -1151,7 +1151,7 @@ async.waterfall([
 		});
 
 		// delete all frame
-		var cmd = 'delete_vostream -a';
+		var cmd = 'destroy_vstream -a';
 		console.log(cmd);
 		plugin_host.send_command(UPSTREAM_DOMAIN + cmd);
 
