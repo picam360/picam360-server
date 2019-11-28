@@ -1,7 +1,11 @@
 {
-	"wrtc_enabled" : false,
-	"wrtc_uuid" : "",
-	"plugin_paths" : [
-	],
-	"debug" : 0
+    "wrtc_enabled" : false,
+    "wrtc_uuid" : "",
+    "stream_def" : "default",
+    "stream_defs" : {
+        "default" : "mixer"
+    },
+    "plugin_paths" : [
+    ],
+    "debug" : 0
 }

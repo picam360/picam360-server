@@ -187,7 +187,7 @@ async.waterfall([
 				mode: options.frame_mode || "WINDOW",
 				width: options.frame_width || 512,
 				height: options.frame_height || 512,
-				encode: options.frame_encode || "h264",
+				stream_def: options.stream_def || "h264",
 				fps: options.frame_fps || 5,
 				bitrate: options.frame_bitrate,
 				port: ((m_port_index++)%(OSTREAM_PORT_END - OSTREAM_PORT_START + 1)) + OSTREAM_PORT_START,
@@ -208,12 +208,12 @@ async.waterfall([
 			};
 			var init_con = function() {
 				conn.attr.is_init = true;
-				if(!options['encodes'] || !options['encodes'][conn.frame_info.encode]){
-					console.log("no encode definition : " + conn.frame_info.encode);
+				if(!options['stream_defs'] || !options['stream_defs'][conn.frame_info.stream_def]){
+					console.log("no stream definition : " + conn.frame_info.stream_def);
 					return;
 				}
-				var o_str = sprintf('mixer!%s width=${width} height=${height}!%s!rtp port=${port}', 
-						conn.frame_info.mode, options['encodes'][conn.frame_info.encode]);
+				var o_str = sprintf('%s!rtp port=${port}', 
+						options['stream_defs'][conn.frame_info.stream_def]);
 				for(var key in conn.frame_info){
 					o_str = o_str.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
 				}
@@ -258,8 +258,8 @@ async.waterfall([
 							} else if (value[0] == "frame_fps") {
 								conn.frame_info.fps = value[1];
 								return;
-							} else if (value[0] == "frame_encode") {
-								conn.frame_info.encode = value[1];
+							} else if (value[0] == "stream_def") {
+								conn.frame_info.stream_def = value[1];
 								return;
 							} else if (value[0] == "frame_bitrate") {
 								conn.frame_info.bitrate = value[1];
@@ -300,7 +300,7 @@ async.waterfall([
 					var data_len = pack.GetPacketLength();
 					var header_len = pack.GetHeaderLength();
 					var data = pack.GetPacketData();// header_is_nessesary_to_passthrough_data_to_downstream
-					if (conn.frame_info.encode != 'webrtc')  {
+					if (conn.frame_info.stream_def != 'webrtc')  {
 						rtp.sendpacket(conn, data);
 					}else{
 						if(!conn.active_frame){
