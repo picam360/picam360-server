@@ -873,7 +873,12 @@ async.waterfall([
 					}
 				};
 				sig.onclose = function(e) {
-					connect();
+					//console.log('Socket closed : dump error object below');
+					//console.dir(e);
+					setTimeout(() => {
+						console.log('Try to reconnect');
+						connect();
+					}, 1000);
 				};
 			};
 			connect();

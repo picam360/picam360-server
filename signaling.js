@@ -97,6 +97,10 @@ function Signaling(options) {
 				self.socket.onopen = function() {
 					console.log('Socket open');
 				};
+
+				self.socket.onerror = function(e) {
+					console.log('Socket error : ' + e);
+				};
 			}
 			if (options.local_peer_id) {
 				_connect(options.local_peer_id);
