@@ -9,7 +9,7 @@ var moment = require("moment");
 var sprintf = require('sprintf-js').sprintf;
 var rtp = require("./rtp.js");
 var rtcp = require("./rtcp.js");
-var uuidv1 = require('uuid/v1');
+var uuidgen = require('uuid/v4');
 var xmlhttprequest = require('xmlhttprequest');
 global.XMLHttpRequest = xmlhttprequest.XMLHttpRequest;
 var EventEmitter = require('eventemitter3');
@@ -183,7 +183,10 @@ async.waterfall([
 			}
 			
 			conn.frame_info = {
-				id: 0,
+				stream_uuid: uuidgen(),
+				renderer_uuid: uuidgen(),
+				snapper_uuid: uuidgen(),
+				recorder_uuid: uuidgen(),
 				mode: options.frame_mode || "WINDOW",
 				width: options.frame_width || 512,
 				height: options.frame_height || 512,
@@ -212,13 +215,14 @@ async.waterfall([
 					console.log("no stream definition : " + conn.frame_info.stream_def);
 					return;
 				}
-				var o_str = sprintf('%s!rtp port=${port}', 
-						options['stream_defs'][conn.frame_info.stream_def]);
+				var o_str = options['stream_defs'][conn.frame_info.stream_def];
+				o_str += '!image_recorder uuid=${snapper_uuid} limit_record_framecount=1 pif_split=1';
+				o_str += '!image_recorder uuid=${recorder_uuid} pif_split=1';
+				o_str += '!rtp port=${port}';
 				for(var key in conn.frame_info){
 					o_str = o_str.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
 				}
-				conn.frame_info.id = uuidv1();
-				var cmd = sprintf('build_vstream -u %s -s \\"%s\\"', conn.frame_info.id, o_str);
+				var cmd = sprintf('build_vstream -u %s -s \\"%s\\"', conn.frame_info.stream_uuid, o_str);
 				console.log(cmd);
 				plugin_host.send_command(UPSTREAM_DOMAIN + cmd, conn);
 
@@ -279,7 +283,7 @@ async.waterfall([
 						init_con();
 					}
 				});
-			// image to downstream
+			// image to downstreamf
 			rtp
 				.set_callback(conn.frame_info.port, function(pack) {
 					if (pack.GetPayloadType() != PT_CAM_BASE) {
@@ -387,7 +391,7 @@ async.waterfall([
 						rtp_rx_conns[i].attr.ip);
 					clearInterval(rtp_rx_conns[i].timer);
 
-					var cmd = sprintf('destroy_vstream -u %s', conn.frame_info.id);
+					var cmd = sprintf('destroy_vstream -u %s', conn.frame_info.stream_uuid);
 					console.log(cmd);
 					plugin_host
 						.send_command(UPSTREAM_DOMAIN + cmd, conn);
@@ -401,7 +405,7 @@ async.waterfall([
 
 		rtp.get_conn = function(frame_id) {
 			for (var i = rtp_rx_conns.length - 1; i >= 0; i--) {
-				if (rtp_rx_conns[i].frame_info.id == frame_id) {
+				if (rtp_rx_conns[i].frame_info.stream_uuid == frame_id) {
 					return rtp_rx_conns[i];
 				}
 			}
@@ -509,23 +513,24 @@ async.waterfall([
 		}, 20);
 		// status to downstream
 		setInterval(function() {
-			var pack_list = [];
-			for (var name in statuses) {
-				if (statuses[name]) {
-					var ret = statuses[name]();
-					if (!ret.succeeded) {
-						continue;
+			for (var i = rtp_rx_conns.length - 1; i >= 0; i--) {
+				var conn = rtp_rx_conns[i];
+				var pack_list = [];
+				for (var name in statuses) {
+					if (statuses[name]) {
+						var ret = statuses[name](conn);
+						if (!ret.succeeded) {
+							continue;
+						}
+						var value = encodeURIComponent(ret.value);
+						var status = "<picam360:status name=\"" + name +
+							"\" value=\"" + value + "\" />";
+						var pack = rtp
+							.build_packet(new Buffer(status, 'ascii'), PT_STATUS);
+						pack_list.push(pack);
 					}
-					var value = encodeURIComponent(ret.value);
-					var status = "<picam360:status name=\"" + name +
-						"\" value=\"" + value + "\" />";
-					var pack = rtp
-						.build_packet(new Buffer(status, 'ascii'), PT_STATUS);
-					pack_list.push(pack);
 				}
-			}
-			if (pack_list.length > 0) {
-				rtp.sendpacket_all(pack_list);
+				rtp.sendpacket(conn, pack_list);
 			}
 		}, 200);
 		callback(null);
@@ -697,7 +702,7 @@ async.waterfall([
 				}
 				global.window.evt_listener[name].push(callback);
 			}
-			var uuid = options["wrtc_uuid"] || uuidv1();
+			var uuid = options["wrtc_uuid"] || uuidgen();
 			console.log("\n\n\n");
 			console.log("webrtc uuid : " + uuid);
 			console.log("\n\n\n");
@@ -873,8 +878,8 @@ async.waterfall([
 					}
 				};
 				sig.onclose = function(e) {
-					//console.log('Socket closed : dump error object below');
-					//console.dir(e);
+					// console.log('Socket closed : dump error object below');
+					// console.dir(e);
 					setTimeout(() => {
 						console.log('Try to reconnect');
 						connect();
@@ -911,7 +916,7 @@ async.waterfall([
 					conn: conn
 				});
 			} else if (split[0] == "set_vstream_param") {
-				var id = conn.frame_info.id;
+				var id = conn.frame_info.renderer_uuid;
 				if (id) {
 					var cmd = CAPTURE_DOMAIN + value + " -u " + id;
 					plugin_host.send_command(cmd, conn);
@@ -930,87 +935,41 @@ async.waterfall([
 					}
 				}
 			} else if (split[0] == "snap") {
-				var id = conn.frame_info.id;
+				var id = conn.frame_info.snapper_uuid;
 				if (id) {
-					var key = split[1];
-					var filename = moment().format('YYYYMMDD_hhmmss') +
-						'.jpeg';
-					var filepath = 'userdata/' + filename;
-					var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id +
-						' -m WINDOW';
+					var dirname = moment().format('YYYYMMDD_HHmmss');
+					var filepath = (options['record_path'] || 'Videos') + '/' + dirname;
+					var cmd = CAPTURE_DOMAIN + "set_vstream_param";
+					cmd += " -p base_path=" + filepath;
+					cmd += " -p mode=RECORD";
+					cmd += " -u " + id;
 					plugin_host.send_command(cmd, conn);
-					cmd = CAPTURE_DOMAIN + 'snap -i ' + id + ' -o /tmp/' +
-						filename;
-					plugin_host.send_command(cmd, conn);
-					console.log(cmd);
-					watchFile('/tmp/' + filename, function() {
-						var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id +
-							' -m ' + (options.frame_mode || "WINDOW");
-						plugin_host.send_command(cmd, conn);
-
-						console.log(filename + ' saved.');
-						var rm_cmd = 'mv' + ' /tmp/' + filename + ' ' +
-							filepath;
-						var cmd = rm_cmd;
-						console.log(cmd);
-						child_process.exec(cmd, function() {
-							// callback(filename);
-							fs.readFile(filepath, function(err, data) {
-								if (err) {
-									console.log("not found :" + filepath);
-								} else {
-									send_file(filename, key, conn, data);
-									console.log("send :" + filepath);
-								}
-							});
-						});
-					});
+					console.log("snap");
 				}
 			} else if (split[0] == "start_record") {
-				if (is_recording)
+				if (conn.frame_info.is_recording)
 					return;
-				var id = conn.frame_info.id;
+				var id = conn.frame_info.recorder_uuid;
 				if (id) {
-					var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id +
-						' -m WINDOW';
+					var dirname = moment().format('YYYYMMDD_HHmmss');
+					var filepath = (options['record_path'] || 'Videos') + '/' + dirname;
+					var cmd = CAPTURE_DOMAIN + "set_vstream_param";
+					cmd += " -p base_path=" + filepath;
+					cmd += " -p mode=RECORD";
+					cmd += " -u " + id;
 					plugin_host.send_command(cmd, conn);
-
-					cmd = CAPTURE_DOMAIN + 'start_record -i ' + id +
-						' -o /tmp/movie.h264';
-					plugin_host.send_command(cmd, conn);
-					console.log(cmd);
-					is_recording = true;
+					conn.frame_info.is_recording = true;
+					console.log("start record");
 				}
 			} else if (split[0] == "stop_record") {
-				var id = conn.frame_info.id;
+				var id = conn.frame_info.recorder_uuid;
 				if (id) {
-					is_recording = false;
-
-					var key = split[1];
-					var cmd = CAPTURE_DOMAIN + 'stop_record -i ' + id;
+					var cmd = CAPTURE_DOMAIN + "set_vstream_param";
+					cmd += " -p mode=IDLE";
+					cmd += " -u " + id;
 					plugin_host.send_command(cmd, conn);
-					console.log(cmd);
-					var filename = moment().format('YYYYMMDD_hhmmss') +
-						'.mp4';
-					var filepath = 'userdata/' + filename;
-					var ffmpeg_cmd = 'ffmpeg -y -r 10 -i /tmp/movie.h264 -c:v copy ' +
-						filepath;
-					var delh264_cmd = 'rm /tmp/movie.h264';
-					var cmd = ffmpeg_cmd + ' ; ' + delh264_cmd;
-					console.log(cmd);
-					child_process.exec(cmd, function() {
-						var cmd = CAPTURE_DOMAIN + 'set_mode -i ' + id +
-							' -m ' + (options.frame_mode || "WINDOW");
-						plugin_host.send_command(cmd, conn);
-						fs.readFile(filepath, function(err, data) {
-							if (err) {
-								console.log("not found :" + filepath);
-							} else {
-								send_file(filename, key, conn, data);
-								console.log("send :" + filepath);
-							}
-						});
-					});
+					conn.frame_info.is_recording = false;
+					console.log("stop record");
 				}
 			} else if (split[0] == "request_call") {
 				m_request_call = split[1];
@@ -1120,10 +1079,10 @@ async.waterfall([
 			upstream_menu = value;
 		});
 
-		plugin_host.add_status("is_recording", function() {
+		plugin_host.add_status("is_recording", function(conn) {
 			return {
 				succeeded: true,
-				value: is_recording
+				value: conn.frame_info.is_recording
 			};
 		});
 
