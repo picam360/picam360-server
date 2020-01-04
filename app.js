@@ -902,7 +902,8 @@ async.waterfall([
 				for (var i = 0; i < plugins.length; i++) {
 					if (plugins[i].name && plugins[i].name == domain[0]) {
 						if (plugins[i].command_handler) {
-							plugins[i].command_handler(value);
+							split[0] = split[0].substring(split[0].indexOf('.') + 1);
+							plugins[i].command_handler(split.join(' '));
 							break;
 						}
 					}
