@@ -219,6 +219,9 @@ async.waterfall([
 				o_str += '!image_recorder uuid=${snapper_uuid} limit_record_framecount=1 pif_split=1';
 				o_str += '!image_recorder uuid=${recorder_uuid} pif_split=1';
 				o_str += '!rtp port=${port}';
+				if(o_str.indexOf('${renderer_uuid}') < 0){
+					conn.frame_info.renderer_uuid = conn.frame_info.stream_uuid;
+				}
 				for(var key in conn.frame_info){
 					o_str = o_str.replace(new RegExp('\\${' + key +'}', "g"), conn.frame_info[key]);
 				}
