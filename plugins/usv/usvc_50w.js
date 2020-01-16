@@ -14,7 +14,6 @@ module.exports = {
 		var ADS7828_ADDRESS = 0x48;
 
 		var i2c = null;
-		var gps_arrived = false;
 		var gps_valid = false;
 		var m_latitude = 0;
 		var m_longitude = 0;
@@ -147,6 +146,9 @@ module.exports = {
 		}
 
 		get_ads7828_value = function(ch, cnt) {
+			if(!options.adc_enabled){
+				return 0;
+			}
 			if (ch < 8) {
 				return get_ads7828_value_single(ch, cnt);
 			} else {
@@ -410,7 +412,6 @@ module.exports = {
 							} else { // GPS_LOST
 								gps_valid = false;
 							}
-							gps_arrived = true;
 						});
 						listener.watch();
 					});
@@ -446,28 +447,20 @@ module.exports = {
 								home : options.home,
 								operator_pos : m_operator_pos,
 							};
-							if (gps_arrived) {
-								var status = Object.assign({}, m_status);
-								gps_arrived = false;
-								if (waypoints_required) {
-									status.waypoints = options.waypoints;
-									waypoints_required = false
-								}
-								if (history_required) {
-									status.history = Object
-										.assign({}, history_1min, history_10min, history_100min, history_1000min, history_10000min);
-									history_required = false
-								}
-								return {
-									succeeded : true,
-									value : JSON.stringify(status)
-								};
-							} else {
-								return {
-									succeeded : false,
-									value : null
-								};
+							var status = Object.assign({}, m_status);
+							if (waypoints_required) {
+								status.waypoints = options.waypoints;
+								waypoints_required = false
 							}
+							if (history_required) {
+								status.history = Object
+									.assign({}, history_1min, history_10min, history_100min, history_1000min, history_10000min);
+								history_required = false
+							}
+							return {
+								succeeded : true,
+								value : JSON.stringify(status)
+							};
 						});
 					callback(null);
 				},

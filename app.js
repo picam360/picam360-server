@@ -1149,9 +1149,7 @@ async.waterfall([
 		// wrtc could conflict in connection establishing
 		if (options.aws_iot && options.aws_iot.enabled) {
 			if(!options.aws_iot.client_id){
-				options.aws_iot.client_id = "sdk-nodejs-" + uuidgen();
-			}else if( !options.aws_iot.client_id.startsWith("sdk-nodejs-")){
-				options.aws_iot.client_id = "sdk-nodejs-" + options.aws_iot.client_id;
+				options.aws_iot.client_id = "picam360-" + uuidgen();
 			}
 			// making sure connection established
 			var awsIot = require('aws-iot-device-sdk');
