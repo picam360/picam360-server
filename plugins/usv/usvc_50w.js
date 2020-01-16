@@ -643,8 +643,7 @@ module.exports = {
 			},
 			command_handler : function(cmd) {
 				var split = cmd.split(' ');
-				cmd = split[0].split('.')[1];
-				switch (cmd) {
+				switch (split[0]) {
 					case "set_waypoints" :
 						var json_str = decodeURIComponent(split[1]);
 						var new_waypoints = JSON.parse(json_str);
