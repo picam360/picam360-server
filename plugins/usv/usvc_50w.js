@@ -9,7 +9,6 @@ module.exports = {
 		var child_process = require('child_process');
 
 		var PLUGIN_NAME = "usvc";
-		var COM_PORT = "/dev/ttyACM0";
 		var DELIMITER = '\r\n';
 		var TIMEOUT_MS = 5000;
 		var ADS7828_ADDRESS = 0x48;
@@ -70,6 +69,7 @@ module.exports = {
 			PWM_MIDDLE_US : 1500,
 			PWM_MAX_US : 1700,
 			PWM_MARGIN_MS : 100,
+			ch : [{},{},{},{}],
 		};
 		var m_status = {};
 
