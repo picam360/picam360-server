@@ -12,7 +12,7 @@
   "moment": "*",
   "diskusage": "*",
   "sprintf-js": "*",
-  "uuid": "*",
+  "uuid": "~3.3.3",
   "wrtc": "^0.4.3",
   "xmlhttprequest": "^1.8.0",
   "serialport": "^6.2.0",
